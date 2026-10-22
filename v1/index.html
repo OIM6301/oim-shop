@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Northwind Products</title>
+<style>
+  /* Design tokens: every color and size below comes from here. */
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --text: #1c1d1f;
+    --muted: #5d6066;
+    --border: #e2e2de;
+    --accent: #1f5fbf;
+    --accent-text: #ffffff;
+    --row-hover: #f1f3f7;
+    --danger: #b42318;
+    --danger-bg: #fdf0ee;
+    --badge-bg: #eceae4;
+    --skeleton: #e9e8e3;
+    --radius: 8px;
+    --space: 16px;
+    --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141517;
+      --surface: #1c1d20;
+      --text: #ececec;
+      --muted: #a3a6ad;
+      --border: #303237;
+      --accent: #7aa7f0;
+      --accent-text: #0d1a2e;
+      --row-hover: #24262b;
+      --danger: #f2948a;
+      --danger-bg: #2d1a18;
+      --badge-bg: #2c2e33;
+      --skeleton: #2a2c30;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 var(--font);
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 0 var(--space); }
+  header { border-bottom: 1px solid var(--border); background: var(--surface); }
+  header .container { padding-top: 14px; padding-bottom: 14px; }
+  h1 { margin: 0; font-size: 18px; font-weight: 650; }
+  main.container { padding-top: 24px; padding-bottom: 48px; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  [tabindex="-1"]:focus { outline: none; }   /* headings focused by the script, for screen readers */
+
+  .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: var(--space); }
+  label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
+  select, button, .button {
+    font: inherit;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 7px 12px;
+    min-height: 38px;
+  }
+  select { min-width: 200px; }
+  button, .button { cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
+  .button[aria-disabled="true"] { color: var(--muted); cursor: default; opacity: 0.6; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); }
+  th { font-size: 13px; font-weight: 600; color: var(--muted); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: var(--row-hover); }
+  td a { font-weight: 550; text-decoration: none; }
+  td a:hover { text-decoration: underline; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    background: var(--badge-bg);
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .pager { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: var(--space); }
+  .pager p { margin: 0; color: var(--muted); font-size: 14px; }
+  .pager div { display: flex; gap: 8px; }
+
+  .message { padding: 40px var(--space); text-align: center; }
+  .message h2 { margin: 0 0 6px; font-size: 16px; }
+  .message p { margin: 0 0 16px; color: var(--muted); }
+  .message.error h2 { color: var(--danger); }
+  .message.error { background: var(--danger-bg); }
+
+  .skeleton {
+    display: block;
+    height: 12px;
+    border-radius: 4px;
+    background: var(--skeleton);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes pulse { 50% { opacity: 0.5; } }
+  @media (prefers-reduced-motion: reduce) { .skeleton { animation: none; } }
+
+  .back { display: inline-block; margin-bottom: var(--space); text-decoration: none; }
+  .back:hover { text-decoration: underline; }
+  .detail { padding: 24px; }
+  .detail h2 { margin: 0 0 4px; font-size: 22px; }
+  .detail .category { margin: 0 0 20px; color: var(--muted); }
+  dl { display: grid; grid-template-columns: max-content 1fr; gap: 10px 32px; margin: 0; }
+  dt { color: var(--muted); }
+  dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  @media (max-width: 600px) {
+    .hide-narrow { display: none; }
+    th, td { padding: 10px; }
+    select { min-width: 0; width: 100%; }
+    .toolbar label { flex: 1; }
+    .pager { flex-direction: column; align-items: stretch; }
+    .pager div { justify-content: space-between; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="container"><h1>Northwind Products</h1></div>
+</header>
+
+<main class="container">
+  <section id="list-view" aria-labelledby="list-heading">
+    <h2 id="list-heading" class="sr-only">Products</h2>
+    <div class="toolbar">
+      <label>Category
+        <select id="category">
+          <option value="">All categories</option>
+        </select>
+      </label>
+    </div>
+    <div id="results" aria-live="polite"></div>
+    <nav id="pager" class="pager" aria-label="Pages"></nav>
+  </section>
+
+  <section id="detail-view" hidden></section>
+</main>
+
+<script>
+  // Everything this page shows comes from this API. Open it in a browser to read what it serves.
+  const API = "https://oim.zhili.dev/shop";
+  const PER_PAGE = 20;
+  const TIMEOUT_MS = 10000;   // after this, show an error instead of loading forever
+
+  const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+  const number = new Intl.NumberFormat("en-US");
+
+  const listView = document.querySelector("#list-view");
+  const detailView = document.querySelector("#detail-view");
+  const results = document.querySelector("#results");
+  const pager = document.querySelector("#pager");
+  const categorySelect = document.querySelector("#category");
+
+  let categoriesLoaded = false;
+  let lastListHash = "#";   // where "Back to products" returns
+  let inFlight = null;      // the request that a newer click cancels
+
+  // The page's state lives in the address, after the #: #category=2&page=3 or #product=12.
+  // So the back button works, and every view, empty or broken, has a link you can share.
+  function readState() {
+    const params = new URLSearchParams(location.hash.slice(1));
+    const page = Number.parseInt(params.get("page"), 10);
+    return {
+      product: params.get("product"),
+      category: params.get("category") ?? "",
+      page: page >= 1 ? page : 1,
+    };
+  }
+
+  function listHash(category, page) {
+    const params = new URLSearchParams();
+    if (category) params.set("category", category);
+    if (page > 1) params.set("page", page);
+    return "#" + params.toString();
+  }
+
+  // API data is inserted into HTML, so characters like < and & are escaped first.
+  function escapeHTML(text) {
+    return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  }
+
+  async function getJSON(path, signal) {
+    const response = await fetch(API + path, { signal: AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) });
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      const detail = typeof body.detail === "string" ? body.detail : `The API answered with status ${response.status}.`;
+      throw new Error(detail);
+    }
+    return response.json();
+  }
+
+  async function render() {
+    inFlight?.abort();
+    inFlight = new AbortController();
+    const state = readState();
+    try {
+      if (state.product) {
+        await showProduct(state.product, inFlight.signal);
+      } else {
+        await showList(state, inFlight.signal);
+      }
+    } catch (error) {
+      if (error.name === "AbortError") return;   // a newer request replaced this one
+      showError(state.product ? "Could not load this product" : "Could not load products", error);
+    }
+  }
+
+  async function loadCategories(signal) {
+    if (categoriesLoaded) return;
+    const categories = await getJSON("/categories", signal);
+    for (const c of categories) {
+      categorySelect.add(new Option(c.name, c.category_id));
+    }
+    categoriesLoaded = true;
+  }
+
+  async function showList(state, signal) {
+    listView.hidden = false;
+    detailView.hidden = true;
+    lastListHash = location.hash || "#";
+    results.innerHTML = loadingTable();
+    results.setAttribute("aria-busy", "true");
+    pager.innerHTML = "";
+
+    await loadCategories(signal);
+    categorySelect.value = state.category;
+
+    const query = new URLSearchParams({ page: state.page, per_page: PER_PAGE });
+    if (state.category) query.set("category", state.category);
+    const data = await getJSON("/products?" + query, signal);
+    results.removeAttribute("aria-busy");
+
+    if (data.items.length === 0) {
+      results.innerHTML = `
+        <div class="card message">
+          <h2>No products here</h2>
+          <p>Page ${state.page} has no products. There ${data.pagination.total === 1 ? "is" : "are"} ${number.format(data.pagination.total)} in this selection.</p>
+          <a class="button" href="${listHash(state.category, 1)}">Go to page 1</a>
+        </div>`;
+      return;
+    }
+
+    const rows = data.items.map((p) => `
+      <tr>
+        <td><a href="#product=${p.product_id}">${escapeHTML(p.name)}</a>${p.discontinued ? '<span class="badge">Discontinued</span>' : ""}</td>
+        <td class="hide-narrow">${escapeHTML(p.category)}</td>
+        <td class="num">${money.format(p.unit_price_dollars)}</td>
+        <td class="num">${p.units_in_stock === 0 ? "Out of stock" : number.format(p.units_in_stock)}</td>
+      </tr>`).join("");
+    results.innerHTML = `
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Product</th><th class="hide-narrow">Category</th><th class="num">Unit price</th><th class="num">In stock</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    showPager(state, data.pagination);
+  }
+
+  function showPager(state, pagination) {
+    const first = (pagination.page - 1) * pagination.per_page + 1;
+    const last = first + pagination.per_page - 1;
+    const link = (label, page, enabled) => enabled
+      ? `<a class="button" href="${listHash(state.category, page)}">${label}</a>`
+      : `<span class="button" aria-disabled="true">${label}</span>`;
+    pager.innerHTML = `
+      <p>${number.format(first)} to ${number.format(Math.min(last, pagination.total))} of ${number.format(pagination.total)} products</p>
+      <div>
+        ${link("Previous", pagination.page - 1, pagination.has_prev)}
+        ${link("Next", pagination.page + 1, pagination.has_next)}
+      </div>`;
+  }
+
+  async function showProduct(id, signal) {
+    listView.hidden = true;
+    detailView.hidden = false;
+    detailView.innerHTML = `
+      ${backLink()}
+      <div class="card detail" aria-busy="true">
+        <span class="skeleton" style="width: 40%; height: 22px"></span>
+        <span class="skeleton" style="width: 20%; margin: 12px 0 24px"></span>
+        <span class="skeleton" style="width: 60%"></span>
+      </div>`;
+
+    const p = await getJSON("/products/" + encodeURIComponent(id), signal);
+    detailView.innerHTML = `
+      ${backLink()}
+      <article class="card detail">
+        <h2 tabindex="-1">${escapeHTML(p.name)}${p.discontinued ? '<span class="badge">Discontinued</span>' : ""}</h2>
+        <p class="category">${escapeHTML(p.category)}</p>
+        <dl>
+          <dt>Unit price</dt><dd>${money.format(p.unit_price_dollars)}</dd>
+          <dt>Quantity per unit</dt><dd>${escapeHTML(p.quantity_per_unit)}</dd>
+          <dt>Units in stock</dt><dd>${p.units_in_stock === 0 ? "Out of stock" : number.format(p.units_in_stock)}</dd>
+          <dt>Supplier</dt><dd>${escapeHTML(p.supplier)}</dd>
+        </dl>
+      </article>`;
+    detailView.querySelector("h2").focus();
+  }
+
+  function backLink() {
+    return `<a class="back" href="${lastListHash}">← Back to products</a>`;
+  }
+
+  function loadingTable() {
+    const row = `<tr><td><span class="skeleton" style="width: 70%"></span></td><td class="hide-narrow"><span class="skeleton" style="width: 50%"></span></td><td><span class="skeleton"></span></td><td><span class="skeleton"></span></td></tr>`;
+    return `
+      <div class="card table-wrap">
+        <table>
+          <thead><tr><th>Product</th><th class="hide-narrow">Category</th><th class="num">Unit price</th><th class="num">In stock</th></tr></thead>
+          <tbody>${row.repeat(8)}</tbody>
+        </table>
+        <span class="sr-only">Loading products</span>
+      </div>`;
+  }
+
+  function showError(title, error) {
+    const target = detailView.hidden ? results : detailView;
+    pager.innerHTML = "";
+    results.removeAttribute("aria-busy");
+    target.innerHTML = `
+      ${target === detailView ? backLink() : ""}
+      <div class="card message error" role="alert">
+        <h2>${title}</h2>
+        <p>${escapeHTML(explain(error))}</p>
+        <button type="button" id="retry">Try again</button>
+      </div>`;
+    target.querySelector("#retry").addEventListener("click", render);
+  }
+
+  function explain(error) {
+    if (error.name === "TimeoutError") return "The API took too long to answer.";
+    if (error instanceof TypeError) return "The API could not be reached. Check your connection.";
+    return error.message;
+  }
+
+  categorySelect.addEventListener("change", () => {
+    location.hash = listHash(categorySelect.value, 1);
+  });
+  window.addEventListener("hashchange", render);
+  render();
+</script>
+</body>
+</html>
