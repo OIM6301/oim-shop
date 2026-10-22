@@ -142,7 +142,7 @@
 
 <main class="container">
   <section id="list-view" aria-labelledby="list-heading">
-    <h2 id="list-heading" class="sr-only">Products</h2>
+    <h2 id="list-heading" class="sr-only" tabindex="-1">Products</h2>
     <div class="toolbar">
       <label>Search
         <input type="search" id="search" aria-label="Search products by name" placeholder="Product name" maxlength="100" autocomplete="off">
@@ -179,6 +179,7 @@
   let categoriesLoaded = false;
   let lastListHash = "#";   // where "Back to products" returns
   let inFlight = null;      // the request that a newer click cancels
+  let typing = null;        // a search waiting for typing to stop
 
   // The page's state lives in the address, after the #: #name=lager&category=1&page=2 or #product=12.
   // So the back button works, and every view, empty or broken, has a link you can share.
@@ -206,28 +207,44 @@
     return String(text).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
   }
 
+  // An error with a name, so explain() can tell what kind of failure it was.
+  function failure(name, message) {
+    const error = new Error(message);
+    error.name = name;
+    return error;
+  }
+
   async function getJSON(path, signal) {
-    const response = await fetch(API + path, { signal: AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) });
+    let response;
+    try {
+      response = await fetch(API + path, { signal: AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) });
+    } catch (error) {
+      if (error.name === "AbortError" || error.name === "TimeoutError") throw error;
+      throw failure("NetworkError", "The API could not be reached. Check your connection.");
+    }
     if (!response.ok) {
       const body = await response.json().catch(() => ({}));
       const detail = typeof body.detail === "string" ? body.detail : `The API answered with status ${response.status}.`;
-      throw new Error(detail);
+      throw failure("ApiError", detail);
     }
     return response.json();
   }
 
   async function render() {
+    clearTimeout(typing);   // a search still waiting would undo this navigation
     inFlight?.abort();
-    inFlight = new AbortController();
+    const controller = new AbortController();
+    inFlight = controller;
     const state = readState();
     try {
       if (state.product) {
-        await showProduct(state.product, inFlight.signal);
+        await showProduct(state.product, controller.signal);
       } else {
-        await showList(state, inFlight.signal);
+        await showList(state, controller.signal);
       }
     } catch (error) {
-      if (error.name === "AbortError") return;   // a newer request replaced this one
+      // A newer navigation replaced this one, so its answer, or its error, no longer matters.
+      if (controller.signal.aborted) return;
       showError(state.product ? "Could not load this product" : "Could not load products", error);
     }
   }
@@ -250,9 +267,12 @@
     pager.innerHTML = "";
 
     await loadCategories(signal);
-    categorySelect.value = state.category;
-    // Leave the box alone while someone is typing in it.
-    if (document.activeElement !== searchInput) searchInput.value = state.name;
+    // The API also accepts a category's name (#category=Beverages); the list knows each by its id.
+    const option = [...categorySelect.options].find(
+      (o) => o.value === state.category || o.text.toLowerCase() === state.category.toLowerCase());
+    categorySelect.value = option ? option.value : "";
+    // Show the address's search, unless the box already says the same (perhaps with a space still being typed).
+    if (searchInput.value.trim() !== state.name) searchInput.value = state.name;
 
     // The API does the searching, filtering and paging; the page only asks.
     const query = new URLSearchParams({ page: state.page, per_page: PER_PAGE });
@@ -268,6 +288,7 @@
           <p>${state.name ? `No product name contains “${escapeHTML(state.name)}”${state.category ? " in this category" : ""}.` : "This category has no products."}</p>
           ${state.name ? `<a class="button" href="${listHash({ category: state.category, page: 1 })}">Clear the search</a>` : ""}
         </div>`;
+      keepFocusInList();
       return;
     }
 
@@ -278,12 +299,13 @@
           <p>Page ${state.page} has no products. There ${data.pagination.total === 1 ? "is" : "are"} ${number.format(data.pagination.total)} in this selection.</p>
           <a class="button" href="${listHash({ ...state, page: 1 })}">Go to page 1</a>
         </div>`;
+      keepFocusInList();
       return;
     }
 
     const rows = data.items.map((p) => `
       <tr>
-        <td><a href="#product=${p.product_id}">${escapeHTML(p.name)}</a>${p.discontinued ? '<span class="badge">Discontinued</span>' : ""}</td>
+        <td><a href="#product=${encodeURIComponent(p.product_id)}">${escapeHTML(p.name)}</a>${p.discontinued ? '<span class="badge">Discontinued</span>' : ""}</td>
         <td class="hide-narrow">${escapeHTML(p.category)}</td>
         <td class="num">${money.format(p.unit_price_dollars)}</td>
         <td class="num">${p.units_in_stock === 0 ? "Out of stock" : number.format(p.units_in_stock)}</td>
@@ -296,6 +318,13 @@
         </table>
       </div>`;
     showPager(state, data.pagination);
+    keepFocusInList();
+  }
+
+  // After Next, Previous or Back to products, the link that had keyboard focus is gone.
+  // Focus the list's heading, so the next Tab continues into the new results.
+  function keepFocusInList() {
+    if (!listView.contains(document.activeElement)) document.querySelector("#list-heading").focus();
   }
 
   function showPager(state, pagination) {
@@ -318,6 +347,7 @@
     detailView.innerHTML = `
       ${backLink()}
       <div class="card detail" aria-busy="true">
+        <span class="sr-only" role="status">Loading product</span>
         <span class="skeleton" style="width: 40%; height: 22px"></span>
         <span class="skeleton" style="width: 20%; margin: 12px 0 24px"></span>
         <span class="skeleton" style="width: 60%"></span>
@@ -371,8 +401,8 @@
 
   function explain(error) {
     if (error.name === "TimeoutError") return "The API took too long to answer.";
-    if (error instanceof TypeError) return "The API could not be reached. Check your connection.";
-    return error.message;
+    if (error.name === "NetworkError" || error.name === "ApiError") return error.message;
+    return "The API's answer could not be read.";
   }
 
   categorySelect.addEventListener("change", () => {
@@ -380,7 +410,6 @@
   });
 
   // Search 300 ms after typing stops, so a word typed quickly costs one request and not one per letter.
-  let typing = null;
   searchInput.addEventListener("input", () => {
     clearTimeout(typing);
     typing = setTimeout(() => {
