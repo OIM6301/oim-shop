@@ -8,7 +8,7 @@ date later than `now` loads as null, the same rule oim-api applies.
 import csv
 import gzip
 import sqlite3
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from datetime import datetime
 from pathlib import Path
 
@@ -38,12 +38,15 @@ def read(seed_dir: Path, table: str) -> Iterator[dict[str, object]]:
             }
 
 
-def insert(conn: sqlite3.Connection, table: str, rows: list[dict[str, object]]) -> None:
-    if not rows:
-        return
-    columns = list(rows[0])
+def insert(conn: sqlite3.Connection, table: str, columns: list[str], rows: Iterable[dict[str, object]]) -> None:
+    """Insert rows as they are read: executemany takes them one at a time, so a table is never all in memory."""
     placeholders = ", ".join(f":{c}" for c in columns)
     conn.executemany(f"INSERT INTO {table} ({', '.join(columns)}) VALUES ({placeholders})", rows)  # noqa: S608
+
+
+def columns_of(seed_dir: Path, table: str) -> list[str]:
+    with gzip.open(seed_dir / f"{table}.csv.gz", "rt", encoding="utf-8", newline="") as f:
+        return next(csv.reader(f))
 
 
 def load(conn: sqlite3.Connection, seed_dir: Path, now: datetime) -> int:
@@ -51,41 +54,40 @@ def load(conn: sqlite3.Connection, seed_dir: Path, now: datetime) -> int:
     if conn.execute("SELECT EXISTS (SELECT 1 FROM orders)").fetchone()[0]:
         raise AlreadyLoadedError
     cutoff = now.isoformat()
-    try:
-        # Employees report to employees, so check foreign keys at commit, not row by row.
-        conn.execute("PRAGMA defer_foreign_keys = ON")
-        for table in CATALOG:
-            rows = list(read(seed_dir, table))
-            if table == "employees":
-                for row in rows:
-                    row["hire_date"] = shift(str(row["hire_date"]))
-            insert(conn, table, rows)
+    loaded: set[object] = set()
 
-        orders: list[dict[str, object]] = []
+    def orders() -> Iterator[dict[str, object]]:
         for row in read(seed_dir, "orders"):
             order_date = shift(str(row["order_date"]))
             if order_date > cutoff:
                 continue
             shipped = shift(str(row["shipped_date"])) if row["shipped_date"] else None
-            orders.append(
-                {
-                    **row,
-                    "order_date": order_date,
-                    "required_date": shift(str(row["required_date"])) if row["required_date"] else None,
-                    "shipped_date": shipped if shipped is not None and shipped <= cutoff else None,
-                    "source": "seed",
-                }
-            )
-        insert(conn, "orders", orders)
+            loaded.add(row["order_id"])
+            yield {
+                **row,
+                "order_date": order_date,
+                "required_date": shift(str(row["required_date"])) if row["required_date"] else None,
+                "shipped_date": shipped if shipped is not None and shipped <= cutoff else None,
+                "source": "seed",
+            }
 
-        loaded = {order["order_id"] for order in orders}
-        insert(conn, "order_lines", [row for row in read(seed_dir, "order_lines") if row["order_id"] in loaded])
+    try:
+        # Employees report to employees, so check foreign keys at commit, not row by row.
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+        for table in CATALOG:
+            rows = read(seed_dir, table)
+            if table == "employees":
+                rows = ({**row, "hire_date": shift(str(row["hire_date"]))} for row in rows)
+            insert(conn, table, columns_of(seed_dir, table), rows)
+        insert(conn, "orders", [*columns_of(seed_dir, "orders"), "source"], orders())
+        lines = (row for row in read(seed_dir, "order_lines") if row["order_id"] in loaded)
+        insert(conn, "order_lines", columns_of(seed_dir, "order_lines"), lines)
         update_totals(conn)
         conn.commit()
     except BaseException:
         conn.rollback()
         raise
-    return len(orders)
+    return len(loaded)
 
 
 def update_totals(conn: sqlite3.Connection, order_ids: list[int] | None = None) -> None:

@@ -95,3 +95,16 @@ def test_a_failed_migration_leaves_no_trace(tmp_path: Path) -> None:
     assert one(conn, "PRAGMA user_version") == (1,)
     tables = {row[0] for row in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     assert tables == {"a"}
+
+
+def test_loading_streams_the_lines(tmp_path: Path) -> None:
+    """The container has 200 MB, so the 609,283 lines must not all be in memory at once."""
+    import tracemalloc
+
+    conn = db.connect(tmp_path / "shop.db")
+    db.migrate(conn)
+    tracemalloc.start()
+    seed.load(conn, SEED_DIR, NOW)
+    _, peak = tracemalloc.get_traced_memory()
+    tracemalloc.stop()
+    assert peak < 40 * 1024 * 1024, f"peak {peak / 1024 / 1024:.0f} MB"
