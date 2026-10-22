@@ -56,12 +56,14 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <p className="px-2 text-xs text-muted-foreground">
-          A demo on generated Northwind data.{' '}
-          <a className="underline underline-offset-2" href="/api/docs">
-            API docs
-          </a>
-        </p>
+        <div className="space-y-1 px-2 text-xs text-muted-foreground">
+          <p>A demo on Northwind's fictional data. Dates are moved forward so that orders keep arriving.</p>
+          <p>
+            <a className="underline underline-offset-2" href="/api/docs">
+              API docs
+            </a>
+          </p>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )

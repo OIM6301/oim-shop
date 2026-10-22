@@ -2,33 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What this is
+@AGENTS.md
 
-oim-shop is an open-source reference product for OIM7510 and OIM6301: Northwind Traders' internal sales system, built as a ladder of three tagged versions (`v1`, `v2`, `v3`). Requirements are in `docs/prd.md`; read it before changing scope, and ask Zhi rather than editing a requirement.
+## Claude-specific
 
-This repository is public and mirrored to two orgs (`OIM7510/oim-shop`, `OIM6301/oim-shop`). Nothing course-specific goes in it: no roster, tokens, assignment answers, course instructions, or server hostnames, IPs and memory figures. Server facts live outside the repo.
-
-## The version ladder
-
-The git history between tags is teaching material. Each tag must be a state where every test passes and the app runs on its own, and a later version's files do not appear before its tag (no `api/` or `web/` in `v1`).
-
-- **v1**: `v1/index.html` alone, no build step, calling `https://oim.zhili.dev/shop` (oim-api) directly from the browser.
-- **v2**: `api/` (FastAPI + SQLite) serves the data from its own database, `web/` is the interface. Adds dashboard, customers, orders, employees, and a sync from oim-api.
-- **v3**: GitHub sign-in and order entry, with the business rules in PRD §6.
-
-Before each tag, Zhi reviews screenshots of every page in light and dark mode.
-
-## Architecture (v2 onward)
-
-- **One origin.** `/api/*` is FastAPI; everything else is the built web app. No CORS.
-- **api/**: raw parameterised SQL, no ORM; schema changes are numbered `.sql` migrations. Python `>=3.14,<3.15`, run through uv with `--python 3.14`.
-- **Contract.** `web/` generates its types from FastAPI's OpenAPI schema with `openapi-typescript`, so an API change that the frontend does not follow fails the build.
-- **Data.** `data/seed/` holds the Northwind seed (jpwhite3/northwind-SQLite3, MIT) and its licence, so the app runs without oim-api. oim-api serves the same orders on a clock shifted forward so orders keep arriving until 2027-06-30. `oim-shop sync` pulls new orders incrementally; `oim-shop reset` returns entered orders and stock to the seed. Both are CLI commands run by systemd timers, not an in-app scheduler.
-- **Deployment.** The image is built in GitHub Actions for `linux/amd64`, pushed to GHCR, and pulled on the server (rootless podman, Quadlet unit in `deploy/`). Jobs that push or deploy are gated on `github.repository == 'OIM7510/oim-shop'`, because the OIM6301 mirror runs the same workflows.
-
-## Text students read
-
-`docs/prd.md`, `README.md` and every other committed prose file are read by students. Before committing them, apply the teaching-prose skill (`~/teaching/ta/.claude/skills/teaching-prose/SKILL.md`). Its `prose-check.sh` hook lives in the prep repos and does not scan this one, so run the greps from its `references/checks.md` by hand.
+- The project's facts and commands are in AGENTS.md (imported above), shared with Codex. Edit them there.
+- Before committing prose (PRD, READMEs, `deploy/README.md`, `data/seed/SOURCE.md`), apply the teaching-prose skill (`~/teaching/ta/.claude/skills/teaching-prose/SKILL.md`). Its `prose-check.sh` hook lives in the prep repos and does not scan this one, so run the greps from its `references/checks.md` by hand.
+- `web/` follows the stack below. Add a shadcn component with `npx shadcn@latest add <name>` from `web/`.
+- Before tagging a version, take screenshots of every page in light and dark mode for Zhi's review.
 
 ## Frontend Stack
 
