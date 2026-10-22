@@ -9,6 +9,8 @@ Settings come from the environment:
     OIM_SHOP_SEED   the seed directory (default: data/seed in this repository)
     OIM_SHOP_API    oim-api's base URL (default: https://oim.zhili.dev)
     OIM_SHOP_WEB    the built web app (default: web/dist in this repository, if built)
+    OIM_SHOP_NOW    a fixed moment such as 2026-10-22T17:00:00, Boston time, used instead of
+                    the clock, so tests and screenshots show the same figures every day
 """
 
 import argparse
@@ -16,6 +18,7 @@ import json
 import os
 import sqlite3
 import sys
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +43,17 @@ def open_database(path: Path, seed_dir: Path, now: datetime) -> sqlite3.Connecti
     return conn
 
 
+def clock_from_env() -> Callable[[], datetime]:
+    fixed = os.environ.get("OIM_SHOP_NOW")
+    if not fixed:
+        return clock.now
+    try:
+        moment = datetime.fromisoformat(fixed)
+    except ValueError:
+        raise SystemExit(f"OIM_SHOP_NOW={fixed!r} is not an ISO date and time such as 2026-10-22T17:00:00") from None
+    return lambda: moment
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="oim-shop", description="Northwind Traders' sales system")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -57,13 +71,14 @@ def main(argv: list[str] | None = None) -> int:
 
     db_path = Path(os.environ.get("OIM_SHOP_DB", "oim-shop.db"))
     seed_dir = Path(os.environ.get("OIM_SHOP_SEED", REPO_SEED))
-    conn = open_database(db_path, seed_dir, clock.now())
+    now = clock_from_env()
+    conn = open_database(db_path, seed_dir, now())
 
     if args.command == "sync":
         api = os.environ.get("OIM_SHOP_API", sync.DEFAULT_API)
         try:
             with httpx2.Client(base_url=api, timeout=10, headers={"User-Agent": "oim-shop sync"}) as client:
-                result = sync.sync(conn, client, clock.now())
+                result = sync.sync(conn, client, now())
         except (sync.SyncError, httpx2.HTTPError) as error:
             print(f"sync stopped: {error}", file=sys.stderr)
             return 1
@@ -76,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
     web = Path(os.environ.get("OIM_SHOP_WEB", REPO_WEB))
     if not (web / "index.html").is_file():
         print(f"No web build at {web}; serving the API only. Build it with: npm --prefix web run build")
-    app = create_app(db_path, web_dist=web if (web / "index.html").is_file() else None)
+    app = create_app(db_path, now=now, web_dist=web if (web / "index.html").is_file() else None)
     uvicorn.run(app, host=args.host, port=args.port, proxy_headers=True)
     return 0
 

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from oim_shop.cli import main, open_database
+from oim_shop.cli import clock_from_env, main, open_database
 
 from .conftest import NOW, SEED_DIR
 
@@ -28,3 +28,11 @@ def test_openapi_prints_the_schema(
     schema = json.loads(capsys.readouterr().out)
     assert "/api/dashboard" in schema["paths"]
     assert not (tmp_path / "unused.db").exists()
+
+
+def test_a_fixed_clock_comes_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("OIM_SHOP_NOW", "2026-10-22T17:00:00")
+    assert clock_from_env()() == NOW
+    monkeypatch.setenv("OIM_SHOP_NOW", "yesterday")
+    with pytest.raises(SystemExit, match="not an ISO date"):
+        clock_from_env()
