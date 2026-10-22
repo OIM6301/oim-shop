@@ -46,6 +46,27 @@ test.describe('v1', () => {
     await expect(page.locator('#category')).toHaveValue('1')
   })
 
+  test('searches by name through the API', async ({ page }) => {
+    await page.goto(V1)
+    await expect(page.locator('tbody tr')).toHaveCount(20)
+    await page.getByRole('searchbox', { name: 'Search products by name' }).fill('lager')
+    await expect(page).toHaveURL(/#name=lager$/)
+    await expect(page.locator('#pager p')).toHaveText('1 to 2 of 2 products')
+  })
+
+  test('combines search with a category from the address', async ({ page }) => {
+    await page.goto(`${V1}#category=1&name=ch`)
+    await expect(page.getByRole('searchbox', { name: 'Search products by name' })).toHaveValue('ch')
+    await expect(page.locator('#pager p')).toHaveText('1 to 4 of 4 products')
+  })
+
+  test('says when nothing matches, and clears the search', async ({ page }) => {
+    await page.goto(`${V1}#name=zzz`)
+    await expect(page.getByRole('heading', { name: 'No products match' })).toBeVisible()
+    await page.getByRole('link', { name: 'Clear the search' }).click()
+    await expect(page.locator('tbody tr')).toHaveCount(20)
+  })
+
   test('shows an empty page past the last one', async ({ page }) => {
     await page.goto(`${V1}#page=99`)
     await expect(page.getByRole('heading', { name: 'No products here' })).toBeVisible()
@@ -69,6 +90,8 @@ test.describe('v1', () => {
   test('works by keyboard', async ({ page }) => {
     await page.goto(V1)
     await expect(page.locator('tbody tr')).toHaveCount(20)
+    await page.keyboard.press('Tab')
+    await expect(page.locator('#search')).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(page.locator('#category')).toBeFocused()
     await page.keyboard.press('Tab')
