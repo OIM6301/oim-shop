@@ -1,0 +1,35 @@
+# The production image: the built web app and the API in one container.
+# Built in GitHub Actions for linux/amd64 (see .github/workflows/image.yml); the
+# server only pulls it. Build context: the repository root.
+
+# 1. Build the web app.
+FROM node:24-slim AS web
+WORKDIR /web
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
+COPY web/ ./
+RUN npm run build
+
+# 2. The API, with its dependencies installed by uv and nothing for development.
+FROM python:3.14-slim
+COPY --from=ghcr.io/astral-sh/uv:0.13.1 /uv /bin/uv
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PYTHON_DOWNLOADS=never
+WORKDIR /app/api
+COPY api/pyproject.toml api/uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+COPY api/src ./src
+RUN uv sync --frozen --no-dev
+
+COPY data/seed /app/data/seed
+COPY --from=web /web/dist /app/web/dist
+
+# Run as an ordinary user. The database lives on a volume mounted at /data.
+RUN useradd --system --uid 10001 --home-dir /app shop && mkdir /data && chown shop /data
+USER shop
+ENV PATH="/app/api/.venv/bin:$PATH" \
+    OIM_SHOP_DB=/data/oim-shop.db \
+    OIM_SHOP_SEED=/app/data/seed \
+    OIM_SHOP_WEB=/app/web/dist
+VOLUME /data
+EXPOSE 8000
+CMD ["oim-shop", "serve", "--host", "0.0.0.0", "--port", "8000"]

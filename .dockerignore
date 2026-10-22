@@ -1,0 +1,11 @@
+# Read by docker and podman alike. Only what deploy/Containerfile copies matters; this keeps the build context small.
+.git
+**/node_modules
+**/.venv
+**/__pycache__
+**/*.db
+**/*.db-*
+web/dist
+web/test-results
+web/playwright-report
+.env
