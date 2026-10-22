@@ -1,0 +1,24 @@
+# Quadlet unit for rootless podman: copy to ~/.config/containers/systemd/ on the server,
+# then `systemctl --user daemon-reload` generates oim-shop.service from it.
+
+[Unit]
+Description=oim-shop, Northwind Traders' sales system
+After=network-online.target
+
+[Container]
+Image=ghcr.io/oim7510/oim-shop:latest
+ContainerName=oim-shop
+# Only Caddy on the same machine reaches it.
+PublishPort=127.0.0.1:8100:8000
+Volume=oim-shop-data:/data
+HealthCmd=python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"
+HealthInterval=5m
+
+[Service]
+# Quadlet runs the container in this service's cgroup, so these limits apply to it.
+MemoryMax=200M
+CPUQuota=50%
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
