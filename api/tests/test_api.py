@@ -15,7 +15,8 @@ from .conftest import NOW
 @pytest.fixture(scope="module")
 def client(seeded_path: Path) -> Iterator[TestClient]:
     # Every request in these tests reads; none writes, so they share one database.
-    with TestClient(create_app(seeded_path, now=lambda: NOW)) as c:
+    # The rate limit has its own tests; here it would only make the order of tests matter.
+    with TestClient(create_app(seeded_path, now=lambda: NOW, requests_per_minute=10_000)) as c:
         yield c
 
 
