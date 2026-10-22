@@ -1,0 +1,772 @@
+[
+ {
+  "product_id": 1,
+  "name": "Chai",
+  "category": "Beverages",
+  "supplier": "Exotic Liquids",
+  "quantity_per_unit": "10 boxes x 20 bags",
+  "unit_price_dollars": 18.0,
+  "units_in_stock": 39,
+  "discontinued": false
+ },
+ {
+  "product_id": 2,
+  "name": "Chang",
+  "category": "Beverages",
+  "supplier": "Exotic Liquids",
+  "quantity_per_unit": "24 - 12 oz bottles",
+  "unit_price_dollars": 19.0,
+  "units_in_stock": 17,
+  "discontinued": false
+ },
+ {
+  "product_id": 3,
+  "name": "Aniseed Syrup",
+  "category": "Condiments",
+  "supplier": "Exotic Liquids",
+  "quantity_per_unit": "12 - 550 ml bottles",
+  "unit_price_dollars": 10.0,
+  "units_in_stock": 13,
+  "discontinued": false
+ },
+ {
+  "product_id": 4,
+  "name": "Chef Anton's Cajun Seasoning",
+  "category": "Condiments",
+  "supplier": "New Orleans Cajun Delights",
+  "quantity_per_unit": "48 - 6 oz jars",
+  "unit_price_dollars": 22.0,
+  "units_in_stock": 53,
+  "discontinued": false
+ },
+ {
+  "product_id": 5,
+  "name": "Chef Anton's Gumbo Mix",
+  "category": "Condiments",
+  "supplier": "New Orleans Cajun Delights",
+  "quantity_per_unit": "36 boxes",
+  "unit_price_dollars": 21.35,
+  "units_in_stock": 0,
+  "discontinued": true
+ },
+ {
+  "product_id": 6,
+  "name": "Grandma's Boysenberry Spread",
+  "category": "Condiments",
+  "supplier": "Grandma Kelly's Homestead",
+  "quantity_per_unit": "12 - 8 oz jars",
+  "unit_price_dollars": 25.0,
+  "units_in_stock": 120,
+  "discontinued": false
+ },
+ {
+  "product_id": 7,
+  "name": "Uncle Bob's Organic Dried Pears",
+  "category": "Produce",
+  "supplier": "Grandma Kelly's Homestead",
+  "quantity_per_unit": "12 - 1 lb pkgs.",
+  "unit_price_dollars": 30.0,
+  "units_in_stock": 15,
+  "discontinued": false
+ },
+ {
+  "product_id": 8,
+  "name": "Northwoods Cranberry Sauce",
+  "category": "Condiments",
+  "supplier": "Grandma Kelly's Homestead",
+  "quantity_per_unit": "12 - 12 oz jars",
+  "unit_price_dollars": 40.0,
+  "units_in_stock": 6,
+  "discontinued": false
+ },
+ {
+  "product_id": 9,
+  "name": "Mishi Kobe Niku",
+  "category": "Meat/Poultry",
+  "supplier": "Tokyo Traders",
+  "quantity_per_unit": "18 - 500 g pkgs.",
+  "unit_price_dollars": 97.0,
+  "units_in_stock": 29,
+  "discontinued": true
+ },
+ {
+  "product_id": 10,
+  "name": "Ikura",
+  "category": "Seafood",
+  "supplier": "Tokyo Traders",
+  "quantity_per_unit": "12 - 200 ml jars",
+  "unit_price_dollars": 31.0,
+  "units_in_stock": 31,
+  "discontinued": false
+ },
+ {
+  "product_id": 11,
+  "name": "Queso Cabrales",
+  "category": "Dairy Products",
+  "supplier": "Cooperativa de Quesos 'Las Cabras'",
+  "quantity_per_unit": "1 kg pkg.",
+  "unit_price_dollars": 21.0,
+  "units_in_stock": 22,
+  "discontinued": false
+ },
+ {
+  "product_id": 12,
+  "name": "Queso Manchego La Pastora",
+  "category": "Dairy Products",
+  "supplier": "Cooperativa de Quesos 'Las Cabras'",
+  "quantity_per_unit": "10 - 500 g pkgs.",
+  "unit_price_dollars": 38.0,
+  "units_in_stock": 86,
+  "discontinued": false
+ },
+ {
+  "product_id": 13,
+  "name": "Konbu",
+  "category": "Seafood",
+  "supplier": "Mayumi's",
+  "quantity_per_unit": "2 kg box",
+  "unit_price_dollars": 6.0,
+  "units_in_stock": 24,
+  "discontinued": false
+ },
+ {
+  "product_id": 14,
+  "name": "Tofu",
+  "category": "Produce",
+  "supplier": "Mayumi's",
+  "quantity_per_unit": "40 - 100 g pkgs.",
+  "unit_price_dollars": 23.25,
+  "units_in_stock": 35,
+  "discontinued": false
+ },
+ {
+  "product_id": 15,
+  "name": "Genen Shouyu",
+  "category": "Condiments",
+  "supplier": "Mayumi's",
+  "quantity_per_unit": "24 - 250 ml bottles",
+  "unit_price_dollars": 15.5,
+  "units_in_stock": 39,
+  "discontinued": false
+ },
+ {
+  "product_id": 16,
+  "name": "Pavlova",
+  "category": "Confections",
+  "supplier": "Pavlova, Ltd.",
+  "quantity_per_unit": "32 - 500 g boxes",
+  "unit_price_dollars": 17.45,
+  "units_in_stock": 29,
+  "discontinued": false
+ },
+ {
+  "product_id": 17,
+  "name": "Alice Mutton",
+  "category": "Meat/Poultry",
+  "supplier": "Pavlova, Ltd.",
+  "quantity_per_unit": "20 - 1 kg tins",
+  "unit_price_dollars": 39.0,
+  "units_in_stock": 0,
+  "discontinued": true
+ },
+ {
+  "product_id": 18,
+  "name": "Carnarvon Tigers",
+  "category": "Seafood",
+  "supplier": "Pavlova, Ltd.",
+  "quantity_per_unit": "16 kg pkg.",
+  "unit_price_dollars": 62.5,
+  "units_in_stock": 42,
+  "discontinued": false
+ },
+ {
+  "product_id": 19,
+  "name": "Teatime Chocolate Biscuits",
+  "category": "Confections",
+  "supplier": "Specialty Biscuits, Ltd.",
+  "quantity_per_unit": "10 boxes x 12 pieces",
+  "unit_price_dollars": 9.2,
+  "units_in_stock": 25,
+  "discontinued": false
+ },
+ {
+  "product_id": 20,
+  "name": "Sir Rodney's Marmalade",
+  "category": "Confections",
+  "supplier": "Specialty Biscuits, Ltd.",
+  "quantity_per_unit": "30 gift boxes",
+  "unit_price_dollars": 81.0,
+  "units_in_stock": 40,
+  "discontinued": false
+ },
+ {
+  "product_id": 21,
+  "name": "Sir Rodney's Scones",
+  "category": "Confections",
+  "supplier": "Specialty Biscuits, Ltd.",
+  "quantity_per_unit": "24 pkgs. x 4 pieces",
+  "unit_price_dollars": 10.0,
+  "units_in_stock": 3,
+  "discontinued": false
+ },
+ {
+  "product_id": 22,
+  "name": "Gustaf's Knäckebröd",
+  "category": "Grains/Cereals",
+  "supplier": "PB Knäckebröd AB",
+  "quantity_per_unit": "24 - 500 g pkgs.",
+  "unit_price_dollars": 21.0,
+  "units_in_stock": 104,
+  "discontinued": false
+ },
+ {
+  "product_id": 23,
+  "name": "Tunnbröd",
+  "category": "Grains/Cereals",
+  "supplier": "PB Knäckebröd AB",
+  "quantity_per_unit": "12 - 250 g pkgs.",
+  "unit_price_dollars": 9.0,
+  "units_in_stock": 61,
+  "discontinued": false
+ },
+ {
+  "product_id": 24,
+  "name": "Guaraná Fantástica",
+  "category": "Beverages",
+  "supplier": "Refrescos Americanas LTDA",
+  "quantity_per_unit": "12 - 355 ml cans",
+  "unit_price_dollars": 4.5,
+  "units_in_stock": 20,
+  "discontinued": true
+ },
+ {
+  "product_id": 25,
+  "name": "NuNuCa Nuß-Nougat-Creme",
+  "category": "Confections",
+  "supplier": "Heli Süßwaren GmbH & Co. KG",
+  "quantity_per_unit": "20 - 450 g glasses",
+  "unit_price_dollars": 14.0,
+  "units_in_stock": 76,
+  "discontinued": false
+ },
+ {
+  "product_id": 26,
+  "name": "Gumbär Gummibärchen",
+  "category": "Confections",
+  "supplier": "Heli Süßwaren GmbH & Co. KG",
+  "quantity_per_unit": "100 - 250 g bags",
+  "unit_price_dollars": 31.23,
+  "units_in_stock": 15,
+  "discontinued": false
+ },
+ {
+  "product_id": 27,
+  "name": "Schoggi Schokolade",
+  "category": "Confections",
+  "supplier": "Heli Süßwaren GmbH & Co. KG",
+  "quantity_per_unit": "100 - 100 g pieces",
+  "unit_price_dollars": 43.9,
+  "units_in_stock": 49,
+  "discontinued": false
+ },
+ {
+  "product_id": 28,
+  "name": "Rössle Sauerkraut",
+  "category": "Produce",
+  "supplier": "Plutzer Lebensmittelgroßmärkte AG",
+  "quantity_per_unit": "25 - 825 g cans",
+  "unit_price_dollars": 45.6,
+  "units_in_stock": 26,
+  "discontinued": true
+ },
+ {
+  "product_id": 29,
+  "name": "Thüringer Rostbratwurst",
+  "category": "Meat/Poultry",
+  "supplier": "Plutzer Lebensmittelgroßmärkte AG",
+  "quantity_per_unit": "50 bags x 30 sausgs.",
+  "unit_price_dollars": 123.79,
+  "units_in_stock": 0,
+  "discontinued": true
+ },
+ {
+  "product_id": 30,
+  "name": "Nord-Ost Matjeshering",
+  "category": "Seafood",
+  "supplier": "Nord-Ost-Fisch Handelsgesellschaft mbH",
+  "quantity_per_unit": "10 - 200 g glasses",
+  "unit_price_dollars": 25.89,
+  "units_in_stock": 10,
+  "discontinued": false
+ },
+ {
+  "product_id": 31,
+  "name": "Gorgonzola Telino",
+  "category": "Dairy Products",
+  "supplier": "Formaggi Fortini s.r.l.",
+  "quantity_per_unit": "12 - 100 g pkgs",
+  "unit_price_dollars": 12.5,
+  "units_in_stock": 0,
+  "discontinued": false
+ },
+ {
+  "product_id": 32,
+  "name": "Mascarpone Fabioli",
+  "category": "Dairy Products",
+  "supplier": "Formaggi Fortini s.r.l.",
+  "quantity_per_unit": "24 - 200 g pkgs.",
+  "unit_price_dollars": 32.0,
+  "units_in_stock": 9,
+  "discontinued": false
+ },
+ {
+  "product_id": 33,
+  "name": "Geitost",
+  "category": "Dairy Products",
+  "supplier": "Norske Meierier",
+  "quantity_per_unit": "500 g",
+  "unit_price_dollars": 2.5,
+  "units_in_stock": 112,
+  "discontinued": false
+ },
+ {
+  "product_id": 34,
+  "name": "Sasquatch Ale",
+  "category": "Beverages",
+  "supplier": "Bigfoot Breweries",
+  "quantity_per_unit": "24 - 12 oz bottles",
+  "unit_price_dollars": 14.0,
+  "units_in_stock": 111,
+  "discontinued": false
+ },
+ {
+  "product_id": 35,
+  "name": "Steeleye Stout",
+  "category": "Beverages",
+  "supplier": "Bigfoot Breweries",
+  "quantity_per_unit": "24 - 12 oz bottles",
+  "unit_price_dollars": 18.0,
+  "units_in_stock": 20,
+  "discontinued": false
+ },
+ {
+  "product_id": 36,
+  "name": "Inlagd Sill",
+  "category": "Seafood",
+  "supplier": "Svensk Sjöföda AB",
+  "quantity_per_unit": "24 - 250 g  jars",
+  "unit_price_dollars": 19.0,
+  "units_in_stock": 112,
+  "discontinued": false
+ },
+ {
+  "product_id": 37,
+  "name": "Gravad lax",
+  "category": "Seafood",
+  "supplier": "Svensk Sjöföda AB",
+  "quantity_per_unit": "12 - 500 g pkgs.",
+  "unit_price_dollars": 26.0,
+  "units_in_stock": 11,
+  "discontinued": false
+ },
+ {
+  "product_id": 38,
+  "name": "Côte de Blaye",
+  "category": "Beverages",
+  "supplier": "Aux joyeux ecclésiastiques",
+  "quantity_per_unit": "12 - 75 cl bottles",
+  "unit_price_dollars": 263.5,
+  "units_in_stock": 17,
+  "discontinued": false
+ },
+ {
+  "product_id": 39,
+  "name": "Chartreuse verte",
+  "category": "Beverages",
+  "supplier": "Aux joyeux ecclésiastiques",
+  "quantity_per_unit": "750 cc per bottle",
+  "unit_price_dollars": 18.0,
+  "units_in_stock": 69,
+  "discontinued": false
+ },
+ {
+  "product_id": 40,
+  "name": "Boston Crab Meat",
+  "category": "Seafood",
+  "supplier": "New England Seafood Cannery",
+  "quantity_per_unit": "24 - 4 oz tins",
+  "unit_price_dollars": 18.4,
+  "units_in_stock": 123,
+  "discontinued": false
+ },
+ {
+  "product_id": 41,
+  "name": "Jack's New England Clam Chowder",
+  "category": "Seafood",
+  "supplier": "New England Seafood Cannery",
+  "quantity_per_unit": "12 - 12 oz cans",
+  "unit_price_dollars": 9.65,
+  "units_in_stock": 85,
+  "discontinued": false
+ },
+ {
+  "product_id": 42,
+  "name": "Singaporean Hokkien Fried Mee",
+  "category": "Grains/Cereals",
+  "supplier": "Leka Trading",
+  "quantity_per_unit": "32 - 1 kg pkgs.",
+  "unit_price_dollars": 14.0,
+  "units_in_stock": 26,
+  "discontinued": true
+ },
+ {
+  "product_id": 43,
+  "name": "Ipoh Coffee",
+  "category": "Beverages",
+  "supplier": "Leka Trading",
+  "quantity_per_unit": "16 - 500 g tins",
+  "unit_price_dollars": 46.0,
+  "units_in_stock": 17,
+  "discontinued": false
+ },
+ {
+  "product_id": 44,
+  "name": "Gula Malacca",
+  "category": "Condiments",
+  "supplier": "Leka Trading",
+  "quantity_per_unit": "20 - 2 kg bags",
+  "unit_price_dollars": 19.45,
+  "units_in_stock": 27,
+  "discontinued": false
+ },
+ {
+  "product_id": 45,
+  "name": "Rogede sild",
+  "category": "Seafood",
+  "supplier": "Lyngbysild",
+  "quantity_per_unit": "1k pkg.",
+  "unit_price_dollars": 9.5,
+  "units_in_stock": 5,
+  "discontinued": false
+ },
+ {
+  "product_id": 46,
+  "name": "Spegesild",
+  "category": "Seafood",
+  "supplier": "Lyngbysild",
+  "quantity_per_unit": "4 - 450 g glasses",
+  "unit_price_dollars": 12.0,
+  "units_in_stock": 95,
+  "discontinued": false
+ },
+ {
+  "product_id": 47,
+  "name": "Zaanse koeken",
+  "category": "Confections",
+  "supplier": "Zaanse Snoepfabriek",
+  "quantity_per_unit": "10 - 4 oz boxes",
+  "unit_price_dollars": 9.5,
+  "units_in_stock": 36,
+  "discontinued": false
+ },
+ {
+  "product_id": 48,
+  "name": "Chocolade",
+  "category": "Confections",
+  "supplier": "Zaanse Snoepfabriek",
+  "quantity_per_unit": "10 pkgs.",
+  "unit_price_dollars": 12.75,
+  "units_in_stock": 15,
+  "discontinued": false
+ },
+ {
+  "product_id": 49,
+  "name": "Maxilaku",
+  "category": "Confections",
+  "supplier": "Karkki Oy",
+  "quantity_per_unit": "24 - 50 g pkgs.",
+  "unit_price_dollars": 20.0,
+  "units_in_stock": 10,
+  "discontinued": false
+ },
+ {
+  "product_id": 50,
+  "name": "Valkoinen suklaa",
+  "category": "Confections",
+  "supplier": "Karkki Oy",
+  "quantity_per_unit": "12 - 100 g bars",
+  "unit_price_dollars": 16.25,
+  "units_in_stock": 65,
+  "discontinued": false
+ },
+ {
+  "product_id": 51,
+  "name": "Manjimup Dried Apples",
+  "category": "Produce",
+  "supplier": "G'day, Mate",
+  "quantity_per_unit": "50 - 300 g pkgs.",
+  "unit_price_dollars": 53.0,
+  "units_in_stock": 20,
+  "discontinued": false
+ },
+ {
+  "product_id": 52,
+  "name": "Filo Mix",
+  "category": "Grains/Cereals",
+  "supplier": "G'day, Mate",
+  "quantity_per_unit": "16 - 2 kg boxes",
+  "unit_price_dollars": 7.0,
+  "units_in_stock": 38,
+  "discontinued": false
+ },
+ {
+  "product_id": 53,
+  "name": "Perth Pasties",
+  "category": "Meat/Poultry",
+  "supplier": "G'day, Mate",
+  "quantity_per_unit": "48 pieces",
+  "unit_price_dollars": 32.8,
+  "units_in_stock": 0,
+  "discontinued": true
+ },
+ {
+  "product_id": 54,
+  "name": "Tourtière",
+  "category": "Meat/Poultry",
+  "supplier": "Ma Maison",
+  "quantity_per_unit": "16 pies",
+  "unit_price_dollars": 7.45,
+  "units_in_stock": 21,
+  "discontinued": false
+ },
+ {
+  "product_id": 55,
+  "name": "Pâté chinois",
+  "category": "Meat/Poultry",
+  "supplier": "Ma Maison",
+  "quantity_per_unit": "24 boxes x 2 pies",
+  "unit_price_dollars": 24.0,
+  "units_in_stock": 115,
+  "discontinued": false
+ },
+ {
+  "product_id": 56,
+  "name": "Gnocchi di nonna Alice",
+  "category": "Grains/Cereals",
+  "supplier": "Pasta Buttini s.r.l.",
+  "quantity_per_unit": "24 - 250 g pkgs.",
+  "unit_price_dollars": 38.0,
+  "units_in_stock": 21,
+  "discontinued": false
+ },
+ {
+  "product_id": 57,
+  "name": "Ravioli Angelo",
+  "category": "Grains/Cereals",
+  "supplier": "Pasta Buttini s.r.l.",
+  "quantity_per_unit": "24 - 250 g pkgs.",
+  "unit_price_dollars": 19.5,
+  "units_in_stock": 36,
+  "discontinued": false
+ },
+ {
+  "product_id": 58,
+  "name": "Escargots de Bourgogne",
+  "category": "Seafood",
+  "supplier": "Escargots Nouveaux",
+  "quantity_per_unit": "24 pieces",
+  "unit_price_dollars": 13.25,
+  "units_in_stock": 62,
+  "discontinued": false
+ },
+ {
+  "product_id": 59,
+  "name": "Raclette Courdavault",
+  "category": "Dairy Products",
+  "supplier": "Gai pâturage",
+  "quantity_per_unit": "5 kg pkg.",
+  "unit_price_dollars": 55.0,
+  "units_in_stock": 79,
+  "discontinued": false
+ },
+ {
+  "product_id": 60,
+  "name": "Camembert Pierrot",
+  "category": "Dairy Products",
+  "supplier": "Gai pâturage",
+  "quantity_per_unit": "15 - 300 g rounds",
+  "unit_price_dollars": 34.0,
+  "units_in_stock": 19,
+  "discontinued": false
+ },
+ {
+  "product_id": 61,
+  "name": "Sirop d'érable",
+  "category": "Condiments",
+  "supplier": "Forêts d'érables",
+  "quantity_per_unit": "24 - 500 ml bottles",
+  "unit_price_dollars": 28.5,
+  "units_in_stock": 113,
+  "discontinued": false
+ },
+ {
+  "product_id": 62,
+  "name": "Tarte au sucre",
+  "category": "Confections",
+  "supplier": "Forêts d'érables",
+  "quantity_per_unit": "48 pies",
+  "unit_price_dollars": 49.3,
+  "units_in_stock": 17,
+  "discontinued": false
+ },
+ {
+  "product_id": 63,
+  "name": "Vegie-spread",
+  "category": "Condiments",
+  "supplier": "Pavlova, Ltd.",
+  "quantity_per_unit": "15 - 625 g jars",
+  "unit_price_dollars": 43.9,
+  "units_in_stock": 24,
+  "discontinued": false
+ },
+ {
+  "product_id": 64,
+  "name": "Wimmers gute Semmelknödel",
+  "category": "Grains/Cereals",
+  "supplier": "Plutzer Lebensmittelgroßmärkte AG",
+  "quantity_per_unit": "20 bags x 4 pieces",
+  "unit_price_dollars": 33.25,
+  "units_in_stock": 22,
+  "discontinued": false
+ },
+ {
+  "product_id": 65,
+  "name": "Louisiana Fiery Hot Pepper Sauce",
+  "category": "Condiments",
+  "supplier": "New Orleans Cajun Delights",
+  "quantity_per_unit": "32 - 8 oz bottles",
+  "unit_price_dollars": 21.05,
+  "units_in_stock": 76,
+  "discontinued": false
+ },
+ {
+  "product_id": 66,
+  "name": "Louisiana Hot Spiced Okra",
+  "category": "Condiments",
+  "supplier": "New Orleans Cajun Delights",
+  "quantity_per_unit": "24 - 8 oz jars",
+  "unit_price_dollars": 17.0,
+  "units_in_stock": 4,
+  "discontinued": false
+ },
+ {
+  "product_id": 67,
+  "name": "Laughing Lumberjack Lager",
+  "category": "Beverages",
+  "supplier": "Bigfoot Breweries",
+  "quantity_per_unit": "24 - 12 oz bottles",
+  "unit_price_dollars": 14.0,
+  "units_in_stock": 52,
+  "discontinued": false
+ },
+ {
+  "product_id": 68,
+  "name": "Scottish Longbreads",
+  "category": "Confections",
+  "supplier": "Specialty Biscuits, Ltd.",
+  "quantity_per_unit": "10 boxes x 8 pieces",
+  "unit_price_dollars": 12.5,
+  "units_in_stock": 6,
+  "discontinued": false
+ },
+ {
+  "product_id": 69,
+  "name": "Gudbrandsdalsost",
+  "category": "Dairy Products",
+  "supplier": "Norske Meierier",
+  "quantity_per_unit": "10 kg pkg.",
+  "unit_price_dollars": 36.0,
+  "units_in_stock": 26,
+  "discontinued": false
+ },
+ {
+  "product_id": 70,
+  "name": "Outback Lager",
+  "category": "Beverages",
+  "supplier": "Pavlova, Ltd.",
+  "quantity_per_unit": "24 - 355 ml bottles",
+  "unit_price_dollars": 15.0,
+  "units_in_stock": 15,
+  "discontinued": false
+ },
+ {
+  "product_id": 71,
+  "name": "Flotemysost",
+  "category": "Dairy Products",
+  "supplier": "Norske Meierier",
+  "quantity_per_unit": "10 - 500 g pkgs.",
+  "unit_price_dollars": 21.5,
+  "units_in_stock": 26,
+  "discontinued": false
+ },
+ {
+  "product_id": 72,
+  "name": "Mozzarella di Giovanni",
+  "category": "Dairy Products",
+  "supplier": "Formaggi Fortini s.r.l.",
+  "quantity_per_unit": "24 - 200 g pkgs.",
+  "unit_price_dollars": 34.8,
+  "units_in_stock": 14,
+  "discontinued": false
+ },
+ {
+  "product_id": 73,
+  "name": "Röd Kaviar",
+  "category": "Seafood",
+  "supplier": "Svensk Sjöföda AB",
+  "quantity_per_unit": "24 - 150 g jars",
+  "unit_price_dollars": 15.0,
+  "units_in_stock": 101,
+  "discontinued": false
+ },
+ {
+  "product_id": 74,
+  "name": "Longlife Tofu",
+  "category": "Produce",
+  "supplier": "Tokyo Traders",
+  "quantity_per_unit": "5 kg pkg.",
+  "unit_price_dollars": 10.0,
+  "units_in_stock": 4,
+  "discontinued": false
+ },
+ {
+  "product_id": 75,
+  "name": "Rhönbräu Klosterbier",
+  "category": "Beverages",
+  "supplier": "Plutzer Lebensmittelgroßmärkte AG",
+  "quantity_per_unit": "24 - 0.5 l bottles",
+  "unit_price_dollars": 7.75,
+  "units_in_stock": 125,
+  "discontinued": false
+ },
+ {
+  "product_id": 76,
+  "name": "Lakkalikööri",
+  "category": "Beverages",
+  "supplier": "Karkki Oy",
+  "quantity_per_unit": "500 ml",
+  "unit_price_dollars": 18.0,
+  "units_in_stock": 57,
+  "discontinued": false
+ },
+ {
+  "product_id": 77,
+  "name": "Original Frankfurter grüne Soße",
+  "category": "Condiments",
+  "supplier": "Plutzer Lebensmittelgroßmärkte AG",
+  "quantity_per_unit": "12 boxes",
+  "unit_price_dollars": 13.0,
+  "units_in_stock": 32,
+  "discontinued": false
+ }
+]
