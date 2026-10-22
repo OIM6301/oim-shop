@@ -59,7 +59,7 @@
 
   .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: var(--space); }
   label { display: grid; gap: 4px; font-size: 13px; color: var(--muted); }
-  select, button, .button {
+  select, input, button, .button {
     font: inherit;
     color: var(--text);
     background: var(--surface);
@@ -69,6 +69,7 @@
     min-height: 38px;
   }
   select { min-width: 200px; }
+  input[type="search"] { min-width: 240px; }
   button, .button { cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; }
   .button[aria-disabled="true"] { color: var(--muted); cursor: default; opacity: 0.6; }
 
@@ -127,7 +128,7 @@
   @media (max-width: 600px) {
     .hide-narrow { display: none; }
     th, td { padding: 10px; }
-    select { min-width: 0; width: 100%; }
+    select, input[type="search"] { min-width: 0; width: 100%; }
     .toolbar label { flex: 1; }
     .pager { flex-direction: column; align-items: stretch; }
     .pager div { justify-content: space-between; }
@@ -143,6 +144,9 @@
   <section id="list-view" aria-labelledby="list-heading">
     <h2 id="list-heading" class="sr-only">Products</h2>
     <div class="toolbar">
+      <label>Search
+        <input type="search" id="search" aria-label="Search products by name" placeholder="Product name" maxlength="100" autocomplete="off">
+      </label>
       <label>Category
         <select id="category">
           <option value="">All categories</option>
@@ -170,25 +174,28 @@
   const results = document.querySelector("#results");
   const pager = document.querySelector("#pager");
   const categorySelect = document.querySelector("#category");
+  const searchInput = document.querySelector("#search");
 
   let categoriesLoaded = false;
   let lastListHash = "#";   // where "Back to products" returns
   let inFlight = null;      // the request that a newer click cancels
 
-  // The page's state lives in the address, after the #: #category=2&page=3 or #product=12.
+  // The page's state lives in the address, after the #: #name=lager&category=1&page=2 or #product=12.
   // So the back button works, and every view, empty or broken, has a link you can share.
   function readState() {
     const params = new URLSearchParams(location.hash.slice(1));
     const page = Number.parseInt(params.get("page"), 10);
     return {
       product: params.get("product"),
+      name: params.get("name") ?? "",
       category: params.get("category") ?? "",
       page: page >= 1 ? page : 1,
     };
   }
 
-  function listHash(category, page) {
+  function listHash({ name, category, page }) {
     const params = new URLSearchParams();
+    if (name) params.set("name", name);
     if (category) params.set("category", category);
     if (page > 1) params.set("page", page);
     return "#" + params.toString();
@@ -244,18 +251,32 @@
 
     await loadCategories(signal);
     categorySelect.value = state.category;
+    // Leave the box alone while someone is typing in it.
+    if (document.activeElement !== searchInput) searchInput.value = state.name;
 
+    // The API does the searching, filtering and paging; the page only asks.
     const query = new URLSearchParams({ page: state.page, per_page: PER_PAGE });
+    if (state.name) query.set("name", state.name);
     if (state.category) query.set("category", state.category);
     const data = await getJSON("/products?" + query, signal);
     results.removeAttribute("aria-busy");
+
+    if (data.pagination.total === 0) {
+      results.innerHTML = `
+        <div class="card message">
+          <h2>No products match</h2>
+          <p>${state.name ? `No product name contains “${escapeHTML(state.name)}”${state.category ? " in this category" : ""}.` : "This category has no products."}</p>
+          ${state.name ? `<a class="button" href="${listHash({ category: state.category, page: 1 })}">Clear the search</a>` : ""}
+        </div>`;
+      return;
+    }
 
     if (data.items.length === 0) {
       results.innerHTML = `
         <div class="card message">
           <h2>No products here</h2>
           <p>Page ${state.page} has no products. There ${data.pagination.total === 1 ? "is" : "are"} ${number.format(data.pagination.total)} in this selection.</p>
-          <a class="button" href="${listHash(state.category, 1)}">Go to page 1</a>
+          <a class="button" href="${listHash({ ...state, page: 1 })}">Go to page 1</a>
         </div>`;
       return;
     }
@@ -281,7 +302,7 @@
     const first = (pagination.page - 1) * pagination.per_page + 1;
     const last = first + pagination.per_page - 1;
     const link = (label, page, enabled) => enabled
-      ? `<a class="button" href="${listHash(state.category, page)}">${label}</a>`
+      ? `<a class="button" href="${listHash({ ...state, page })}">${label}</a>`
       : `<span class="button" aria-disabled="true">${label}</span>`;
     pager.innerHTML = `
       <p>${number.format(first)} to ${number.format(Math.min(last, pagination.total))} of ${number.format(pagination.total)} products</p>
@@ -355,7 +376,16 @@
   }
 
   categorySelect.addEventListener("change", () => {
-    location.hash = listHash(categorySelect.value, 1);
+    location.hash = listHash({ name: searchInput.value.trim(), category: categorySelect.value, page: 1 });
+  });
+
+  // Search 300 ms after typing stops, so a word typed quickly costs one request and not one per letter.
+  let typing = null;
+  searchInput.addEventListener("input", () => {
+    clearTimeout(typing);
+    typing = setTimeout(() => {
+      location.hash = listHash({ name: searchInput.value.trim(), category: categorySelect.value, page: 1 });
+    }, 300);
   });
   window.addEventListener("hashchange", render);
   render();
