@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+
+# The app's database and its WAL files
+*.db
+*.db-wal
+*.db-shm
+
+# Web
+node_modules/
+web/dist/
+test-results/
+playwright-report/
+
+# Secrets
+.env
