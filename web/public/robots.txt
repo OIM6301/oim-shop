@@ -1,0 +1,3 @@
+# A public demo with nothing to index; the API is rate limited.
+User-agent: *
+Disallow: /

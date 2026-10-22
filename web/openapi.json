@@ -1,0 +1,1717 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "oim-shop",
+    "summary": "Northwind Traders' sales system",
+    "version": "0.2.0"
+  },
+  "paths": {
+    "/api/health": {
+      "get": {
+        "tags": [
+          "health"
+        ],
+        "summary": "Health",
+        "operationId": "health_api_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categories": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Categories",
+        "operationId": "categories_api_categories_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  },
+                  "type": "array",
+                  "title": "Response Categories Api Categories Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Products",
+        "operationId": "products_api_products_get",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Category Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the name, any case",
+              "title": "Name"
+            },
+            "description": "Part of the name, any case"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "product_id",
+                "name",
+                "unit_price",
+                "stock"
+              ],
+              "type": "string",
+              "default": "product_id",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "asc",
+              "title": "Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "At most 100",
+              "default": 20,
+              "title": "Per Page"
+            },
+            "description": "At most 100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProductPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/products/{product_id}": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Product",
+        "operationId": "product_api_products__product_id__get",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Product Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such product"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "tags": [
+          "customers"
+        ],
+        "summary": "Customers",
+        "operationId": "customers_api_customers_get",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the name, any case",
+              "title": "Name"
+            },
+            "description": "Part of the name, any case"
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "company_name",
+                "country",
+                "order_count",
+                "revenue",
+                "last_order_date"
+              ],
+              "type": "string",
+              "default": "company_name",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "asc",
+              "title": "Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "At most 100",
+              "default": 20,
+              "title": "Per Page"
+            },
+            "description": "At most 100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customers/{customer_id}": {
+      "get": {
+        "tags": [
+          "customers"
+        ],
+        "summary": "Customer",
+        "operationId": "customer_api_customers__customer_id__get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Customer Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such customer"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/countries": {
+      "get": {
+        "tags": [
+          "customers",
+          "orders"
+        ],
+        "summary": "Countries",
+        "description": "Every country orders have shipped to, for filtering orders.",
+        "operationId": "countries_api_countries_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array",
+                  "title": "Response Countries Api Countries Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Orders",
+        "operationId": "orders_api_orders_get",
+        "parameters": [
+          {
+            "name": "customer_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 10
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Customer Id"
+            }
+          },
+          {
+            "name": "employee_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Employee Id"
+            }
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "From"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "To"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "order_date",
+                "order_id",
+                "total"
+              ],
+              "type": "string",
+              "default": "order_date",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "desc",
+              "title": "Order"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "At most 100",
+              "default": 20,
+              "title": "Per Page"
+            },
+            "description": "At most 100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderPage"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/{order_id}": {
+      "get": {
+        "tags": [
+          "orders"
+        ],
+        "summary": "Order Detail",
+        "operationId": "order_detail_api_orders__order_id__get",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such order"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/employees": {
+      "get": {
+        "tags": [
+          "employees"
+        ],
+        "summary": "Employees",
+        "operationId": "employees_api_employees_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Employee"
+                  },
+                  "type": "array",
+                  "title": "Response Employees Api Employees Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/employees/{employee_id}": {
+      "get": {
+        "tags": [
+          "employees"
+        ],
+        "summary": "Employee",
+        "operationId": "employee_api_employees__employee_id__get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Employee Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmployeeDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such employee"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "summary": "Dashboard",
+        "description": "Revenue by month, top products, and sales by employee and by country, for one date range.\n\nRevenue is the order lines after discount, without freight.",
+        "operationId": "dashboard_api_dashboard_get",
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Default: 11 months before this month",
+              "title": "From"
+            },
+            "description": "Default: 11 months before this month"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Default: today",
+              "title": "To"
+            },
+            "description": "Default: today"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Category": {
+        "properties": {
+          "category_id": {
+            "type": "integer",
+            "title": "Category Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "category_id",
+          "name",
+          "description"
+        ],
+        "title": "Category"
+      },
+      "CountryRevenue": {
+        "properties": {
+          "country": {
+            "type": "string",
+            "title": "Country"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "country",
+          "order_count",
+          "revenue_cents"
+        ],
+        "title": "CountryRevenue"
+      },
+      "Customer": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          },
+          "last_order_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Order Date"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "company_name",
+          "contact_name",
+          "city",
+          "country",
+          "order_count",
+          "revenue_cents",
+          "last_order_date"
+        ],
+        "title": "Customer"
+      },
+      "CustomerPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Customer"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "CustomerPage"
+      },
+      "Dashboard": {
+        "properties": {
+          "from": {
+            "type": "string",
+            "title": "From",
+            "description": "First day included, YYYY-MM-DD"
+          },
+          "to": {
+            "type": "string",
+            "title": "To",
+            "description": "Last day included, YYYY-MM-DD"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          },
+          "revenue_by_month": {
+            "items": {
+              "$ref": "#/components/schemas/MonthRevenue"
+            },
+            "type": "array",
+            "title": "Revenue By Month"
+          },
+          "top_products": {
+            "items": {
+              "$ref": "#/components/schemas/ProductRevenue"
+            },
+            "type": "array",
+            "title": "Top Products",
+            "description": "The 10 products with the most revenue"
+          },
+          "by_employee": {
+            "items": {
+              "$ref": "#/components/schemas/EmployeeRevenue"
+            },
+            "type": "array",
+            "title": "By Employee"
+          },
+          "by_country": {
+            "items": {
+              "$ref": "#/components/schemas/CountryRevenue"
+            },
+            "type": "array",
+            "title": "By Country"
+          }
+        },
+        "type": "object",
+        "required": [
+          "from",
+          "to",
+          "order_count",
+          "revenue_cents",
+          "revenue_by_month",
+          "top_products",
+          "by_employee",
+          "by_country"
+        ],
+        "title": "Dashboard"
+      },
+      "Employee": {
+        "properties": {
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "last_name": {
+            "type": "string",
+            "title": "Last Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "reports_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reports To",
+            "description": "The employee_id of this employee's manager"
+          },
+          "hire_date": {
+            "type": "string",
+            "title": "Hire Date"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "first_name",
+          "last_name",
+          "title",
+          "reports_to",
+          "hire_date",
+          "city",
+          "country",
+          "order_count",
+          "revenue_cents"
+        ],
+        "title": "Employee"
+      },
+      "EmployeeDetail": {
+        "properties": {
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "last_name": {
+            "type": "string",
+            "title": "Last Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "reports_to": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reports To",
+            "description": "The employee_id of this employee's manager"
+          },
+          "hire_date": {
+            "type": "string",
+            "title": "Hire Date"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          },
+          "revenue_by_month": {
+            "items": {
+              "$ref": "#/components/schemas/MonthRevenue"
+            },
+            "type": "array",
+            "title": "Revenue By Month"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "first_name",
+          "last_name",
+          "title",
+          "reports_to",
+          "hire_date",
+          "city",
+          "country",
+          "order_count",
+          "revenue_cents",
+          "revenue_by_month"
+        ],
+        "title": "EmployeeDetail"
+      },
+      "EmployeeRevenue": {
+        "properties": {
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "name",
+          "order_count",
+          "revenue_cents"
+        ],
+        "title": "EmployeeRevenue"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "Health": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "Health"
+      },
+      "MonthRevenue": {
+        "properties": {
+          "month": {
+            "type": "string",
+            "title": "Month",
+            "description": "YYYY-MM"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "month",
+          "order_count",
+          "revenue_cents"
+        ],
+        "title": "MonthRevenue"
+      },
+      "Order": {
+        "properties": {
+          "order_id": {
+            "type": "integer",
+            "title": "Order Id"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "order_date": {
+            "type": "string",
+            "title": "Order Date"
+          },
+          "required_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Date"
+          },
+          "shipped_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipped Date",
+            "description": "Null until the order has shipped"
+          },
+          "shipper": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper"
+          },
+          "ship_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship City"
+          },
+          "ship_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship Country"
+          },
+          "freight_cents": {
+            "type": "integer",
+            "title": "Freight Cents"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "total_cents": {
+            "type": "integer",
+            "title": "Total Cents",
+            "description": "The lines after discount, without freight"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id",
+          "customer_id",
+          "customer_name",
+          "employee_id",
+          "employee_name",
+          "order_date",
+          "required_date",
+          "shipped_date",
+          "shipper",
+          "ship_city",
+          "ship_country",
+          "freight_cents",
+          "line_count",
+          "total_cents"
+        ],
+        "title": "Order"
+      },
+      "OrderDetail": {
+        "properties": {
+          "order_id": {
+            "type": "integer",
+            "title": "Order Id"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "order_date": {
+            "type": "string",
+            "title": "Order Date"
+          },
+          "required_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Date"
+          },
+          "shipped_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipped Date",
+            "description": "Null until the order has shipped"
+          },
+          "shipper": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper"
+          },
+          "ship_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship City"
+          },
+          "ship_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship Country"
+          },
+          "freight_cents": {
+            "type": "integer",
+            "title": "Freight Cents"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "total_cents": {
+            "type": "integer",
+            "title": "Total Cents",
+            "description": "The lines after discount, without freight"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/OrderLine"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id",
+          "customer_id",
+          "customer_name",
+          "employee_id",
+          "employee_name",
+          "order_date",
+          "required_date",
+          "shipped_date",
+          "shipper",
+          "ship_city",
+          "ship_country",
+          "freight_cents",
+          "line_count",
+          "total_cents",
+          "lines"
+        ],
+        "title": "OrderDetail"
+      },
+      "OrderLine": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "product_name": {
+            "type": "string",
+            "title": "Product Name"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "title": "Unit Price Cents"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "discount_pct": {
+            "type": "integer",
+            "title": "Discount Pct"
+          },
+          "line_total_cents": {
+            "type": "integer",
+            "title": "Line Total Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "product_name",
+          "unit_price_cents",
+          "quantity",
+          "discount_pct",
+          "line_total_cents"
+        ],
+        "title": "OrderLine"
+      },
+      "OrderPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Order"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "OrderPage"
+      },
+      "Pagination": {
+        "properties": {
+          "page": {
+            "type": "integer",
+            "title": "Page"
+          },
+          "per_page": {
+            "type": "integer",
+            "title": "Per Page"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "pages": {
+            "type": "integer",
+            "title": "Pages"
+          },
+          "has_next": {
+            "type": "boolean",
+            "title": "Has Next"
+          },
+          "has_prev": {
+            "type": "boolean",
+            "title": "Has Prev"
+          }
+        },
+        "type": "object",
+        "required": [
+          "page",
+          "per_page",
+          "total",
+          "pages",
+          "has_next",
+          "has_prev"
+        ],
+        "title": "Pagination"
+      },
+      "Product": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category_id": {
+            "type": "integer",
+            "title": "Category Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "supplier": {
+            "type": "string",
+            "title": "Supplier"
+          },
+          "quantity_per_unit": {
+            "type": "string",
+            "title": "Quantity Per Unit"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "title": "Unit Price Cents"
+          },
+          "units_in_stock": {
+            "type": "integer",
+            "title": "Units In Stock"
+          },
+          "reorder_level": {
+            "type": "integer",
+            "title": "Reorder Level"
+          },
+          "discontinued": {
+            "type": "boolean",
+            "title": "Discontinued"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "name",
+          "category_id",
+          "category",
+          "supplier",
+          "quantity_per_unit",
+          "unit_price_cents",
+          "units_in_stock",
+          "reorder_level",
+          "discontinued"
+        ],
+        "title": "Product"
+      },
+      "ProductPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "ProductPage"
+      },
+      "ProductRevenue": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "quantity": {
+            "type": "integer",
+            "title": "Quantity"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "name",
+          "quantity",
+          "revenue_cents"
+        ],
+        "title": "ProductRevenue"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
