@@ -1,0 +1,40 @@
+# Checks that run on every commit. Install once: uvx pre-commit install
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=3000]
+      - id: detect-private-key
+      - id: end-of-file-fixer
+        exclude: ^data/seed/
+      - id: trailing-whitespace
+        exclude: ^data/seed/
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.2
+    hooks:
+      - id: ruff-check
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: web-lint
+        name: web lint (oxlint)
+        entry: npm --prefix web run lint
+        language: system
+        files: ^web/
+        pass_filenames: false
+      - id: web-types
+        name: web types (tsc)
+        entry: npm --prefix web run typecheck
+        language: system
+        files: ^web/
+        pass_filenames: false
+      - id: api-types
+        name: api types (pyright)
+        entry: uv run --project api pyright --project api
+        language: system
+        files: ^api/
+        pass_filenames: false

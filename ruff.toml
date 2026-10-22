@@ -1,0 +1,2 @@
+# For Python outside api/ (scripts/); api/ has its own settings in api/pyproject.toml.
+extend = "api/pyproject.toml"

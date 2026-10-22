@@ -104,25 +104,39 @@ def build(db: sqlite3.Connection) -> None:
 
     counts = {
         "categories": write(
-            "categories", ["category_id", "name", "description"],
+            "categories",
+            ["category_id", "name", "description"],
             q("SELECT CategoryID, CategoryName, Description FROM Categories ORDER BY 1"),
         ),
         "suppliers": write(
-            "suppliers", ["supplier_id", "company_name", "city", "country"],
+            "suppliers",
+            ["supplier_id", "company_name", "city", "country"],
             q("SELECT SupplierID, CompanyName, City, Country FROM Suppliers ORDER BY 1"),
         ),
         "products": write(
             "products",
-            ["product_id", "name", "supplier_id", "category_id", "quantity_per_unit",
-             "unit_price_cents", "units_in_stock", "reorder_level", "discontinued"],
+            [
+                "product_id",
+                "name",
+                "supplier_id",
+                "category_id",
+                "quantity_per_unit",
+                "unit_price_cents",
+                "units_in_stock",
+                "reorder_level",
+                "discontinued",
+            ],
             (
                 (r[0], r[1], r[2], r[3], r[4], cents(r[5]), r[6], r[7], int(r[8]))
-                for r in q("SELECT ProductID, ProductName, SupplierID, CategoryID, QuantityPerUnit, "
-                           "UnitPrice, UnitsInStock, ReorderLevel, Discontinued FROM Products ORDER BY 1")
+                for r in q(
+                    "SELECT ProductID, ProductName, SupplierID, CategoryID, QuantityPerUnit, "
+                    "UnitPrice, UnitsInStock, ReorderLevel, Discontinued FROM Products ORDER BY 1"
+                )
             ),
         ),
         "customers": write(
-            "customers", ["customer_id", "company_name", "contact_name", "city", "country"],
+            "customers",
+            ["customer_id", "company_name", "contact_name", "city", "country"],
             q("SELECT CustomerID, CompanyName, ContactName, City, Country FROM Customers ORDER BY 1"),
         ),
         "employees": write(
@@ -130,30 +144,47 @@ def build(db: sqlite3.Connection) -> None:
             ["employee_id", "first_name", "last_name", "title", "reports_to", "hire_date", "city", "country"],
             (
                 (r[0], r[1], r[2], r[3], r[4], iso(r[5]), r[6], r[7])
-                for r in q("SELECT EmployeeID, FirstName, LastName, Title, ReportsTo, HireDate, City, Country "
-                           "FROM Employees ORDER BY 1")
+                for r in q(
+                    "SELECT EmployeeID, FirstName, LastName, Title, ReportsTo, HireDate, City, Country "
+                    "FROM Employees ORDER BY 1"
+                )
             ),
         ),
         "shippers": write(
-            "shippers", ["shipper_id", "company_name"],
+            "shippers",
+            ["shipper_id", "company_name"],
             q("SELECT ShipperID, CompanyName FROM Shippers ORDER BY 1"),
         ),
         "orders": write(
             "orders",
-            ["order_id", "customer_id", "employee_id", "order_date", "required_date", "shipped_date",
-             "shipper_id", "freight_cents", "ship_city", "ship_country"],
+            [
+                "order_id",
+                "customer_id",
+                "employee_id",
+                "order_date",
+                "required_date",
+                "shipped_date",
+                "shipper_id",
+                "freight_cents",
+                "ship_city",
+                "ship_country",
+            ],
             (
                 (r[0], r[1], r[2], iso(r[3]), iso(r[4]), iso(r[5]), r[6], cents(r[7]), r[8], r[9])
-                for r in q("SELECT OrderID, CustomerID, EmployeeID, OrderDate, RequiredDate, ShippedDate, "
-                           "ShipVia, Freight, ShipCity, ShipCountry FROM Orders ORDER BY 1")
+                for r in q(
+                    "SELECT OrderID, CustomerID, EmployeeID, OrderDate, RequiredDate, ShippedDate, "
+                    "ShipVia, Freight, ShipCity, ShipCountry FROM Orders ORDER BY 1"
+                )
             ),
         ),
         "order_lines": write(
-            "order_lines", ["order_id", "product_id", "unit_price_cents", "quantity", "discount_pct"],
+            "order_lines",
+            ["order_id", "product_id", "unit_price_cents", "quantity", "discount_pct"],
             (
                 (r[0], r[1], cents(r[2]), r[3], percent(r[4]))
-                for r in q('SELECT OrderID, ProductID, UnitPrice, Quantity, Discount FROM "Order Details" '
-                           "ORDER BY 1, 2")
+                for r in q(
+                    'SELECT OrderID, ProductID, UnitPrice, Quantity, Discount FROM "Order Details" ORDER BY 1, 2'
+                )
             ),
         ),
     }
