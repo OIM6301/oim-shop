@@ -19,7 +19,8 @@ from oim_shop.web import web_router
 def create_app(
     db_path: Path,
     now: Callable[[], datetime] = clock.now,
-    requests_per_minute: int = 120,
+    # A class on campus Wi-Fi shares one address: 60 students at about 20 requests a minute each.
+    requests_per_minute: int = 1500,
     monotonic: Callable[[], float] = time.monotonic,
     web_dist: Path | None = None,
 ) -> FastAPI:

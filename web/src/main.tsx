@@ -13,6 +13,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
+      // New orders arrive by an hourly sync, so coming back to the tab is no reason to ask again.
+      refetchOnWindowFocus: false,
       // A 4xx will not change on retry (a missing order stays missing); a network error or 5xx might.
       retry: (failures, error) => !(error instanceof ApiError && error.status < 500) && failures < 2,
     },
