@@ -2,6 +2,7 @@
 
     oim-shop serve    run the app (migrates and loads the seed into an empty database first)
     oim-shop sync     pull new orders from oim-api
+    oim-shop openapi  print the API's OpenAPI schema, which web/ generates its types from
 
 Settings come from the environment:
     OIM_SHOP_DB     the SQLite file (default: oim-shop.db in the current directory)
@@ -10,6 +11,7 @@ Settings come from the environment:
 """
 
 import argparse
+import json
 import os
 import sqlite3
 import sys
@@ -42,7 +44,13 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     commands.add_parser("sync", help="pull new orders from oim-api")
+    commands.add_parser("openapi", help="print the OpenAPI schema")
     args = parser.parse_args(argv)
+
+    if args.command == "openapi":
+        # The schema describes the routes only, so no database is opened.
+        print(json.dumps(create_app(Path("unused.db")).openapi(), indent=2, ensure_ascii=False))
+        return 0
 
     db_path = Path(os.environ.get("OIM_SHOP_DB", "oim-shop.db"))
     seed_dir = Path(os.environ.get("OIM_SHOP_SEED", REPO_SEED))
