@@ -10,12 +10,18 @@ def connect(path: Path) -> sqlite3.Connection:
     # These pragmas cannot run inside a transaction, so they run before autocommit is turned off.
     conn = sqlite3.connect(path, autocommit=True, check_same_thread=False)
     conn.row_factory = sqlite3.Row
+    # SQLite's lower() only knows ASCII; casefold() also matches "CÔTE" to "Côte".
+    conn.create_function("casefold", 1, _casefold, deterministic=True)
     conn.execute("PRAGMA foreign_keys = ON")
     conn.execute("PRAGMA journal_mode = WAL")
     conn.execute("PRAGMA busy_timeout = 5000")
     # From here on, every change happens inside a transaction that the caller commits.
     conn.autocommit = False
     return conn
+
+
+def _casefold(text: str | None) -> str | None:
+    return None if text is None else text.casefold()
 
 
 def migrate(conn: sqlite3.Connection, migrations: Path = MIGRATIONS) -> None:
