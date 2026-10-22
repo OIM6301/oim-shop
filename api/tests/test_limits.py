@@ -54,3 +54,15 @@ def test_get_responses_can_be_cached(client: TestClient) -> None:
     assert client.get("/api/categories").headers["Cache-Control"] == "public, max-age=60"
     assert client.get("/api/health").headers["Cache-Control"] == "no-store"
     assert client.get("/api/products/999").headers["Cache-Control"] == "no-store"
+
+
+def test_only_routes_that_opt_in_may_be_cached(seeded_path: Path) -> None:
+    """A new route is private unless it declares otherwise, so one visitor's data never reaches another."""
+    app = create_app(seeded_path, now=lambda: NOW)
+
+    @app.get("/api/me")
+    def me() -> dict[str, str]:
+        return {"name": "someone"}
+
+    with TestClient(app) as c:
+        assert c.get("/api/me").headers["Cache-Control"] == "no-store"

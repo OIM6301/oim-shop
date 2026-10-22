@@ -1,11 +1,12 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from oim_shop.deps import Conn, Name, PageNumber, PerPage, SortOrder, page_of, rows
+from oim_shop.limits import shared_cache
 from oim_shop.models import Category, Product, ProductPage
 
-router = APIRouter(tags=["products"])
+router = APIRouter(tags=["products"], dependencies=[Depends(shared_cache)])
 
 PRODUCT = """
     SELECT p.product_id, p.name, p.category_id, c.name AS category, s.company_name AS supplier,

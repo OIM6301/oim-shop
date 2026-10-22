@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from oim_shop.deps import Conn, rows
+from oim_shop.limits import shared_cache
 from oim_shop.models import Employee, EmployeeDetail, MonthRevenue
 
-router = APIRouter(tags=["employees"])
+router = APIRouter(tags=["employees"], dependencies=[Depends(shared_cache)])
 
 # Each employee with every order they have entered. There are nine, so the list is not paged.
 EMPLOYEE = """

@@ -50,10 +50,19 @@ class RateLimit(BaseHTTPMiddleware):
         return await call_next(request)
 
 
+def shared_cache(response: Response) -> None:
+    """A route that adds this dependency answers the same to every visitor, so Cloudflare and
+    browsers may keep its successful responses for a minute. Every other response is no-store:
+    a route that depends on who is asking (as v3's will) stays private unless it says otherwise.
+    """
+    response.headers["Cache-Control"] = f"public, max-age={CACHE_SECONDS}"
+
+
 async def cache_headers(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-    """Let Cloudflare and browsers keep a successful GET for a minute; nothing else."""
+    """No API response is cached unless its route opted in with shared_cache and it succeeded."""
     response = await call_next(request)
     if request.url.path.startswith("/api/"):
-        cacheable = request.method == "GET" and response.status_code == 200 and request.url.path not in UNLIMITED
-        response.headers["Cache-Control"] = f"public, max-age={CACHE_SECONDS}" if cacheable else "no-store"
+        shared = response.headers.get("Cache-Control", "").startswith("public")
+        if not (shared and request.method == "GET" and response.status_code == 200):
+            response.headers["Cache-Control"] = "no-store"
     return response

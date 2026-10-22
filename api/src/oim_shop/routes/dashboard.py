@@ -1,13 +1,14 @@
 from datetime import date
 from typing import Annotated
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
 from oim_shop.deps import Conn, Now, rows
+from oim_shop.limits import shared_cache
 from oim_shop.models import CountryRevenue, Dashboard, EmployeeRevenue, MonthRevenue, ProductRevenue
 from oim_shop.routes.orders import date_range
 
-router = APIRouter(tags=["dashboard"])
+router = APIRouter(tags=["dashboard"], dependencies=[Depends(shared_cache)])
 
 
 def months_between(first: date, last: date) -> list[str]:
