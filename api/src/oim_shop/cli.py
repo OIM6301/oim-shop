@@ -8,6 +8,7 @@ Settings come from the environment:
     OIM_SHOP_DB     the SQLite file (default: oim-shop.db in the current directory)
     OIM_SHOP_SEED   the seed directory (default: data/seed in this repository)
     OIM_SHOP_API    oim-api's base URL (default: https://oim.zhili.dev)
+    OIM_SHOP_WEB    the built web app (default: web/dist in this repository, if built)
 """
 
 import argparse
@@ -24,7 +25,9 @@ import uvicorn
 from oim_shop import clock, db, seed, sync
 from oim_shop.app import create_app
 
-REPO_SEED = Path(__file__).resolve().parents[3] / "data" / "seed"
+REPO = Path(__file__).resolve().parents[3]
+REPO_SEED = REPO / "data" / "seed"
+REPO_WEB = REPO / "web" / "dist"
 
 
 def open_database(path: Path, seed_dir: Path, now: datetime) -> sqlite3.Connection:
@@ -70,7 +73,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     conn.close()
-    uvicorn.run(create_app(db_path), host=args.host, port=args.port, proxy_headers=True)
+    web = Path(os.environ.get("OIM_SHOP_WEB", REPO_WEB))
+    if not (web / "index.html").is_file():
+        print(f"No web build at {web}; serving the API only. Build it with: npm --prefix web run build")
+    app = create_app(db_path, web_dist=web if (web / "index.html").is_file() else None)
+    uvicorn.run(app, host=args.host, port=args.port, proxy_headers=True)
     return 0
 
 
