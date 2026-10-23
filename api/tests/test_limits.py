@@ -131,6 +131,36 @@ def test_at_most_four_database_connections_are_open_at_once(seeded_path: Path, m
     assert open_now == 0
 
 
+def test_a_cancelled_request_still_closes_its_connection(seeded_path: Path) -> None:
+    """A request can be cancelled, say when the visitor goes away, while it holds a connection.
+    Its place must not go back to the limiter with the connection still open."""
+    import sqlite3
+    from types import SimpleNamespace
+    from typing import cast
+
+    import anyio
+    from fastapi import Request
+
+    from oim_shop.deps import get_conn
+
+    places = anyio.CapacityLimiter(1)
+    state = SimpleNamespace(connections=places, now=lambda: NOW, db_path=seeded_path)
+    request = cast(Request, SimpleNamespace(app=SimpleNamespace(state=state)))
+
+    async def cancelled_while_holding() -> sqlite3.Connection:
+        dependency = get_conn(request)
+        conn = await anext(dependency)
+        with anyio.CancelScope() as scope:
+            scope.cancel()
+            await dependency.aclose()
+        return conn
+
+    conn = anyio.run(cancelled_while_holding)
+    with pytest.raises(sqlite3.ProgrammingError, match="closed"):
+        conn.execute("SELECT 1")
+    assert places.borrowed_tokens == 0
+
+
 def test_a_refused_request_is_not_cached(client: TestClient) -> None:
     visitor = {"CF-Connecting-IP": "203.0.113.50"}
     for _ in range(3):

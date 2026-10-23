@@ -2,7 +2,7 @@
 
 import math
 import sqlite3
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
@@ -23,7 +23,7 @@ def open_as_of(path: Path, moment: datetime) -> sqlite3.Connection:
     return conn
 
 
-async def get_conn(request: Request) -> AsyncIterator[sqlite3.Connection]:
+async def get_conn(request: Request) -> AsyncGenerator[sqlite3.Connection]:
     """One connection per request, with orders as of now, closed when the response is sent.
 
     A request holds its connection, and the memory SQLite gives it, from before its route waits
@@ -38,7 +38,10 @@ async def get_conn(request: Request) -> AsyncIterator[sqlite3.Connection]:
         try:
             yield conn
         finally:
-            await anyio.to_thread.run_sync(conn.close)
+            # Shielded: a cancelled request (a visitor who went away) must still close its
+            # connection before its place goes back to the next request.
+            with anyio.CancelScope(shield=True):
+                await anyio.to_thread.run_sync(conn.close)
 
 
 def get_now(request: Request) -> datetime:

@@ -9,10 +9,11 @@
 import base64
 import hashlib
 from dataclasses import dataclass
+from typing import Annotated
 from urllib.parse import urlencode
 
 import httpx2
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import BaseModel, ConfigDict, StringConstraints, ValidationError
 
 
 class GitHubError(Exception):
@@ -29,7 +30,8 @@ class GitHubUser(BaseModel):
 
 class Token(BaseModel):
     model_config = ConfigDict(strict=True)
-    access_token: str
+    # It goes into a header, which takes printable ASCII only; GitHub's tokens are letters, digits and _.
+    access_token: Annotated[str, StringConstraints(pattern=r"^[!-~]+$")]
 
 
 @dataclass(frozen=True)

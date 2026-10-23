@@ -136,6 +136,7 @@ def test_a_github_failure_is_reported(client: TestClient, github: FakeGitHub) ->
         (b"[]", None),
         (b"not json", None),
         (b'{"access_token": 7}', None),
+        ('{"access_token": "é"}'.encode(), None),
         (None, b"{"),
         (None, b"[]"),
         (None, b'{"id": "4101", "login": "Octo-Student"}'),

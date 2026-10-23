@@ -112,3 +112,24 @@ def test_the_access_log_leaves_out_the_address(capsys: pytest.CaptureFixture[str
     line = capsys.readouterr().out
     assert '"GET /api/products HTTP/1.1" 200' in line
     assert "203.0.113.9" not in line
+
+
+def test_serve_gives_uvicorn_that_logging(seeded_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    import shutil
+
+    import uvicorn
+
+    from oim_shop.cli import LOG_CONFIG
+
+    shutil.copy(seeded_path, tmp_path / "shop.db")
+    monkeypatch.setenv("OIM_SHOP_DB", str(tmp_path / "shop.db"))
+    for name in ("OIM_SHOP_GITHUB_CLIENT_ID", "OIM_SHOP_GITHUB_CLIENT_SECRET", "OIM_SHOP_ALLOWED_USERS"):
+        monkeypatch.delenv(name, raising=False)
+    calls: list[dict[str, object]] = []
+
+    def run(app: object, **options: object) -> None:
+        calls.append(options)
+
+    monkeypatch.setattr(uvicorn, "run", run)
+    assert main(["serve"]) == 0
+    assert calls[0]["log_config"] is LOG_CONFIG
