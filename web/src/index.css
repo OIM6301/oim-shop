@@ -64,8 +64,9 @@
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
     /* Darker than shadcn's 0.577: on its own 10% tint, as in a destructive badge, that red was
-       3.99:1, under WCAG AA's 4.5:1 for small text. This one is 4.87:1 there and 5.85:1 on white. */
-    --destructive: oklch(0.53 0.22 27.325);
+       3.99:1, under WCAG AA's 4.5:1 for small text. This one is 5.93:1 there, 4.85:1 on the 20%
+       tint of a hovered red button, and 7.16:1 on white. */
+    --destructive: oklch(0.48 0.2 27.325);
     --border: oklch(0.922 0 0);
     /* Field outlines must stand out 3:1 from the page (WCAG AA, non-text contrast); shadcn's
        0.922 was 1.26:1. This is 3.95:1 on white. --border, for cards and rules, stays light. */
