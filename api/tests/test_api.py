@@ -247,13 +247,41 @@ def test_dashboard_matches_an_independent_query(client: TestClient, conn: sqlite
     }
     assert [(m["month"], m["revenue_cents"]) for m in board["revenue_by_month"]] == list(by_month.items())
     assert board["revenue_cents"] == sum(by_month.values())
-    assert sum(e["revenue_cents"] for e in board["by_employee"]) == board["revenue_cents"]
-    assert sum(c["revenue_cents"] for c in board["by_country"]) == board["revenue_cents"]
 
-    top = board["top_products"]
-    assert len(top) == 10
-    revenues = [p["revenue_cents"] for p in top]
-    assert revenues == sorted(revenues, reverse=True)
+    # Each chart row by its key, so a figure under the wrong product, employee or country fails.
+    revenue = "SUM((l.unit_price_cents * l.quantity * (100 - l.discount_pct) + 50) / 100)"
+    lines = "visible_orders o JOIN order_lines l ON l.order_id = o.order_id"
+    period = "o.order_date >= '2025-01-01' AND o.order_date < '2025-07-01'"
+    products = conn.execute(
+        f"""
+        SELECT l.product_id, p.name, SUM(l.quantity), {revenue}
+        FROM {lines} JOIN products p ON p.product_id = l.product_id
+        WHERE {period} GROUP BY l.product_id ORDER BY 4 DESC, 1 LIMIT 10
+        """  # noqa: S608 (fragments written here)
+    ).fetchall()
+    assert [(p["product_id"], p["name"], p["quantity"], p["revenue_cents"]) for p in board["top_products"]] == [
+        tuple(row) for row in products
+    ]
+    employees = {
+        employee_id: (name, orders, cents)
+        for employee_id, name, orders, cents in conn.execute(
+            f"""
+            SELECT o.employee_id, e.first_name || ' ' || e.last_name, COUNT(DISTINCT o.order_id), {revenue}
+            FROM {lines} JOIN employees e ON e.employee_id = o.employee_id
+            WHERE {period} GROUP BY o.employee_id
+            """  # noqa: S608
+        )
+    }
+    assert {e["employee_id"]: (e["name"], e["order_count"], e["revenue_cents"]) for e in board["by_employee"]} == (
+        employees
+    )
+    countries = {
+        country: (orders, cents)
+        for country, orders, cents in conn.execute(
+            f"SELECT o.ship_country, COUNT(DISTINCT o.order_id), {revenue} FROM {lines} WHERE {period} GROUP BY 1"  # noqa: S608
+        )
+    }
+    assert {c["country"]: (c["order_count"], c["revenue_cents"]) for c in board["by_country"]} == countries
 
 
 def test_dashboard_month_total_in_decimal(client: TestClient, conn: sqlite3.Connection) -> None:
