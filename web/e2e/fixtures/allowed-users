@@ -1,0 +1,4 @@
+# Who may sign in during the end-to-end tests: users of the fake GitHub in e2e/fake-github.ts.
+e2e-rep
+e2e-other
+e2e-manager manager
