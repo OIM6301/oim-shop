@@ -3,7 +3,7 @@
 # server only pulls it. Build context: the repository root.
 
 # 1. Build the web app.
-FROM node:24-slim AS web
+FROM node:25-slim AS web
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
