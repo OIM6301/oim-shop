@@ -1,5 +1,6 @@
 """The shapes the API returns. FastAPI turns these into the OpenAPI schema that
-web/ generates its types from, so a change here shows up as a type error there.
+web/ generates its types from. CI fails until those are regenerated, and once they
+are, TypeScript points at every page the change affects.
 
 Money is integer cents (`*_cents`) and discounts integer percents (`*_pct`).
 Dates are ISO 8601 text on the shop's clock, Boston time.

@@ -52,7 +52,8 @@ function columnsFor(byId: Map<number, Employee>): Column<Employee>[] {
   ])
 }
 
-// Nine rows arrive at once, so this table sorts in the browser.
+// Northwind's nine employees and the reps with orders arrive in one answer, a few dozen rows
+// at most, so this table sorts in the browser.
 function sorted(employees: Employee[], sort: Sort): Employee[] {
   const value = (e: Employee): string | number =>
     sort.id === 'name' ? name(e) : sort.id === 'hire_date' ? e.hire_date : sort.id === 'order_count' ? e.order_count : e.revenue_cents
