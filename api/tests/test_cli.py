@@ -95,3 +95,20 @@ def test_half_the_sign_in_settings_is_an_error(monkeypatch: pytest.MonkeyPatch, 
     monkeypatch.delenv(missing)
     with pytest.raises(SystemExit, match=missing):
         sign_in_from_env()
+
+
+def test_the_access_log_leaves_out_the_address(capsys: pytest.CaptureFixture[str]) -> None:
+    """The privacy page says the log keeps the time, the page and the result, and not who asked."""
+    import logging
+    import logging.config
+
+    from oim_shop.cli import LOG_CONFIG
+
+    logging.config.dictConfig(LOG_CONFIG)
+    # The arguments uvicorn passes for each request it answers.
+    logging.getLogger("uvicorn.access").info(
+        '%s - "%s %s HTTP/%s" %d', "203.0.113.9:51994", "GET", "/api/products", "1.1", 200
+    )
+    line = capsys.readouterr().out
+    assert '"GET /api/products HTTP/1.1" 200' in line
+    assert "203.0.113.9" not in line

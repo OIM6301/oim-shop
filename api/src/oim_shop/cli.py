@@ -19,6 +19,7 @@ Settings come from the environment:
 """
 
 import argparse
+import copy
 import json
 import os
 import sqlite3
@@ -26,8 +27,10 @@ import sys
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 import uvicorn
+import uvicorn.config
 
 from oim_shop import clock, db, seed
 from oim_shop.accounts import SignIn
@@ -87,6 +90,12 @@ def sign_in_from_env() -> SignIn | None:
     )
 
 
+# Uvicorn's own logging, except that a request's line leaves out the address it came from, so the
+# log keeps what the privacy page says: the time (journald adds it), the page and the result.
+LOG_CONFIG: dict[str, Any] = copy.deepcopy(uvicorn.config.LOGGING_CONFIG)
+LOG_CONFIG["formatters"]["access"]["fmt"] = '%(levelprefix)s "%(request_line)s" %(status_code)s'
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="oim-shop", description="Northwind Traders' sales system")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -127,7 +136,7 @@ def main(argv: list[str] | None = None) -> int:
     if not (web / "index.html").is_file():
         print(f"No web build at {web}; serving the API only. Build it with: npm --prefix web run build")
     app = create_app(db_path, now=now, web_dist=web if (web / "index.html").is_file() else None, sign_in=sign_in)
-    uvicorn.run(app, host=args.host, port=args.port, proxy_headers=True)
+    uvicorn.run(app, host=args.host, port=args.port, proxy_headers=True, log_config=LOG_CONFIG)
     return 0
 
 
