@@ -59,7 +59,7 @@ The app's own API and database, and a web interface built to the frontend stack 
 - **Customers**: list with search; detail with the customer's order history and totals.
 - **Orders**: list with filters (customer, employee, country, date range); detail with lines and totals.
 - **Employees**: list, reporting hierarchy, each employee's sales.
-- **The shop's clock**: pages show only the orders placed by now, and an order whose shipped date is still ahead shows as not shipped, so the site matches `oim-api` at every moment without fetching from it.
+- **The shop's clock**: pages show only the orders placed by now (the dashboard, by the start of the current minute), and an order whose shipped date is still ahead shows as not shipped, so the site matches `oim-api` to the minute without fetching from it. A page already open shows what was true when it loaded.
 - `/api/health`, and FastAPI's generated API docs page.
 
 Acceptance: every page meets §9; dashboard figures match an independent SQL query in the tests; a fresh clone runs locally from the README in at most three commands.
