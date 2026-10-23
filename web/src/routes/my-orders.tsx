@@ -9,16 +9,20 @@ import { DataTable } from '@/components/data-table'
 import { ShipStatus } from '@/components/orders-table'
 import { PageHeader } from '@/components/page-header'
 import { Pager } from '@/components/pager'
-import { SignInFirst } from '@/components/sign-in-first'
+import { NeedsAccount } from '@/components/sign-in-first'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatMoney } from '@/lib/format'
-import { useCanChange, useMe } from '@/lib/me'
-import { compact, page } from '@/lib/search'
-import { type Column, columnHelper } from '@/lib/table'
+import { useCanChange, useMeQuery } from '@/lib/me'
+import { compact, isOneOf, order, page, sortOf } from '@/lib/search'
+import { type Column, columnHelper, ORDER_SORTS } from '@/lib/table'
 
 export const Route = createFileRoute('/my-orders')({
-  validateSearch: z.object({ scope: z.enum(['all']).optional().catch(undefined), page }),
+  validateSearch: z.object({
+    scope: z.enum(['all']).optional().catch(undefined),
+    sort: sortOf(ORDER_SORTS),
+    order,
+    page,
+  }),
   component: MyOrders,
 })
 
@@ -26,31 +30,39 @@ type MyOrder = Schemas['MyOrder']
 const col = columnHelper<MyOrder>()
 
 function MyOrders() {
-  const me = useMe()
+  const meQuery = useMeQuery()
+  const me = meQuery.data
   const search = Route.useSearch()
   const navigate = useNavigate({ from: Route.fullPath })
   const account = me?.account
   const manager = account?.role === 'manager'
   const scope = manager && search.scope === 'all' ? 'all' : 'mine'
-  const query = { scope, page: search.page ?? 1, per_page: 20 } as const
+  const query = { scope, sort: search.sort, order: search.order, page: search.page ?? 1, per_page: 20 } as const
   const orders = useQuery({ ...myOrdersQuery(query), enabled: Boolean(account) })
   const canChange = useCanChange()
 
-  if (!me) return <Skeleton className="h-96 w-full" />
-  if (!account) return <SignInFirst what="see your orders" next="/my-orders" available={me.sign_in_available} />
+  if (!account)
+    return (
+      <NeedsAccount me={meQuery} what="see your orders" next="/my-orders">
+        {() => null}
+      </NeedsAccount>
+    )
 
   const columns: Column<MyOrder>[] = col.columns([
     col.accessor('order_id', {
       id: 'order_id',
       header: 'Order',
-      enableSorting: false,
       cell: ({ row }) => (
-        <Link to="/orders/$orderId" params={{ orderId: String(row.original.order_id) }} className="font-medium hover:underline">
+        <Link
+          to="/orders/$orderId"
+          params={{ orderId: String(row.original.order_id) }}
+          className="font-medium hover:underline"
+        >
           #{row.original.order_id}
         </Link>
       ),
     }),
-    col.accessor('order_date', { id: 'order_date', header: 'Placed', enableSorting: false, cell: (c) => formatDate(c.getValue()) }),
+    col.accessor('order_date', { id: 'order_date', header: 'Placed', cell: (c) => formatDate(c.getValue()) }),
     col.accessor('customer_name', { id: 'customer_name', header: 'Customer', enableSorting: false }),
     ...(scope === 'all' ? [col.accessor('rep_name', { id: 'rep_name', header: 'Rep', enableSorting: false })] : []),
     col.accessor('shipped_date', {
@@ -59,7 +71,7 @@ function MyOrders() {
       enableSorting: false,
       cell: (c) => <ShipStatus shipped={c.getValue()} />,
     }),
-    col.accessor('total_cents', { id: 'total', header: 'Subtotal', enableSorting: false, cell: (c) => formatMoney(c.getValue()) }),
+    col.accessor('total_cents', { id: 'total', header: 'Subtotal', cell: (c) => formatMoney(c.getValue()) }),
     col.display({
       id: 'actions',
       header: () => <span className="sr-only">Actions</span>,
@@ -101,7 +113,11 @@ function MyOrders() {
               size="sm"
               variant={scope === value ? 'secondary' : 'ghost'}
               aria-pressed={scope === value}
-              onClick={() => void navigate({ search: value === 'all' ? { scope: 'all' } : {} })}
+              onClick={() =>
+                void navigate({
+                  search: (prev) => ({ ...prev, scope: value === 'all' ? 'all' : undefined, page: undefined }),
+                })
+              }
             >
               {value === 'mine' ? 'Mine' : 'All reps'}
             </Button>
@@ -112,6 +128,18 @@ function MyOrders() {
         caption={scope === 'all' ? 'Every rep’s orders' : 'My orders'}
         columns={columns}
         data={orders.data?.items}
+        sort={{ id: search.sort ?? 'order_date', desc: (search.order ?? 'desc') === 'desc' }}
+        onSortChange={(sort) =>
+          void navigate({
+            search: (prev) =>
+              compact({
+                ...prev,
+                sort: isOneOf(ORDER_SORTS, sort.id) ? sort.id : undefined,
+                order: sort.desc ? 'desc' : 'asc',
+                page: undefined,
+              }),
+          })
+        }
         isPending={orders.isPending}
         isFetching={orders.isFetching}
         error={orders.error}
@@ -120,7 +148,9 @@ function MyOrders() {
         wide={['order_date', 'shipped_date']}
         wrap={['customer_name', 'rep_name']}
         empty={
-          scope === 'all' ? 'No rep has entered an order since the last nightly reset.' : 'You have not entered an order since the last nightly reset.'
+          scope === 'all'
+            ? 'No rep has entered an order since the last nightly reset.'
+            : 'You have not entered an order since the last nightly reset.'
         }
       />
       <Pager

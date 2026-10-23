@@ -3,11 +3,12 @@ import { AlertCircle, LogIn } from 'lucide-react'
 import { z } from 'zod'
 
 import { PageHeader } from '@/components/page-header'
+import { QueryError } from '@/components/states'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { signInHref, useMe } from '@/lib/me'
+import { signInHref, useMeQuery } from '@/lib/me'
 
 // Where the server sends the browser when signing in did not work (api/oim_shop/routes/auth.py).
 const PROBLEMS = {
@@ -16,11 +17,12 @@ const PROBLEMS = {
   not_allowed: ['This GitHub account cannot sign in here', 'Signing in is only for the people on this site’s list.'],
   github: ['GitHub did not answer as expected', 'Try again in a minute.'],
   unavailable: ['Signing in is not available right now', 'Try again later.'],
+  busy: ['Many people are signing in at once', 'Try again in a few seconds.'],
 } as const
 
 export const Route = createFileRoute('/sign-in')({
   validateSearch: z.object({
-    error: z.enum(['denied', 'expired', 'not_allowed', 'github', 'unavailable']).optional().catch(undefined),
+    error: z.enum(['denied', 'expired', 'not_allowed', 'github', 'unavailable', 'busy']).optional().catch(undefined),
     next: z.string().startsWith('/').optional().catch(undefined),
   }),
   component: SignIn,
@@ -28,7 +30,8 @@ export const Route = createFileRoute('/sign-in')({
 
 function SignIn() {
   const { error, next } = Route.useSearch()
-  const me = useMe()
+  const query = useMeQuery()
+  const me = query.data
   const problem = error && PROBLEMS[error]
 
   return (
@@ -43,15 +46,21 @@ function SignIn() {
       )}
       <Card>
         <CardContent className="space-y-4 text-sm">
-          {!me ? (
+          {query.isError ? (
+            <QueryError
+              error={query.error}
+              onRetry={() => void query.refetch()}
+              title="Could not check who is signed in"
+            />
+          ) : !me ? (
             <Skeleton className="h-24 w-full" />
           ) : me.account ? (
             <p>You are signed in as {me.account.display_name ?? me.account.public_name}.</p>
           ) : me.sign_in_available ? (
             <>
               <p>
-                You sign in with your GitHub account. GitHub tells this site your account number and nothing you
-                have to approve; the site keeps only that number.
+                You sign in with your GitHub account. GitHub tells this site your account number and nothing you have to
+                approve; the site keeps only that number.
               </p>
               <Button asChild className="w-full">
                 <a href={signInHref(next ?? '/')}>

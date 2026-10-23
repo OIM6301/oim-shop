@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { AlertCircle, CalendarDays, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { type Ref, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 
 import { ApiError } from '@/api/client'
@@ -30,6 +30,10 @@ import {
 } from '@/lib/order-form'
 
 const NEW_LINE = { product_id: 0, quantity: 1, discount_pct: 0 }
+
+/** The id of a field's error message, which its control names in aria-describedby while it is invalid. */
+const errorId = (id: string) => `${id}-error`
+const describedBy = (id: string, invalid: boolean) => (invalid ? errorId(id) : undefined)
 
 function toDate(day: string): Date {
   const [y, m, d] = day.split('-').map(Number)
@@ -128,6 +132,8 @@ export function OrderForm({
                     <LookupRetry what="customers" onRetry={() => void customers.refetch()} />
                   ) : (
                     <Combobox
+                      ref={field.ref}
+                      describedBy={describedBy('customer', fieldState.invalid)}
                       id="customer"
                       value={field.value || undefined}
                       options={customerOptions}
@@ -139,7 +145,7 @@ export function OrderForm({
                       loading={customers.isPending}
                     />
                   )}
-                  <FieldError errors={[fieldState.error]} />
+                  <FieldError id={errorId('customer')} errors={[fieldState.error]} />
                 </Field>
               )}
             />
@@ -153,7 +159,13 @@ export function OrderForm({
                     <LookupRetry what="shippers" onRetry={() => void shippers.refetch()} />
                   ) : (
                     <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                      <SelectTrigger id="shipper" className="w-full" aria-invalid={fieldState.invalid}>
+                      <SelectTrigger
+                        ref={field.ref}
+                        id="shipper"
+                        className="w-full"
+                        aria-invalid={fieldState.invalid}
+                        aria-describedby={describedBy('shipper', fieldState.invalid)}
+                      >
                         <SelectValue placeholder={shippers.isPending ? 'Loading…' : 'Choose a shipper'} />
                       </SelectTrigger>
                       <SelectContent>
@@ -165,7 +177,7 @@ export function OrderForm({
                       </SelectContent>
                     </Select>
                   )}
-                  <FieldError errors={[fieldState.error]} />
+                  <FieldError id={errorId('shipper')} errors={[fieldState.error]} />
                 </Field>
               )}
             />
@@ -176,6 +188,7 @@ export function OrderForm({
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel htmlFor="required_date">Required by</FieldLabel>
                   <DayPicker
+                    ref={field.ref}
                     id="required_date"
                     value={field.value}
                     onChange={field.onChange}
@@ -183,7 +196,7 @@ export function OrderForm({
                     last={addDays(today, LATEST_REQUIRED_DAYS)}
                     invalid={fieldState.invalid}
                   />
-                  <FieldError errors={[fieldState.error]} />
+                  <FieldError id={errorId('required_date')} errors={[fieldState.error]} />
                 </Field>
               )}
             />
@@ -220,6 +233,8 @@ export function OrderForm({
                         Product
                       </FieldLabel>
                       <Combobox
+                        ref={field.ref}
+                        describedBy={describedBy(`line-${i}-product`, fieldState.invalid)}
                         id={`line-${i}-product`}
                         value={field.value ? String(field.value) : undefined}
                         options={productOptions}
@@ -235,7 +250,7 @@ export function OrderForm({
                           {formatMoney(product.unit_price_cents)} · {product.quantity_per_unit}
                         </p>
                       )}
-                      <FieldError errors={[fieldState.error]} />
+                      <FieldError id={errorId(`line-${i}-product`)} errors={[fieldState.error]} />
                     </Field>
                   )}
                 />
@@ -249,9 +264,10 @@ export function OrderForm({
                     inputMode="numeric"
                     min={1}
                     aria-invalid={Boolean(errors?.quantity)}
+                    aria-describedby={describedBy(`line-${i}-quantity`, Boolean(errors?.quantity))}
                     {...form.register(`lines.${i}.quantity`, { valueAsNumber: true })}
                   />
-                  <FieldError errors={[errors?.quantity]} />
+                  <FieldError id={errorId(`line-${i}-quantity`)} errors={[errors?.quantity]} />
                 </Field>
                 <Field data-invalid={Boolean(errors?.discount_pct)}>
                   <FieldLabel htmlFor={`line-${i}-discount`} className={i > 0 ? 'sm:sr-only' : ''}>
@@ -264,9 +280,10 @@ export function OrderForm({
                     min={0}
                     max={MAX_DISCOUNT}
                     aria-invalid={Boolean(errors?.discount_pct)}
+                    aria-describedby={describedBy(`line-${i}-discount`, Boolean(errors?.discount_pct))}
                     {...form.register(`lines.${i}.discount_pct`, { valueAsNumber: true })}
                   />
-                  <FieldError errors={[errors?.discount_pct]} />
+                  <FieldError id={errorId(`line-${i}-discount`)} errors={[errors?.discount_pct]} />
                 </Field>
                 <div className="grid gap-2">
                   <span className={`text-sm font-medium ${i > 0 ? 'sm:sr-only' : ''}`}>Line total</span>
@@ -304,6 +321,8 @@ export function OrderForm({
           </div>
           <p className="text-xs text-muted-foreground">
             Prices are the products’ current prices. Freight is free, and the order ships to the customer’s address.
+            The order takes its products from stock, which Northwind’s own orders never did, and the stock comes back
+            when it is cancelled or when the site resets every night.
           </p>
         </CardContent>
       </Card>
@@ -325,6 +344,7 @@ export function OrderForm({
 }
 
 function DayPicker({
+  ref,
   id,
   value,
   onChange,
@@ -332,6 +352,7 @@ function DayPicker({
   last,
   invalid,
 }: {
+  ref?: Ref<HTMLButtonElement>
   id: string
   value: string
   onChange: (day: string) => void
@@ -343,7 +364,15 @@ function DayPicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button id={id} type="button" variant="outline" aria-invalid={invalid} className="w-full justify-start font-normal">
+        <Button
+          ref={ref}
+          id={id}
+          type="button"
+          variant="outline"
+          aria-invalid={invalid}
+          aria-describedby={describedBy(id, invalid)}
+          className="w-full justify-start font-normal"
+        >
           <CalendarDays />
           {value ? formatDate(value) : 'Choose a date'}
         </Button>

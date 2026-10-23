@@ -193,10 +193,11 @@ function OrderActions({ order }: { order: Schemas['OrderDetail'] }) {
         description="It ships today. After that the order can no longer be edited or cancelled."
         confirm="Mark shipped"
         onConfirm={() =>
-          ship.mutate(order.order_id, {
-            onSuccess: () => toast.success(`Order #${orderId} shipped`),
-            onError: (error) => toast.error(explain(error)),
-          })
+          // Awaited here, not in mutate's callbacks: those are skipped once this page re-renders without the order.
+          void ship
+            .mutateAsync(order.order_id)
+            .then(() => toast.success(`Order #${orderId} shipped`))
+            .catch((error: unknown) => toast.error(explain(error)))
         }
       />
       <Confirm
@@ -211,13 +212,13 @@ function OrderActions({ order }: { order: Schemas['OrderDetail'] }) {
         confirm="Cancel the order"
         destructive
         onConfirm={() =>
-          cancel.mutate(order.order_id, {
-            onSuccess: () => {
+          void cancel
+            .mutateAsync(order.order_id)
+            .then(() => {
               toast.success(`Order #${orderId} cancelled`)
-              void navigate({ to: '/my-orders' })
-            },
-            onError: (error) => toast.error(explain(error)),
-          })
+              return navigate({ to: '/my-orders' })
+            })
+            .catch((error: unknown) => toast.error(explain(error)))
         }
       />
     </div>

@@ -85,11 +85,13 @@ export const dashboardQuery = (query: DashboardQuery) =>
     queryFn: () => unwrap(api.GET('/api/dashboard', { params: { query } })),
   })
 
-/** Who is signed in. It changes only when someone signs in (a new page load) or out (a write that refreshes it). */
+/**
+ * Who is signed in, and today's date on the shop's clock. It is fetched again like any other
+ * data once a minute old, so a page opened after midnight gets the new date.
+ */
 export const meQuery = queryOptions({
   queryKey: ['me'],
   queryFn: () => unwrap(api.GET('/api/me')),
-  staleTime: Infinity,
 })
 
 export const shippersQuery = queryOptions({

@@ -74,13 +74,14 @@ export function AccountMenu() {
         <DropdownMenuItem
           disabled={signOut.isPending}
           onSelect={() =>
-            signOut.mutate(undefined, {
-              onSuccess: () => {
+            // Awaited here, not in mutate's callbacks: this menu is gone once the page knows no one is signed in.
+            void signOut
+              .mutateAsync(undefined)
+              .then(() => {
                 toast.success('Signed out')
-                void navigate({ to: '/' })
-              },
-              onError: (error) => toast.error(explain(error)),
-            })
+                return navigate({ to: '/' })
+              })
+              .catch((error: unknown) => toast.error(explain(error)))
           }
         >
           <LogOut />

@@ -7,13 +7,14 @@ import { z } from 'zod'
 import { ApiError } from '@/api/client'
 import { useChooseName } from '@/api/writes'
 import { PageHeader } from '@/components/page-header'
+import { QueryError } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { explain } from '@/lib/errors'
-import { useMe } from '@/lib/me'
+import { useMeQuery } from '@/lib/me'
 
 const nameSchema = z.object({
   display_name: z
@@ -32,9 +33,15 @@ export const Route = createFileRoute('/welcome')({
 })
 
 function Welcome() {
-  const me = useMe()
+  const query = useMeQuery()
+  const me = query.data
   const { next } = Route.useSearch()
 
+  if (query.isError) {
+    return (
+      <QueryError error={query.error} onRetry={() => void query.refetch()} title="Could not check who is signed in" />
+    )
+  }
   if (!me) return <Skeleton className="mx-auto h-64 max-w-md" />
   if (!me.account) {
     return (
@@ -90,12 +97,18 @@ function NameForm({
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4" noValidate>
             <Field data-invalid={Boolean(error)}>
               <FieldLabel htmlFor="display_name">Your name</FieldLabel>
-              <Input id="display_name" autoComplete="nickname" aria-invalid={Boolean(error)} {...form.register('display_name')} />
-              <FieldDescription>
-                Only you and the managers see this name. Everyone else sees you as {account.public_name}, so you can use a
-                nickname.
+              <Input
+                id="display_name"
+                autoComplete="nickname"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? 'display_name-about display_name-error' : 'display_name-about'}
+                {...form.register('display_name')}
+              />
+              <FieldDescription id="display_name-about">
+                Only you and the managers see this name. Everyone else sees you as {account.public_name}, so you can use
+                a nickname.
               </FieldDescription>
-              <FieldError errors={[error]} />
+              <FieldError id="display_name-error" errors={[error]} />
             </Field>
             <Button type="submit" disabled={choose.isPending}>
               {choose.isPending ? 'Saving…' : first ? 'Continue' : 'Save'}

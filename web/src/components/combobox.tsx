@@ -1,5 +1,5 @@
 import { ChevronsUpDown } from 'lucide-react'
-import { useState } from 'react'
+import { type Ref, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -9,6 +9,8 @@ export type Option = { value: string; label: string; hint?: string; disabled?: b
 
 /** A button that opens a searchable list, for choosing one of many (shadcn's Combobox pattern). */
 export function Combobox({
+  ref,
+  describedBy,
   id,
   value,
   options,
@@ -19,6 +21,10 @@ export function Combobox({
   invalid = false,
   loading = false,
 }: {
+  /** react-hook-form's ref, so it can move focus here when this field is invalid. */
+  ref?: Ref<HTMLButtonElement>
+  /** The id of the error shown for this field, if any. */
+  describedBy?: string
   id?: string
   value: string | undefined
   options: Option[]
@@ -35,10 +41,12 @@ export function Combobox({
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          ref={ref}
           id={id}
           type="button"
           variant="outline"
           role="combobox"
+          aria-describedby={describedBy}
           aria-expanded={open}
           aria-invalid={invalid}
           disabled={loading}

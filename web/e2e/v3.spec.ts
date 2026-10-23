@@ -30,6 +30,13 @@ async function chooseName(page: Page, name: string) {
   await page.getByRole('button', { name: /Continue|Save/ }).click()
 }
 
+/** Make sure this account has `name`, whatever earlier tests did, so each test can run alone. */
+async function nameAs(page: Page, name: string) {
+  await page.goto('/welcome')
+  await chooseName(page, name)
+  await expect(page.getByRole('button', { name })).toBeVisible()
+}
+
 async function choose(page: Page, field: string, option: string | RegExp) {
   await page.getByRole('combobox', { name: field }).click()
   await page.getByRole('option', { name: option }).click()
@@ -90,6 +97,7 @@ test('an order beyond the stock is refused beside the quantity', async ({ page }
 test('a rep cannot change another rep’s order; a manager can', async ({ browser }) => {
   const rep = await browser.newPage()
   await signIn(rep, 'e2e-rep')
+  await nameAs(rep, 'Ana')
   await enterOrder(rep, 'Chai', '1')
   await expect(rep).toHaveURL(/\/orders\/\d+$/)
   const url = new URL(rep.url()).pathname
@@ -97,7 +105,7 @@ test('a rep cannot change another rep’s order; a manager can', async ({ browse
 
   const other = await browser.newPage()
   await signIn(other, 'e2e-other')
-  await chooseName(other, 'Ben')
+  await nameAs(other, 'Ben')
   await other.goto(url)
   await expect(other.getByRole('heading', { level: 1 })).toBeVisible()
   await expect(other.getByRole('link', { name: /^Sales rep \d+$/ })).toBeVisible()
@@ -105,13 +113,13 @@ test('a rep cannot change another rep’s order; a manager can', async ({ browse
 
   const manager = await browser.newPage()
   await signIn(manager, 'e2e-manager')
-  await chooseName(manager, 'Ms. Manager')
+  await nameAs(manager, 'Ms. Manager')
   await manager.goto('/my-orders?scope=all')
   await expect(manager.getByRole('row', { name: /Ana/ })).toBeVisible()
   await manager.goto(url)
   await manager.getByRole('button', { name: 'Mark shipped' }).click()
   await manager.getByRole('alertdialog').getByRole('button', { name: 'Mark shipped' }).click()
-  await expect(manager.getByText('Shipped', { exact: true })).toBeVisible()
+  await expect(manager.getByRole('heading', { level: 1 })).toContainText('Shipped')
   await expect(manager.getByRole('button', { name: 'Edit' })).toHaveCount(0)
 })
 
@@ -123,6 +131,7 @@ test('someone not on the list is told so', async ({ page }) => {
 
 test('signing out', async ({ page }) => {
   await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
   await page.getByRole('button', { name: 'Ana' }).click()
   await page.getByRole('menuitem', { name: 'Sign out' }).click()
   await expect(page.getByText('Signed out')).toBeVisible()
@@ -136,4 +145,46 @@ test('a product below its reorder level is flagged', async ({ page }) => {
   await page.goto('/products/1')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chai')
   await expect(page.getByText('Below reorder level')).toHaveCount(0)
+})
+
+// --- Codex review of v3 -----------------------------------------------------------------
+
+test('when the account cannot be loaded, the page says so and can try again', async ({ page }) => {
+  let fail = true
+  await page.route('**/api/me', (route) => (fail ? route.fulfill({ status: 500, json: { detail: 'Down' } }) : route.fallback()))
+  await page.goto('/orders/new')
+  await expect(page.getByText('Could not check who is signed in')).toBeVisible({ timeout: 15_000 })
+  fail = false
+  await page.getByRole('button', { name: 'Try again' }).click()
+  await expect(page.getByText('Sign in to enter an order')).toBeVisible()
+})
+
+test('an empty order moves focus to its first problem, which describes it', async ({ page }) => {
+  await signIn(page, 'e2e-rep', '/orders/new')
+  await page.goto('/orders/new')
+  await page.getByRole('button', { name: 'Enter the order' }).click()
+  const customer = page.getByRole('combobox', { name: 'Customer' })
+  await expect(customer).toBeFocused()
+  await expect(customer).toHaveAccessibleDescription('Choose a customer')
+  await expect(page.getByRole('combobox', { name: 'Product' })).toHaveAccessibleDescription('Choose a product')
+})
+
+test('my orders sort by subtotal', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await enterOrder(page, 'Chai', '1')
+  await expect(page).toHaveURL(/\/orders\/\d+$/)
+  const small = page.url().split('/').pop()
+  await enterOrder(page, 'Chai', '5')
+  await expect(page).toHaveURL(/\/orders\/\d+$/)
+  const large = page.url().split('/').pop()
+  await page.goto('/my-orders')
+  await page.getByRole('button', { name: 'Subtotal' }).click()
+  await expect(page).toHaveURL(/sort=total&order=desc/)
+  // Other tests may have left orders of their own, so compare where these two stand.
+  const position = async (orderId: string | undefined) =>
+    (await page.locator('tbody tr').allInnerTexts()).findIndex((row) => row.includes(`#${orderId}`))
+  await expect.poll(async () => (await position(large)) < (await position(small))).toBe(true)
+  await page.getByRole('button', { name: 'Subtotal' }).click()
+  await expect(page).toHaveURL(/sort=total&order=asc/)
+  await expect.poll(async () => (await position(small)) < (await position(large))).toBe(true)
 })

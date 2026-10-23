@@ -2,8 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 
 import { meQuery } from '@/api/queries'
 
+/** Who is signed in, with the query's loading and error states, for a page that depends on it. */
+export function useMeQuery() {
+  return useQuery(meQuery)
+}
+
 export function useMe() {
-  return useQuery(meQuery).data
+  return useMeQuery().data
 }
 
 /**

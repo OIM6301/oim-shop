@@ -91,7 +91,7 @@ export function AppSidebar() {
       </SidebarContent>
       <SidebarFooter>
         <div className="space-y-1 px-2 text-xs text-muted-foreground">
-          <p>A demo on Northwind's fictional data. Dates are moved forward so that orders keep arriving.</p>
+          <p>A demo on Northwind's fictional data. Its own orders are moved forward in time so that they keep arriving, and never took stock; orders entered here carry the day they were entered, and do.</p>
           <p className="flex gap-3">
             <a className="underline underline-offset-2" href="/api/docs">
               API docs
