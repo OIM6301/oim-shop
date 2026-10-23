@@ -20,14 +20,25 @@ CACHE_SECONDS = 60
 
 
 class RateLimit(BaseHTTPMiddleware):
-    """At most `per_minute` requests per visitor in each one-minute window."""
+    """At most `per_minute` requests per visitor in each one-minute window.
 
-    def __init__(self, app: ASGIApp, per_minute: int, monotonic: Callable[[], float] = time.monotonic) -> None:
+    A path listed in `paths` has a budget of its own, so an expensive page can be held
+    to fewer requests without lowering the limit for the rest.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        per_minute: int,
+        paths: dict[str, int] | None = None,
+        monotonic: Callable[[], float] = time.monotonic,
+    ) -> None:
         super().__init__(app)
         self.per_minute = per_minute
+        self.paths = paths or {}
         self.monotonic = monotonic
         self.window = 0
-        self.counts: dict[str, int] = {}
+        self.counts: dict[tuple[str, str], int] = {}
 
     async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
         path = request.url.path
@@ -39,8 +50,10 @@ class RateLimit(BaseHTTPMiddleware):
             # A new minute: every visitor starts again, and last minute's counts are freed.
             self.window, self.counts = window, {}
         visitor = request.headers.get("cf-connecting-ip") or (request.client.host if request.client else "unknown")
-        self.counts[visitor] = self.counts.get(visitor, 0) + 1
-        if self.counts[visitor] > self.per_minute:
+        bucket = path if path in self.paths else ""
+        key = (bucket, visitor)
+        self.counts[key] = self.counts.get(key, 0) + 1
+        if self.counts[key] > self.paths.get(bucket, self.per_minute):
             retry = max(1, math.ceil((window + 1) * 60 - now))
             return JSONResponse(
                 {"detail": "Too many requests; try again in a minute"},

@@ -1,7 +1,12 @@
-from datetime import date
+import sqlite3
+import threading
+from collections.abc import Callable
+from datetime import date, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+import anyio
+import anyio.to_thread
+from fastapi import APIRouter, Depends, Query, Request
 
 from oim_shop.deps import Conn, Now, rows
 from oim_shop.limits import shared_cache
@@ -21,8 +26,41 @@ def months_between(first: date, last: date) -> list[str]:
     return months
 
 
+class MinuteCache:
+    """Dashboards computed in the current minute, by date range, one computation at a time.
+
+    Orders change only as time passes, so within one minute the same range always gives the
+    same answer: compute it once and keep it until the minute is over. Only one dashboard is
+    computed at a time, so a burst of them cannot take every thread or fill the memory while
+    other pages wait, and requests for a range already being computed get that answer. At most
+    `max_entries` ranges are kept.
+    """
+
+    def __init__(self, max_entries: int = 256) -> None:
+        self.max_entries = max_entries
+        self.minute: datetime | None = None
+        self.entries: dict[tuple[date, date], Dashboard] = {}
+        self.lock = threading.Lock()
+
+    def get(self, minute: datetime, key: tuple[date, date], compute: Callable[[], Dashboard]) -> Dashboard:
+        with self.lock:
+            if minute != self.minute:
+                self.minute, self.entries = minute, {}
+            if key in self.entries:
+                return self.entries[key]
+            answer = compute()
+            if len(self.entries) < self.max_entries:
+                self.entries[key] = answer
+            return answer
+
+
+# Dashboards wait for this one thread, outside the pool that serves every other page.
+DASHBOARD_THREADS = anyio.CapacityLimiter(1)
+
+
 @router.get("/dashboard")
-def dashboard(
+async def dashboard(
+    request: Request,
     conn: Conn,
     now: Now,
     from_date: Annotated[date | None, Query(alias="from", description="Default: 11 months before this month")] = None,
@@ -36,6 +74,17 @@ def dashboard(
     if from_date is None:
         months_back = last.year * 12 + last.month - 1 - 11
         from_date = date(months_back // 12, months_back % 12 + 1, 1)
+    first = from_date
+    cache: MinuteCache = request.app.state.dashboard_cache
+    minute = now.replace(second=0, microsecond=0)
+    # Waiting happens here, in the event loop, so a queue of dashboards holds no thread.
+    return await anyio.to_thread.run_sync(
+        lambda: cache.get(minute, (first, last), lambda: compute(conn, first, last)), limiter=DASHBOARD_THREADS
+    )
+
+
+def compute(conn: sqlite3.Connection, from_date: date, last: date) -> Dashboard:
+    """The dashboard for orders placed from from_date through last, read from visible_orders."""
     where, params = date_range(from_date, last)
     clause = " AND ".join(where)
 

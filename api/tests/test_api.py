@@ -279,3 +279,65 @@ def test_dashboard_defaults_to_the_last_twelve_months(client: TestClient) -> Non
 def test_products_search_beyond_ascii(client: TestClient) -> None:
     page = get(client, "/api/products?name=CÔTE")
     assert [p["name"] for p in page["items"]] == ["Côte de Blaye"]
+
+
+def test_the_dashboard_is_computed_once_a_minute_per_range(seeded_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import timedelta
+
+    from oim_shop.routes import dashboard as dashboard_route
+
+    calls: list[tuple[object, object]] = []
+    compute = dashboard_route.compute
+
+    def counting(conn: sqlite3.Connection, first: object, last: object) -> object:
+        calls.append((first, last))
+        return compute(conn, first, last)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(dashboard_route, "compute", counting)
+    moment = [NOW]
+    app = create_app(seeded_path, now=lambda: moment[0], requests_per_minute=10_000)
+    with TestClient(app) as c:
+        first = c.get("/api/dashboard").json()
+        assert c.get("/api/dashboard").json() == first
+        assert len(calls) == 1
+        c.get("/api/dashboard?from=2025-01-01&to=2025-06-30")
+        assert len(calls) == 2
+        moment[0] = NOW + timedelta(minutes=1)
+        c.get("/api/dashboard")
+        assert len(calls) == 3
+
+
+def test_dashboards_are_computed_one_at_a_time() -> None:
+    """Two requests for the same range at once compute it once; no two computations overlap."""
+    import threading
+    import time
+    from datetime import date, datetime
+
+    from oim_shop.routes.dashboard import MinuteCache
+
+    cache = MinuteCache()
+    running = 0
+    overlap = False
+    calls = 0
+    lock = threading.Lock()
+
+    def slow() -> Any:
+        nonlocal running, overlap, calls
+        with lock:
+            running += 1
+            calls += 1
+            overlap = overlap or running > 1
+        time.sleep(0.05)
+        with lock:
+            running -= 1
+        return object()
+
+    minute = datetime(2026, 10, 22, 17, 0)
+    keys = [(date(2025, 1, 1), date(2025, 6, 30))] * 4 + [(date(2024, 1, 1), date(2024, 6, 30))] * 4
+    threads = [threading.Thread(target=cache.get, args=(minute, key, slow)) for key in keys]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert calls == 2
+    assert not overlap

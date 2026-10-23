@@ -1,11 +1,13 @@
 """The FastAPI app. Everything under /api is the API; FastAPI's generated docs are at /api/docs."""
 
 import time
-from collections.abc import Callable
+from collections.abc import AsyncGenerator, Callable
+from contextlib import asynccontextmanager
 from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
 
+import anyio.to_thread
 from fastapi import APIRouter, FastAPI
 
 from oim_shop import clock
@@ -13,6 +15,7 @@ from oim_shop.deps import Conn
 from oim_shop.limits import RateLimit, cache_headers
 from oim_shop.models import Health
 from oim_shop.routes import customers, dashboard, employees, orders, products
+from oim_shop.routes.dashboard import MinuteCache
 from oim_shop.web import web_router
 
 
@@ -21,6 +24,10 @@ def create_app(
     now: Callable[[], datetime] = clock.now,
     # A class on campus Wi-Fi shares one address: 60 students at about 20 requests a minute each.
     requests_per_minute: int = 1500,
+    # The dashboard is the one expensive page; no one reading it needs two a second.
+    dashboard_per_minute: int = 120,
+    # Requests handled at once; more wait their turn, so a burst cannot open connections without end.
+    max_concurrent: int = 4,
     monotonic: Callable[[], float] = time.monotonic,
     web_dist: Path | None = None,
 ) -> FastAPI:
@@ -28,7 +35,15 @@ def create_app(
 
     Tests pass a fixed `now`.
     """
+
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncGenerator[None]:
+        # FastAPI runs each ordinary (def) route in this thread pool.
+        anyio.to_thread.current_default_thread_limiter().total_tokens = max_concurrent
+        yield
+
     app = FastAPI(
+        lifespan=lifespan,
         title="oim-shop",
         version=version("oim-shop"),
         summary="Northwind Traders' sales system",
@@ -39,7 +54,13 @@ def create_app(
     app.state.db_path = db_path
     app.state.now = now
     app.middleware("http")(cache_headers)
-    app.add_middleware(RateLimit, per_minute=requests_per_minute, monotonic=monotonic)
+    app.state.dashboard_cache = MinuteCache()
+    app.add_middleware(
+        RateLimit,
+        per_minute=requests_per_minute,
+        paths={"/api/dashboard": dashboard_per_minute},
+        monotonic=monotonic,
+    )
 
     api = APIRouter(prefix="/api")
 
