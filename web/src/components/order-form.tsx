@@ -77,6 +77,7 @@ export function OrderForm({
   // Saved: leaving is no loss. Left: the person chose to leave while it was being sent.
   const saved = useRef(false)
   const left = useRef(false)
+  const problem = useRef<HTMLDivElement>(null)
   const form = useForm<OrderValues>({
     resolver: zodResolver(orderSchema),
     defaultValues: initial ?? { customer_id: '', shipper_id: 0, required_date: addDays(today, 14), lines: [NEW_LINE] },
@@ -128,6 +129,9 @@ export function OrderForm({
       // Beside the button too, where the person who pressed it is looking.
       const summary = placed.length === 1 ? 'One problem is marked above.' : `${placed.length} problems are marked above.`
       form.setError('root.server', { type: 'server', message: placed.length > 0 ? summary : explain(error) })
+      // A problem with no field (the server is down, or another rep took the stock) is only beside
+      // the button; focus goes to it, once it is on the page.
+      if (placed.length === 0) requestAnimationFrame(() => problem.current?.focus())
       return
     }
     saved.current = true
@@ -336,7 +340,12 @@ export function OrderForm({
               </fieldset>
             )
           })}
-          {linesError && <p className="text-sm text-destructive">{linesError}</p>}
+          {/* An alert, so it is announced: no single field's description points to it. */}
+          {linesError && (
+            <p role="alert" className="text-sm text-destructive">
+              {linesError}
+            </p>
+          )}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Button
               type="button"
@@ -361,7 +370,7 @@ export function OrderForm({
       </Card>
 
       {rootError && (
-        <Alert variant="destructive">
+        <Alert ref={problem} tabIndex={-1} variant="destructive" className="outline-none">
           <AlertCircle />
           <AlertTitle>The order was not saved</AlertTitle>
           <AlertDescription>{rootError}</AlertDescription>
@@ -428,7 +437,7 @@ function DayPicker({
           variant="outline"
           aria-invalid={invalid}
           aria-describedby={describedBy(id, invalid)}
-          className="w-full justify-start font-normal"
+          className="w-full justify-start border-input font-normal"
         >
           <CalendarDays />
           {value ? formatDate(value) : 'Choose a date'}

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
-import type { ReactNode } from 'react'
+import { type ReactNode, useRef, useState } from 'react'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { Pencil, Truck, X } from 'lucide-react'
+import { Pencil, RefreshCw, Truck, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import type { Schemas } from '@/api/client'
@@ -9,7 +9,8 @@ import { orderQuery } from '@/api/queries'
 import { useCancelOrder, useShipOrder } from '@/api/writes'
 import { BackLink, Facts } from '@/components/detail'
 import { explain, isNotFound } from '@/lib/errors'
-import { useCanChange, useNameOf } from '@/lib/me'
+import { focusHeading } from '@/lib/focus'
+import { useCanChange, useMeQuery, useNameOf } from '@/lib/me'
 import { positiveInt } from '@/lib/search'
 import { ShipStatus } from '@/components/orders-table'
 import { PageHeader } from '@/components/page-header'
@@ -41,6 +42,7 @@ function OrderPage() {
   const back = <BackLink to="/orders">Orders</BackLink>
   const nameOf = useNameOf()
   const canChange = useCanChange()
+  const me = useMeQuery()
 
   if (orderId === null || isNotFound(error)) {
     return (
@@ -67,12 +69,29 @@ function OrderPage() {
         back={back}
         title={
           <span className="flex flex-wrap items-center gap-2">
-            Order #{orderId}
+            {/* The space keeps the heading's text "Order #10248 Shipped", for the tab and screen readers. */}
+            Order #{orderId}{' '}
             {data && <ShipStatus shipped={data.shipped_date} />}
           </span>
         }
         description={data ? `Placed ${formatDate(data.order_date)}` : <Skeleton className="h-4 w-40" />}
-        actions={data && canChange(data) && <OrderActions order={data} />}
+        actions={
+          data &&
+          (canChange(data) ? (
+            <OrderActions order={data} />
+          ) : (
+            me.isError &&
+            !me.data &&
+            data.source === 'entered' &&
+            data.shipped_date === null && (
+              // Without knowing who is signed in, the page cannot tell whether this order is theirs.
+              <Button variant="outline" disabled={me.isFetching} onClick={() => void me.refetch()}>
+                <RefreshCw />
+                Could not check your account. Retry
+              </Button>
+            )
+          ))
+        }
       />
       {error && !data ? (
         <QueryError error={error} onRetry={() => void refetch()} title="Could not load this order" />
@@ -179,17 +198,27 @@ function OrderActions({ order }: { order: Schemas['OrderDetail'] }) {
   const cancel = useCancelOrder()
   const navigate = useNavigate()
   const orderId = String(order.order_id)
+  // While one change is on its way, none of the others can start: shipping an order that is
+  // being cancelled would only fail.
+  const busy = ship.isPending || cancel.isPending
   return (
     <div className="flex flex-wrap gap-2">
-      <Button asChild variant="outline">
-        <Link to="/orders/$orderId/edit" params={{ orderId }}>
+      {busy ? (
+        <Button variant="outline" disabled>
           <Pencil />
           Edit
-        </Link>
-      </Button>
+        </Button>
+      ) : (
+        <Button asChild variant="outline">
+          <Link to="/orders/$orderId/edit" params={{ orderId }}>
+            <Pencil />
+            Edit
+          </Link>
+        </Button>
+      )}
       <Confirm
         trigger={
-          <Button variant="outline" disabled={ship.isPending}>
+          <Button variant="outline" disabled={busy}>
             <Truck />
             Mark shipped
           </Button>
@@ -197,17 +226,26 @@ function OrderActions({ order }: { order: Schemas['OrderDetail'] }) {
         title={`Mark order #${orderId} shipped?`}
         description="It ships today. After that the order can no longer be edited or cancelled."
         confirm="Mark shipped"
+        pending="Marking shipped…"
         onConfirm={() =>
           // Awaited here, not in mutate's callbacks: those are skipped once this page re-renders without the order.
-          void ship
+          ship
             .mutateAsync(order.order_id)
-            .then(() => toast.success(`Order #${orderId} shipped`))
-            .catch((error: unknown) => toast.error(explain(error)))
+            .then(() => {
+              toast.success(`Order #${orderId} shipped`)
+              // A shipped order has no actions, so this dialog may be gone by now, and its button too.
+              focusHeading()
+              return true
+            })
+            .catch((error: unknown) => {
+              toast.error(explain(error))
+              return false
+            })
         }
       />
       <Confirm
         trigger={
-          <Button variant="destructive" disabled={cancel.isPending}>
+          <Button variant="destructive" disabled={busy}>
             <X />
             Cancel order
           </Button>
@@ -215,26 +253,37 @@ function OrderActions({ order }: { order: Schemas['OrderDetail'] }) {
         title={`Cancel order #${orderId}?`}
         description="The order is deleted and its stock goes back. This cannot be undone."
         confirm="Cancel the order"
+        pending="Cancelling…"
         destructive
         onConfirm={() =>
-          void cancel
+          cancel
             .mutateAsync(order.order_id)
-            .then(() => {
+            .then(async () => {
               toast.success(`Order #${orderId} cancelled`)
-              return navigate({ to: '/my-orders' })
+              await navigate({ to: '/my-orders' })
+              return true
             })
-            .catch((error: unknown) => toast.error(explain(error)))
+            .catch((error: unknown) => {
+              toast.error(explain(error))
+              return false
+            })
         }
       />
     </div>
   )
 }
 
+/**
+ * Asks before a change, and stays open until the server has answered, so the change cannot be
+ * confirmed twice. After a change that worked, focus goes to the page's heading, since the
+ * button that opened the dialog may be gone; after one that failed, back to that button.
+ */
 function Confirm({
   trigger,
   title,
   description,
   confirm,
+  pending,
   destructive = false,
   onConfirm,
 }: {
@@ -242,21 +291,45 @@ function Confirm({
   title: string
   description: string
   confirm: string
+  pending: string
   destructive?: boolean
-  onConfirm: () => void
+  /** Resolves to whether the change worked. */
+  onConfirm: () => Promise<boolean>
 }) {
+  const [open, setOpen] = useState(false)
+  const [sending, setSending] = useState(false)
+  const worked = useRef(false)
   return (
-    <AlertDialog>
+    <AlertDialog open={open} onOpenChange={(next) => !sending && setOpen(next)}>
       <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          if (!worked.current) return
+          event.preventDefault()
+          focusHeading()
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Keep it as it is</AlertDialogCancel>
-          <AlertDialogAction variant={destructive ? 'destructive' : 'default'} onClick={onConfirm}>
-            {confirm}
+          <AlertDialogCancel disabled={sending}>Keep it as it is</AlertDialogCancel>
+          <AlertDialogAction
+            variant={destructive ? 'destructive' : 'default'}
+            disabled={sending}
+            onClick={(event) => {
+              // Radix would close the dialog at once; it closes when the server has answered.
+              event.preventDefault()
+              setSending(true)
+              void onConfirm().then((ok) => {
+                worked.current = ok
+                setSending(false)
+                setOpen(false)
+              })
+            }}
+          >
+            {sending ? pending : confirm}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

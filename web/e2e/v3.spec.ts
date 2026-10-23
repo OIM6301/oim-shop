@@ -249,10 +249,40 @@ test('my orders sort by subtotal', async ({ page }) => {
   await expect.poll(async () => (await position(small)) < (await position(large))).toBe(true)
 })
 
-test('when the account cannot be loaded, the header still leads to signing in', async ({ page }) => {
-  await page.route('**/api/me', (route) => route.fulfill({ status: 500, json: { detail: 'Down' } }))
+test('when the account cannot be checked, a signed-in rep is not told to sign in', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
+  let fail = true
+  await page.route('**/api/me', (route) =>
+    fail ? route.fulfill({ status: 500, json: { detail: 'Down' } }) : route.fallback(),
+  )
   await page.goto('/products/1')
-  await page.getByRole('link', { name: 'Sign in' }).click({ timeout: 15_000 })
-  await expect(page).toHaveURL(/\/sign-in\?next=%2Fproducts%2F1/)
-  await expect(page.getByText('Could not check who is signed in')).toBeVisible({ timeout: 15_000 })
+  const retry = page.getByRole('button', { name: 'Could not check your account. Retry' })
+  await expect(retry).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('link', { name: 'Sign in' })).toHaveCount(0)
+  fail = false
+  await retry.click()
+  await expect(page.getByRole('button', { name: 'Ana' })).toBeVisible()
+})
+
+test('while an order is being cancelled, nothing else can be done to it', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
+  await enterOrder(page, 'Chai', '1')
+  await expect(page).toHaveURL(/\/orders\/\d+$/)
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/api/orders/*', async (route) => {
+    if (route.request().method() === 'DELETE') await held
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: 'Cancel order' }).click()
+  const dialog = page.getByRole('alertdialog')
+  await dialog.getByRole('button', { name: 'Cancel the order' }).click()
+  // The dialog stays until the server answers, and its buttons cannot be pressed again.
+  await expect(dialog.getByRole('button', { name: 'Cancelling…' })).toBeDisabled()
+  await expect(dialog.getByRole('button', { name: 'Keep it as it is' })).toBeDisabled()
+  release()
+  await expect(page).toHaveURL(/\/my-orders$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'My orders' })).toBeFocused()
 })

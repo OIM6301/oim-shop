@@ -39,7 +39,10 @@ function Welcome() {
 
   if (query.isError && !me) {
     return (
-      <QueryError error={query.error} onRetry={() => void query.refetch()} title="Could not check who is signed in" />
+      <div className="mx-auto max-w-md">
+        <PageHeader title="Your name" />
+        <QueryError error={query.error} onRetry={() => void query.refetch()} title="Could not check who is signed in" />
+      </div>
     )
   }
   if (!me) return <Skeleton className="mx-auto h-64 max-w-md" />
@@ -81,7 +84,7 @@ function NameForm({
       },
       onError: (error) => {
         const problem = error instanceof ApiError ? error.fields[0] : undefined
-        form.setError('display_name', { message: problem?.msg ?? explain(error) })
+        form.setError('display_name', { message: problem?.msg ?? explain(error) }, { shouldFocus: true })
       },
     })
 

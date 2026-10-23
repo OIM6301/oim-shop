@@ -14,7 +14,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { useMe } from '@/lib/me'
+import { useMeQuery } from '@/lib/me'
 
 const pages = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -31,13 +31,17 @@ const yours = [
 
 export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar()
-  const signedIn = Boolean(useMe()?.account)
+  // On a phone the sidebar is a sheet over the page; every link in it closes it.
+  const closeOnPhone = () => isMobile && setOpenMobile(false)
+  const me = useMeQuery()
+  // Shown when the account could not be checked too: its pages say so and can try again.
+  const signedIn = Boolean(me.data?.account) || (me.isError && !me.data)
   // /orders/new is under /orders, but it has its own entry, so Orders is not lit there too.
   const onNewOrder = Boolean(useMatchRoute()({ to: '/orders/new' }))
   return (
     <Sidebar>
       <SidebarHeader>
-        <Link to="/" className="flex items-center gap-2 px-2 py-1.5">
+        <Link to="/" className="flex items-center gap-2 px-2 py-1.5" onClick={closeOnPhone}>
           <img src="/favicon.svg" alt="" className="size-7" />
           <span className="font-semibold">Northwind Sales</span>
         </Link>
@@ -53,7 +57,7 @@ export function AppSidebar() {
                       to={page.to}
                       activeOptions={{ exact: page.exact, includeSearch: false }}
                       activeProps={page.to === '/orders' && onNewOrder ? {} : { 'data-active': true, 'aria-current': 'page' }}
-                      onClick={() => isMobile && setOpenMobile(false)}
+                      onClick={closeOnPhone}
                     >
                       <page.icon />
                       <span>{page.label}</span>
@@ -76,7 +80,7 @@ export function AppSidebar() {
                         to={page.to}
                         activeOptions={{ exact: page.exact, includeSearch: false }}
                         activeProps={{ 'data-active': true, 'aria-current': 'page' }}
-                        onClick={() => isMobile && setOpenMobile(false)}
+                        onClick={closeOnPhone}
                       >
                         <page.icon />
                         <span>{page.label}</span>
@@ -96,7 +100,7 @@ export function AppSidebar() {
             <a className="underline underline-offset-2" href="/api/docs">
               API docs
             </a>
-            <Link className="underline underline-offset-2" to="/privacy">
+            <Link className="underline underline-offset-2" to="/privacy" onClick={closeOnPhone}>
               Privacy
             </Link>
           </p>

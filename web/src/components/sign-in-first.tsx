@@ -3,31 +3,55 @@ import { LogIn } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import type { Schemas } from '@/api/client'
+import { PageHeader } from '@/components/page-header'
 import { QueryError } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { signInHref } from '@/lib/me'
 
-/** In place of a page that needs someone signed in, while /api/me loads, fails, or says no one is. */
+/**
+ * In place of a page that needs someone signed in, while /api/me loads, fails, or says no one is.
+ * `title` is for a page whose own header comes from `children`: those states get it as their heading.
+ */
 export function NeedsAccount({
   me,
   what,
   next,
+  title,
   children,
 }: {
   me: UseQueryResult<Schemas['Me']>
   what: string
   next: string
+  title?: string
   children: (account: Schemas['Account'], today: string) => ReactNode
 }) {
-  if (me.isPending) return <Skeleton className="h-96 w-full" />
+  if (me.data?.account) return children(me.data.account, me.data.today)
+  const header = title && <PageHeader title={title} />
+  if (me.isPending) {
+    return (
+      <>
+        {header}
+        <Skeleton className="h-96 w-full" />
+      </>
+    )
+  }
   // Only when there is nothing to show: a failed refresh in the background keeps the page, and any form on it.
   if (!me.data) {
-    return <QueryError error={me.error} onRetry={() => void me.refetch()} title="Could not check who is signed in" />
+    return (
+      <>
+        {header}
+        <QueryError error={me.error} onRetry={() => void me.refetch()} title="Could not check who is signed in" />
+      </>
+    )
   }
-  if (!me.data.account) return <SignInFirst what={what} next={next} available={me.data.sign_in_available} />
-  return children(me.data.account, me.data.today)
+  return (
+    <>
+      {header}
+      <SignInFirst what={what} next={next} available={me.data.sign_in_available} />
+    </>
+  )
 }
 
 /** In place of a page that needs someone signed in. */

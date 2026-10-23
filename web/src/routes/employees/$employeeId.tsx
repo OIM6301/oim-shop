@@ -92,7 +92,8 @@ function EmployeePage() {
                   items={[
                     { label: 'Reports to', value: data && <ReportsTo reportsTo={data.reports_to} manager={manager} failed={everyone.isError} /> },
                     { label: 'Hired', value: data && formatDate(data.hire_date) },
-                    { label: 'Location', value: data && [data.city, data.country].filter(Boolean).join(', ') },
+                    // A rep who signed in here has no city or country.
+                    { label: 'Location', value: data && ([data.city, data.country].filter(Boolean).join(', ') || '—') },
                   ]}
                 />
               </CardContent>

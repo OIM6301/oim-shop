@@ -1,8 +1,12 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link, useLocation, useNavigate } from '@tanstack/react-router'
-import { ClipboardList, LogIn, LogOut, PenLine, Plus, UserRound } from 'lucide-react'
+import { useRef } from 'react'
+import { AlertCircle, ClipboardList, LogIn, LogOut, PenLine, Plus, RefreshCw, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { repNamesQuery } from '@/api/queries'
 import { useSignOut } from '@/api/writes'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -21,14 +25,17 @@ export function AccountMenu() {
   const here = useLocation().href
   const navigate = useNavigate()
   const signOut = useSignOut()
+  // A link chosen in the menu leads to a page whose heading takes the focus; the menu must not
+  // hand it back to its button on closing.
+  const leaving = useRef(false)
+  const leave = () => (leaving.current = true)
   if (query.isError && !me) {
-    // Who is signed in could not be checked; the sign-in page says why and can try again.
+    // Who is signed in could not be checked. Offering "Sign in" would tell someone signed in
+    // that they are not; say what happened instead, and try again.
     return (
-      <Button asChild variant="outline" size="sm">
-        <Link to="/sign-in" search={{ next: here }}>
-          <LogIn />
-          Sign in
-        </Link>
+      <Button variant="outline" size="sm" disabled={query.isFetching} onClick={() => void query.refetch()}>
+        <RefreshCw />
+        <span className="sr-only sm:not-sr-only">Could not check your account.</span> Retry
       </Button>
     )
   }
@@ -55,7 +62,14 @@ export function AccountMenu() {
           <span className="truncate">{name}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent
+        align="end"
+        className="w-56"
+        onCloseAutoFocus={(event) => {
+          if (leaving.current) event.preventDefault()
+          leaving.current = false
+        }}
+      >
         <DropdownMenuLabel>
           <div className="truncate">{name}</div>
           <div className="text-xs font-normal text-muted-foreground">
@@ -63,19 +77,19 @@ export function AccountMenu() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild onSelect={leave}>
           <Link to="/orders/new">
             <Plus />
             New order
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild onSelect={leave}>
           <Link to="/my-orders">
             <ClipboardList />
             My orders
           </Link>
         </DropdownMenuItem>
-        <DropdownMenuItem asChild>
+        <DropdownMenuItem asChild onSelect={leave}>
           <Link to="/welcome">
             <PenLine />
             Change your name
@@ -100,5 +114,27 @@ export function AccountMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+/**
+ * For a manager whose list of the reps' chosen names did not load: every page then shows reps
+ * as "Sales rep" and a number, which is not the same as no rep having chosen a name.
+ */
+export function RepNamesProblem() {
+  const manager = useMeQuery().data?.account?.role === 'manager'
+  const reps = useQuery({ ...repNamesQuery, enabled: manager })
+  if (!manager || !reps.isError) return null
+  return (
+    <Alert className="mb-4">
+      <AlertCircle />
+      <AlertTitle>Could not load the names reps chose</AlertTitle>
+      <AlertDescription>
+        <p>Until they load, every rep shows as “Sales rep” and a number. {explain(reps.error)}</p>
+        <Button variant="outline" size="sm" className="mt-2" disabled={reps.isFetching} onClick={() => void reps.refetch()}>
+          Try again
+        </Button>
+      </AlertDescription>
+    </Alert>
   )
 }

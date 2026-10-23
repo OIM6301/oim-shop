@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { createRootRouteWithContext, Link, Outlet, useRouter } from '@tanstack/react-router'
 import { useEffect } from 'react'
 
-import { AccountMenu } from '@/components/account-menu'
+import { AccountMenu, RepNamesProblem } from '@/components/account-menu'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { useDocumentTitle } from '@/hooks/use-document-title'
+import { focusHeading } from '@/lib/focus'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Layout,
@@ -25,10 +26,7 @@ function useFocusOnNewPage() {
   useEffect(
     () =>
       router.subscribe('onRendered', ({ fromLocation, pathChanged }) => {
-        if (!fromLocation || !pathChanged) return
-        const target = document.querySelector<HTMLElement>('main h1') ?? document.querySelector<HTMLElement>('main')
-        target?.setAttribute('tabindex', '-1')
-        target?.focus()
+        if (fromLocation && pathChanged) focusHeading()
       }),
     [router],
   )
@@ -56,6 +54,7 @@ function Layout() {
           </div>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none md:px-6">
+          <RepNamesProblem />
           <Outlet />
         </main>
       </SidebarInset>

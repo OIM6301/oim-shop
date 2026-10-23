@@ -21,7 +21,7 @@ export function PageHeader({
       {back}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <h1 ref={heading} className="text-2xl font-semibold tracking-tight outline-none">
+          <h1 ref={heading} className="text-2xl font-semibold tracking-tight wrap-anywhere outline-none">
             {title}
           </h1>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}

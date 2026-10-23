@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { X } from 'lucide-react'
+import { useRef } from 'react'
 import { z } from 'zod'
 
 import type { Schemas } from '@/api/client'
@@ -12,6 +13,7 @@ import { PageHeader } from '@/components/page-header'
 import { LookupRetry } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useNameOf } from '@/lib/me'
 import { compact, day, id, isOneOf, order, page, sortOf, text } from '@/lib/search'
 
 export const Route = createFileRoute('/orders/')({
@@ -59,7 +61,18 @@ function Filter({
   onRetry?: () => void
   width?: string
 }) {
-  if (failed && onRetry) return <LookupRetry what={label.toLowerCase()} className={`w-full ${width}`} onRetry={onRetry} />
+  // A filter in the address still applies while its choices load or fail to; say which it is.
+  if (failed && onRetry) {
+    const what = value ? `${label.toLowerCase()} (showing ${value} only)` : label.toLowerCase()
+    return <LookupRetry what={what} className={`w-full ${width}`} onRetry={onRetry} />
+  }
+  if (!options) {
+    return (
+      <Button variant="outline" disabled className={`w-full justify-start border-input font-normal ${width}`}>
+        Loading {label.toLowerCase()}…
+      </Button>
+    )
+  }
   return (
     <Select value={value ?? ALL} onValueChange={(v) => onChange(v === ALL ? undefined : v)}>
       <SelectTrigger className={`w-full ${width}`} aria-label={label}>
@@ -86,12 +99,14 @@ function Orders() {
   type Search = typeof search
   const set = (change: Partial<Search>) =>
     void navigate({ search: (prev) => compact({ ...prev, ...change, page: change.page }) })
+  const filters = useRef<HTMLDivElement>(null)
+  const nameOf = useNameOf()
   const filtered = Boolean(search.customer || search.employee || search.country || search.from || search.to)
 
   return (
     <>
       <PageHeader title="Orders" description="Every order placed so far, newest first." />
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div ref={filters} className="mb-4 flex flex-wrap gap-2">
         <Filter
           label="Customers"
           value={search.customer}
@@ -104,7 +119,10 @@ function Orders() {
         <Filter
           label="Employees"
           value={search.employee ? String(search.employee) : undefined}
-          options={employees.data?.map((e) => ({ value: String(e.employee_id), label: `${e.first_name} ${e.last_name}` }))}
+          options={employees.data?.map((e) => ({
+            value: String(e.employee_id),
+            label: nameOf(e.employee_id, `${e.first_name} ${e.last_name}`),
+          }))}
           failed={employees.isError}
           onRetry={() => void employees.refetch()}
           onChange={(v) => set({ employee: v ? Number(v) : undefined })}
@@ -121,7 +139,12 @@ function Orders() {
         {filtered && (
           <Button
             variant="ghost"
-            onClick={() => void navigate({ search: (prev) => compact({ sort: prev.sort, order: prev.order }) })}
+            onClick={() =>
+              // This button goes away with the filters; focus moves to the first filter instead.
+              void navigate({ search: (prev) => compact({ sort: prev.sort, order: prev.order }) }).then(() =>
+                filters.current?.querySelector<HTMLElement>('button')?.focus(),
+              )
+            }
           >
             <X />
             Clear filters

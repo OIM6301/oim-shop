@@ -43,7 +43,7 @@ function MyOrders() {
 
   if (!account)
     return (
-      <NeedsAccount me={meQuery} what="see your orders" next="/my-orders">
+      <NeedsAccount me={meQuery} what="see your orders" next="/my-orders" title="My orders">
         {() => null}
       </NeedsAccount>
     )
@@ -115,7 +115,7 @@ function MyOrders() {
             <Button
               key={value}
               size="sm"
-              variant={scope === value ? 'secondary' : 'ghost'}
+              variant={scope === value ? 'default' : 'ghost'}
               aria-pressed={scope === value}
               onClick={() =>
                 void navigate({
@@ -152,9 +152,11 @@ function MyOrders() {
         wide={['order_date']}
         wrap={['customer_name', 'rep_name']}
         empty={
-          scope === 'all'
-            ? 'No rep has entered an order since the last nightly reset.'
-            : 'You have not entered an order since the last nightly reset.'
+          (orders.data?.pagination.total ?? 0) > 0
+            ? 'No orders on this page.'
+            : scope === 'all'
+              ? 'No rep has entered an order since the last nightly reset.'
+              : 'You have not entered an order since the last nightly reset.'
         }
       />
       <Pager
