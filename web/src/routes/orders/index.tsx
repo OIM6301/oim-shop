@@ -64,12 +64,16 @@ function Filter({
   // A filter in the address still applies while its choices load or fail to; say which it is.
   if (failed && onRetry) {
     const what = value ? `${label.toLowerCase()} (showing ${value} only)` : label.toLowerCase()
-    return <LookupRetry what={what} className={`w-full ${width}`} onRetry={onRetry} />
+    return <LookupRetry what={what} className={`h-auto w-full whitespace-normal ${width}`} onRetry={onRetry} />
   }
   if (!options) {
     return (
-      <Button variant="outline" disabled className={`w-full justify-start border-input font-normal ${width}`}>
-        Loading {label.toLowerCase()}…
+      <Button
+        variant="outline"
+        disabled
+        className={`h-auto w-full justify-start border-input text-left font-normal whitespace-normal ${width}`}
+      >
+        Loading {label.toLowerCase()}…{value && ` (showing ${value} only)`}
       </Button>
     )
   }
@@ -142,7 +146,7 @@ function Orders() {
             onClick={() =>
               // This button goes away with the filters; focus moves to the first filter instead.
               void navigate({ search: (prev) => compact({ sort: prev.sort, order: prev.order }) }).then(() =>
-                filters.current?.querySelector<HTMLElement>('button')?.focus(),
+                filters.current?.querySelector<HTMLElement>('button:not(:disabled)')?.focus(),
               )
             }
           >

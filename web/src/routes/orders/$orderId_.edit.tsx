@@ -63,6 +63,7 @@ function EditOrder() {
             />
           ) : (
             <NotFound
+              within
               title="This order cannot be changed"
               description="Only an order entered here that has not shipped can be changed, by the rep who entered it or by a manager."
               action={

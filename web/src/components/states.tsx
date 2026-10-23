@@ -32,8 +32,20 @@ export function QueryError({ error, onRetry, title = 'Could not load this' }: {
 }
 
 /** A page that has nothing to show, such as an order that does not exist: its heading names the tab too. */
-export function NotFound({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
-  useDocumentTitle(title)
+export function NotFound({
+  title,
+  description,
+  action,
+  within = false,
+}: {
+  title: string
+  description: string
+  action?: ReactNode
+  /** Under a page heading of its own: then the title is a section heading and leaves the tab alone. */
+  within?: boolean
+}) {
+  useDocumentTitle(within ? undefined : title)
+  const Heading = within ? 'h2' : 'h1'
   return (
     <Empty className="border">
       <EmptyHeader>
@@ -41,7 +53,7 @@ export function NotFound({ title, description, action }: { title: string; descri
           <SearchX />
         </EmptyMedia>
         <EmptyTitle>
-          <h1 className="outline-none">{title}</h1>
+          <Heading className="outline-none">{title}</Heading>
         </EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>

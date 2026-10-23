@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { useBlocker, useNavigate } from '@tanstack/react-router'
 import { AlertCircle, CalendarDays, Plus, Trash2 } from 'lucide-react'
-import { type Ref, useRef, useState } from 'react'
+import { type Ref, useEffect, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 
 import { ApiError } from '@/api/client'
@@ -78,6 +78,9 @@ export function OrderForm({
   const saved = useRef(false)
   const left = useRef(false)
   const problem = useRef<HTMLDivElement>(null)
+  // The fields are disabled while the order is sent, and a disabled field cannot take focus, so the
+  // first field the server refused is focused once sending is over.
+  const focusAfterSending = useRef<Parameters<typeof form.setFocus>[0] | null>(null)
   const form = useForm<OrderValues>({
     resolver: zodResolver(orderSchema),
     defaultValues: initial ?? { customer_id: '', shipper_id: 0, required_date: addDays(today, 14), lines: [NEW_LINE] },
@@ -123,8 +126,9 @@ export function OrderForm({
       placed.forEach((problem, i) => {
         // The API names each field by the same path the form uses ("lines.0.quantity"), checked by fieldOf.
         // Focus goes to the first, which also scrolls it into view: on a phone it can be a screen away.
-        const name = fieldOf(problem) as Parameters<typeof form.setError>[0]
-        form.setError(name, { type: 'server', message: problem.msg }, { shouldFocus: i === 0 })
+        const name = fieldOf(problem) as Parameters<typeof form.setFocus>[0]
+        form.setError(name, { type: 'server', message: problem.msg })
+        if (i === 0) focusAfterSending.current = name
       })
       // Beside the button too, where the person who pressed it is looking.
       const summary = placed.length === 1 ? 'One problem is marked above.' : `${placed.length} problems are marked above.`
@@ -141,6 +145,11 @@ export function OrderForm({
   // Leaving with changes not saved asks first: a link, Back, or closing the tab, and also while
   // the order is still being sent, when it is not yet known whether it will be saved.
   const { isDirty, isSubmitting } = form.formState
+  useEffect(() => {
+    if (isSubmitting || !focusAfterSending.current) return
+    form.setFocus(focusAfterSending.current)
+    focusAfterSending.current = null
+  }, [isSubmitting, form])
   const leaving = useBlocker({
     shouldBlockFn: () => isDirty && !saved.current,
     enableBeforeUnload: () => isDirty && !saved.current,
@@ -153,221 +162,225 @@ export function OrderForm({
 
   return (
     <form onSubmit={(event) => void form.handleSubmit(onSubmit)(event)} noValidate className="grid gap-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Order</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <FieldGroup className="grid gap-4 md:grid-cols-3">
-            <Controller
-              control={form.control}
-              name="customer_id"
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="customer">Customer</FieldLabel>
-                  {customers.isError ? (
-                    <LookupRetry what="customers" onRetry={() => void customers.refetch()} />
-                  ) : (
-                    <Combobox
-                      ref={field.ref}
-                      describedBy={describedBy('customer', fieldState.invalid)}
-                      id="customer"
-                      value={field.value || undefined}
-                      options={customerOptions}
-                      onChange={field.onChange}
-                      placeholder="Choose a customer"
-                      searchPlaceholder="Search customers"
-                      empty="No customer matches."
-                      invalid={fieldState.invalid}
-                      loading={customers.isPending}
-                    />
-                  )}
-                  <FieldError id={errorId('customer')} errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-            <Controller
-              control={form.control}
-              name="shipper_id"
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="shipper">Shipper</FieldLabel>
-                  {shippers.isError ? (
-                    <LookupRetry what="shippers" onRetry={() => void shippers.refetch()} />
-                  ) : (
-                    <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
-                      <SelectTrigger
-                        ref={field.ref}
-                        id="shipper"
-                        className="w-full"
-                        aria-invalid={fieldState.invalid}
-                        aria-describedby={describedBy('shipper', fieldState.invalid)}
-                      >
-                        <SelectValue placeholder={shippers.isPending ? 'Loading…' : 'Choose a shipper'} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {shippers.data?.map((s) => (
-                          <SelectItem key={s.shipper_id} value={String(s.shipper_id)}>
-                            {s.company_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  <FieldError id={errorId('shipper')} errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-            <Controller
-              control={form.control}
-              name="required_date"
-              render={({ field, fieldState }) => (
-                <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel htmlFor="required_date">Required by</FieldLabel>
-                  <DayPicker
-                    ref={field.ref}
-                    id="required_date"
-                    value={field.value}
-                    onChange={field.onChange}
-                    first={today}
-                    last={addDays(today, LATEST_REQUIRED_DAYS)}
-                    invalid={fieldState.invalid}
-                  />
-                  <FieldError id={errorId('required_date')} errors={[fieldState.error]} />
-                </Field>
-              )}
-            />
-          </FieldGroup>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Lines</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4">
-          {products.isError && <LookupRetry what="products" onRetry={() => void products.refetch()} />}
-          {lines.fields.map((line, i) => {
-            const value = watched?.[i]
-            const product = value ? byId.get(value.product_id) : undefined
-            const total =
-              product && value && Number.isInteger(value.quantity) && Number.isInteger(value.discount_pct)
-                ? lineTotalCents(product.unit_price_cents, value.quantity, value.discount_pct)
-                : null
-            const errors = form.formState.errors.lines?.[i]
-            return (
-              <fieldset
-                key={line.id}
-                aria-label={`Line ${i + 1}`}
-                className="grid gap-3 border-b pb-4 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_6rem_6rem_7rem_auto] sm:items-start"
-              >
-                <Controller
-                  control={form.control}
-                  name={`lines.${i}.product_id`}
-                  render={({ field, fieldState }) => (
-                    <Field data-invalid={fieldState.invalid}>
-                      <FieldLabel htmlFor={`line-${i}-product`} className={i > 0 ? 'sm:sr-only' : ''}>
-                        Product
-                      </FieldLabel>
+      {/* Nothing can change while the order is on its way: a change made then would be lost when
+          the saved order opens. */}
+      <fieldset disabled={isSubmitting} className="contents">
+        <Card>
+          <CardHeader>
+            <CardTitle>Order</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <FieldGroup className="grid gap-4 md:grid-cols-3">
+              <Controller
+                control={form.control}
+                name="customer_id"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="customer">Customer</FieldLabel>
+                    {customers.isError ? (
+                      <LookupRetry what="customers" onRetry={() => void customers.refetch()} />
+                    ) : (
                       <Combobox
                         ref={field.ref}
-                        describedBy={describedBy(`line-${i}-product`, fieldState.invalid)}
-                        id={`line-${i}-product`}
-                        value={field.value ? String(field.value) : undefined}
-                        options={productOptions}
-                        onChange={(v) => field.onChange(Number(v))}
-                        placeholder="Choose a product"
-                        searchPlaceholder="Search products"
-                        empty="No product matches."
+                        describedBy={describedBy('customer', fieldState.invalid)}
+                        id="customer"
+                        value={field.value || undefined}
+                        options={customerOptions}
+                        onChange={field.onChange}
+                        placeholder="Choose a customer"
+                        searchPlaceholder="Search customers"
+                        empty="No customer matches."
                         invalid={fieldState.invalid}
-                        loading={products.isPending}
+                        loading={customers.isPending}
                       />
-                      {product && (
-                        <p className="text-xs text-muted-foreground">
-                          {formatMoney(product.unit_price_cents)} · {product.quantity_per_unit}
-                        </p>
-                      )}
-                      <FieldError id={errorId(`line-${i}-product`)} errors={[fieldState.error]} />
-                    </Field>
-                  )}
-                />
-                <Field data-invalid={Boolean(errors?.quantity)}>
-                  <FieldLabel htmlFor={`line-${i}-quantity`} className={i > 0 ? 'sm:sr-only' : ''}>
-                    Quantity
-                  </FieldLabel>
-                  <Input
-                    id={`line-${i}-quantity`}
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    aria-invalid={Boolean(errors?.quantity)}
-                    aria-describedby={describedBy(`line-${i}-quantity`, Boolean(errors?.quantity))}
-                    {...form.register(`lines.${i}.quantity`, { valueAsNumber: true })}
-                  />
-                  <FieldError id={errorId(`line-${i}-quantity`)} errors={[errors?.quantity]} />
-                </Field>
-                <Field data-invalid={Boolean(errors?.discount_pct)}>
-                  <FieldLabel htmlFor={`line-${i}-discount`} className={i > 0 ? 'sm:sr-only' : ''}>
-                    Discount %
-                  </FieldLabel>
-                  <Input
-                    id={`line-${i}-discount`}
-                    type="number"
-                    inputMode="numeric"
-                    min={0}
-                    max={MAX_DISCOUNT}
-                    aria-invalid={Boolean(errors?.discount_pct)}
-                    aria-describedby={describedBy(`line-${i}-discount`, Boolean(errors?.discount_pct))}
-                    {...form.register(`lines.${i}.discount_pct`, { valueAsNumber: true })}
-                  />
-                  <FieldError id={errorId(`line-${i}-discount`)} errors={[errors?.discount_pct]} />
-                </Field>
-                <div className="grid gap-2">
-                  <span className={`text-sm font-medium ${i > 0 ? 'sm:sr-only' : ''}`}>Line total</span>
-                  <span className="text-sm tabular-nums sm:pt-2 sm:text-right">{total === null ? '—' : formatMoney(total)}</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className={i === 0 ? 'sm:mt-6' : ''}
-                  aria-label={`Remove line ${i + 1}`}
-                  disabled={lines.fields.length === 1}
-                  onClick={() => lines.remove(i)}
+                    )}
+                    <FieldError id={errorId('customer')} errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+              <Controller
+                control={form.control}
+                name="shipper_id"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="shipper">Shipper</FieldLabel>
+                    {shippers.isError ? (
+                      <LookupRetry what="shippers" onRetry={() => void shippers.refetch()} />
+                    ) : (
+                      <Select value={field.value ? String(field.value) : ''} onValueChange={(v) => field.onChange(Number(v))}>
+                        <SelectTrigger
+                          ref={field.ref}
+                          id="shipper"
+                          className="w-full"
+                          aria-invalid={fieldState.invalid}
+                          aria-describedby={describedBy('shipper', fieldState.invalid)}
+                        >
+                          <SelectValue placeholder={shippers.isPending ? 'Loading…' : 'Choose a shipper'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {shippers.data?.map((s) => (
+                            <SelectItem key={s.shipper_id} value={String(s.shipper_id)}>
+                              {s.company_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <FieldError id={errorId('shipper')} errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+              <Controller
+                control={form.control}
+                name="required_date"
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor="required_date">Required by</FieldLabel>
+                    <DayPicker
+                      ref={field.ref}
+                      id="required_date"
+                      value={field.value}
+                      onChange={field.onChange}
+                      first={today}
+                      last={addDays(today, LATEST_REQUIRED_DAYS)}
+                      invalid={fieldState.invalid}
+                    />
+                    <FieldError id={errorId('required_date')} errors={[fieldState.error]} />
+                  </Field>
+                )}
+              />
+            </FieldGroup>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Lines</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4">
+            {products.isError && <LookupRetry what="products" onRetry={() => void products.refetch()} />}
+            {lines.fields.map((line, i) => {
+              const value = watched?.[i]
+              const product = value ? byId.get(value.product_id) : undefined
+              const total =
+                product && value && Number.isInteger(value.quantity) && Number.isInteger(value.discount_pct)
+                  ? lineTotalCents(product.unit_price_cents, value.quantity, value.discount_pct)
+                  : null
+              const errors = form.formState.errors.lines?.[i]
+              return (
+                <fieldset
+                  key={line.id}
+                  aria-label={`Line ${i + 1}`}
+                  className="grid gap-3 border-b pb-4 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_6rem_6rem_7rem_auto] sm:items-start"
                 >
-                  <Trash2 />
-                </Button>
-              </fieldset>
-            )
-          })}
-          {/* An alert, so it is announced: no single field's description points to it. */}
-          {linesError && (
-            <p role="alert" className="text-sm text-destructive">
-              {linesError}
+                  <Controller
+                    control={form.control}
+                    name={`lines.${i}.product_id`}
+                    render={({ field, fieldState }) => (
+                      <Field data-invalid={fieldState.invalid}>
+                        <FieldLabel htmlFor={`line-${i}-product`} className={i > 0 ? 'sm:sr-only' : ''}>
+                          Product
+                        </FieldLabel>
+                        <Combobox
+                          ref={field.ref}
+                          describedBy={describedBy(`line-${i}-product`, fieldState.invalid)}
+                          id={`line-${i}-product`}
+                          value={field.value ? String(field.value) : undefined}
+                          options={productOptions}
+                          onChange={(v) => field.onChange(Number(v))}
+                          placeholder="Choose a product"
+                          searchPlaceholder="Search products"
+                          empty="No product matches."
+                          invalid={fieldState.invalid}
+                          loading={products.isPending}
+                        />
+                        {product && (
+                          <p className="text-xs text-muted-foreground">
+                            {formatMoney(product.unit_price_cents)} · {product.quantity_per_unit}
+                          </p>
+                        )}
+                        <FieldError id={errorId(`line-${i}-product`)} errors={[fieldState.error]} />
+                      </Field>
+                    )}
+                  />
+                  <Field data-invalid={Boolean(errors?.quantity)}>
+                    <FieldLabel htmlFor={`line-${i}-quantity`} className={i > 0 ? 'sm:sr-only' : ''}>
+                      Quantity
+                    </FieldLabel>
+                    <Input
+                      id={`line-${i}-quantity`}
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      aria-invalid={Boolean(errors?.quantity)}
+                      aria-describedby={describedBy(`line-${i}-quantity`, Boolean(errors?.quantity))}
+                      {...form.register(`lines.${i}.quantity`, { valueAsNumber: true })}
+                    />
+                    <FieldError id={errorId(`line-${i}-quantity`)} errors={[errors?.quantity]} />
+                  </Field>
+                  <Field data-invalid={Boolean(errors?.discount_pct)}>
+                    <FieldLabel htmlFor={`line-${i}-discount`} className={i > 0 ? 'sm:sr-only' : ''}>
+                      Discount %
+                    </FieldLabel>
+                    <Input
+                      id={`line-${i}-discount`}
+                      type="number"
+                      inputMode="numeric"
+                      min={0}
+                      max={MAX_DISCOUNT}
+                      aria-invalid={Boolean(errors?.discount_pct)}
+                      aria-describedby={describedBy(`line-${i}-discount`, Boolean(errors?.discount_pct))}
+                      {...form.register(`lines.${i}.discount_pct`, { valueAsNumber: true })}
+                    />
+                    <FieldError id={errorId(`line-${i}-discount`)} errors={[errors?.discount_pct]} />
+                  </Field>
+                  <div className="grid gap-2">
+                    <span className={`text-sm font-medium ${i > 0 ? 'sm:sr-only' : ''}`}>Line total</span>
+                    <span className="text-sm tabular-nums sm:pt-2 sm:text-right">{total === null ? '—' : formatMoney(total)}</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className={i === 0 ? 'sm:mt-6' : ''}
+                    aria-label={`Remove line ${i + 1}`}
+                    disabled={lines.fields.length === 1}
+                    onClick={() => lines.remove(i)}
+                  >
+                    <Trash2 />
+                  </Button>
+                </fieldset>
+              )
+            })}
+            {/* An alert, so it is announced: no single field's description points to it. */}
+            {linesError && (
+              <p role="alert" className="text-sm text-destructive">
+                {linesError}
+              </p>
+            )}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={lines.fields.length >= MAX_LINES}
+                onClick={() => lines.append(NEW_LINE)}
+              >
+                <Plus />
+                Add a line
+              </Button>
+              <p className="text-sm tabular-nums">
+                <span className="text-muted-foreground">Subtotal </span>
+                <span className="font-semibold">{formatMoney(subtotal)}</span>
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Prices are the products’ current prices. Freight is free, and the order ships to the customer’s address.
+              The order takes its products from stock, which Northwind’s own orders never did, and the stock comes back
+              when it is cancelled or when the site resets every night.
             </p>
-          )}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={lines.fields.length >= MAX_LINES}
-              onClick={() => lines.append(NEW_LINE)}
-            >
-              <Plus />
-              Add a line
-            </Button>
-            <p className="text-sm tabular-nums">
-              <span className="text-muted-foreground">Subtotal </span>
-              <span className="font-semibold">{formatMoney(subtotal)}</span>
-            </p>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Prices are the products’ current prices. Freight is free, and the order ships to the customer’s address.
-            The order takes its products from stock, which Northwind’s own orders never did, and the stock comes back
-            when it is cancelled or when the site resets every night.
-          </p>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </fieldset>
 
       {rootError && (
         <Alert ref={problem} tabIndex={-1} variant="destructive" className="outline-none">

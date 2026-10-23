@@ -8,6 +8,9 @@ export function setDocumentTitle(title: string | null | undefined) {
   document.title = text ? `${text} · ${SITE}` : SITE
 }
 
-export function useDocumentTitle(title: string) {
-  useEffect(() => setDocumentTitle(title), [title])
+/** Names the tab after `title`; undefined leaves the tab to the page's own heading. */
+export function useDocumentTitle(title: string | undefined) {
+  useEffect(() => {
+    if (title !== undefined) setDocumentTitle(title)
+  }, [title])
 }
