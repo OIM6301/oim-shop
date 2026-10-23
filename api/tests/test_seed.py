@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -23,11 +24,13 @@ def test_migrate_sets_the_schema_version_once(tmp_path: Path) -> None:
     assert one(conn, "PRAGMA user_version")[0] == version
 
 
-def test_loads_only_orders_placed_by_now(conn: sqlite3.Connection) -> None:
-    assert one(conn, "SELECT COUNT(*) FROM orders") == (15_315,)
+def test_loads_every_order(conn: sqlite3.Connection) -> None:
+    assert one(conn, "SELECT COUNT(*) FROM orders") == (16_282,)
+    assert one(conn, "SELECT COUNT(*) FROM order_lines") == (609_283,)
+    # The last order oim-api will list, on 2027-06-30.
     assert one(conn, "SELECT order_id, order_date FROM orders ORDER BY order_date DESC LIMIT 1") == (
-        21646,
-        "2026-10-22T14:59:35",
+        13724,
+        "2027-06-30T00:09:48",
     )
 
 
@@ -44,17 +47,35 @@ def test_shifts_dates_by_the_clock(conn: sqlite3.Connection) -> None:
     )
     # Steven Buchanan, hired 2013-10-17; oim-api serves 2017-06-19.
     assert one(conn, "SELECT hire_date FROM employees WHERE employee_id = 5") == ("2017-06-19T00:00:00",)
+    # Order 21646 shipped 2023-03-09 19:21:55 as published; it is stored on the shifted clock too.
+    assert one(conn, "SELECT shipped_date FROM orders WHERE order_id = 21646") == ("2026-11-09T19:21:55",)
 
 
-def test_a_shipped_date_after_now_loads_as_null(conn: sqlite3.Connection) -> None:
-    assert one(conn, "SELECT shipped_date FROM orders WHERE order_id = 21646") == (None,)
-    later = one(conn, "SELECT COUNT(*) FROM orders WHERE shipped_date > ?", NOW.isoformat())
-    assert later == (0,)
+def test_visible_orders_are_those_placed_by_now(conn: sqlite3.Connection) -> None:
+    db.as_of(conn, NOW)
+    assert one(conn, "SELECT COUNT(*) FROM visible_orders") == (15_315,)
+    assert one(conn, "SELECT order_id, order_date FROM visible_orders ORDER BY order_date DESC LIMIT 1") == (
+        21646,
+        "2026-10-22T14:59:35",
+    )
 
 
-def test_loads_lines_only_for_loaded_orders(conn: sqlite3.Connection) -> None:
-    orphans = one(conn, "SELECT COUNT(*) FROM order_lines WHERE order_id NOT IN (SELECT order_id FROM orders)")
-    assert orphans == (0,)
+def test_a_shipped_date_after_now_is_not_visible(conn: sqlite3.Connection) -> None:
+    db.as_of(conn, NOW)
+    assert one(conn, "SELECT shipped_date FROM visible_orders WHERE order_id = 21646") == (None,)
+    assert one(conn, "SELECT COUNT(*) FROM visible_orders WHERE shipped_date > ?", NOW.isoformat()) == (0,)
+
+
+def test_a_later_moment_shows_more_orders_and_shipments(conn: sqlite3.Connection) -> None:
+    db.as_of(conn, NOW + timedelta(days=30))
+    later = one(conn, "SELECT COUNT(*) FROM visible_orders")[0]
+    assert isinstance(later, int) and later > 15_315
+    assert one(conn, "SELECT shipped_date FROM visible_orders WHERE order_id = 21646") == ("2026-11-09T19:21:55",)
+
+
+def test_every_order_has_its_lines(conn: sqlite3.Connection) -> None:
+    lineless = one(conn, "SELECT COUNT(*) FROM orders WHERE line_count = 0")
+    assert lineless == (0,)
     assert one(conn, "SELECT line_count FROM orders WHERE order_id = 21646") == (6,)
     assert one(conn, "SELECT COUNT(*) FROM order_lines WHERE order_id = 21646") == (6,)
 
@@ -81,7 +102,7 @@ def test_order_totals_match_their_lines(conn: sqlite3.Connection) -> None:
 
 def test_refuses_to_load_into_a_database_with_orders(conn: sqlite3.Connection) -> None:
     with pytest.raises(seed.AlreadyLoadedError):
-        seed.load(conn, SEED_DIR, NOW)
+        seed.load(conn, SEED_DIR)
 
 
 def test_a_failed_migration_leaves_no_trace(tmp_path: Path) -> None:
@@ -104,7 +125,7 @@ def test_loading_streams_the_lines(tmp_path: Path) -> None:
     conn = db.connect(tmp_path / "shop.db")
     db.migrate(conn)
     tracemalloc.start()
-    seed.load(conn, SEED_DIR, NOW)
+    seed.load(conn, SEED_DIR)
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
     assert peak < 40 * 1024 * 1024, f"peak {peak / 1024 / 1024:.0f} MB"

@@ -14,7 +14,7 @@ ORDER = """
            o.employee_id, e.first_name || ' ' || e.last_name AS employee_name,
            o.order_date, o.required_date, o.shipped_date, s.company_name AS shipper,
            o.ship_city, o.ship_country, o.freight_cents, o.line_count, o.total_cents
-    FROM orders o
+    FROM visible_orders o
     JOIN customers c ON c.customer_id = o.customer_id
     JOIN employees e ON e.employee_id = o.employee_id
     LEFT JOIN shippers s ON s.shipper_id = o.shipper_id
@@ -63,7 +63,7 @@ def orders(
     items, pagination = page_of(
         conn,
         select=ORDER,
-        count="SELECT COUNT(*) FROM orders o",
+        count="SELECT COUNT(*) FROM visible_orders o",
         where=where,
         params=params,
         order_by=f"{SORT[sort]} {order}, o.order_id {order}",

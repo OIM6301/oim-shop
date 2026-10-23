@@ -12,7 +12,7 @@ EMPLOYEE = """
            COUNT(o.order_id) AS order_count,
            COALESCE(SUM(o.total_cents), 0) AS revenue_cents
     FROM employees e
-    LEFT JOIN orders o ON o.employee_id = e.employee_id
+    LEFT JOIN visible_orders o ON o.employee_id = e.employee_id
 """
 
 
@@ -30,7 +30,7 @@ def employee(conn: Conn, employee_id: int) -> EmployeeDetail:
         conn,
         """
         SELECT substr(order_date, 1, 7) AS month, COUNT(*) AS order_count, SUM(total_cents) AS revenue_cents
-        FROM orders WHERE employee_id = ? GROUP BY 1 ORDER BY 1
+        FROM visible_orders WHERE employee_id = ? GROUP BY 1 ORDER BY 1
         """,
         [employee_id],
     )

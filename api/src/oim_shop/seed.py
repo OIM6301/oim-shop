@@ -1,15 +1,14 @@
 """Loading data/seed into an empty database.
 
-Dates move onto the shop's clock (see clock.py) and only orders placed by `now`
-are kept: the rest arrive later through sync, as they do in oim-api. A shipped
-date later than `now` loads as null, the same rule oim-api applies.
+Every order is loaded, with every date moved onto the shop's clock (see clock.py).
+Which orders exist "now", and whether they have shipped, is decided when they are
+read: see db.as_of.
 """
 
 import csv
 import gzip
 import sqlite3
 from collections.abc import Iterable, Iterator
-from datetime import datetime
 from pathlib import Path
 
 from oim_shop.clock import shift
@@ -49,25 +48,21 @@ def columns_of(seed_dir: Path, table: str) -> list[str]:
         return next(csv.reader(f))
 
 
-def load(conn: sqlite3.Connection, seed_dir: Path, now: datetime) -> int:
+def load(conn: sqlite3.Connection, seed_dir: Path) -> int:
     """Load the seed in one transaction and return the number of orders loaded."""
     if conn.execute("SELECT EXISTS (SELECT 1 FROM orders)").fetchone()[0]:
         raise AlreadyLoadedError
-    cutoff = now.isoformat()
-    loaded: set[object] = set()
+    loaded = 0
 
     def orders() -> Iterator[dict[str, object]]:
+        nonlocal loaded
         for row in read(seed_dir, "orders"):
-            order_date = shift(str(row["order_date"]))
-            if order_date > cutoff:
-                continue
-            shipped = shift(str(row["shipped_date"])) if row["shipped_date"] else None
-            loaded.add(row["order_id"])
+            loaded += 1
             yield {
                 **row,
-                "order_date": order_date,
+                "order_date": shift(str(row["order_date"])),
                 "required_date": shift(str(row["required_date"])) if row["required_date"] else None,
-                "shipped_date": shipped if shipped is not None and shipped <= cutoff else None,
+                "shipped_date": shift(str(row["shipped_date"])) if row["shipped_date"] else None,
                 "source": "seed",
             }
 
@@ -80,14 +75,13 @@ def load(conn: sqlite3.Connection, seed_dir: Path, now: datetime) -> int:
                 rows = ({**row, "hire_date": shift(str(row["hire_date"]))} for row in rows)
             insert(conn, table, columns_of(seed_dir, table), rows)
         insert(conn, "orders", [*columns_of(seed_dir, "orders"), "source"], orders())
-        lines = (row for row in read(seed_dir, "order_lines") if row["order_id"] in loaded)
-        insert(conn, "order_lines", columns_of(seed_dir, "order_lines"), lines)
+        insert(conn, "order_lines", columns_of(seed_dir, "order_lines"), read(seed_dir, "order_lines"))
         update_totals(conn)
         conn.commit()
     except BaseException:
         conn.rollback()
         raise
-    return len(loaded)
+    return loaded
 
 
 def update_totals(conn: sqlite3.Connection, order_ids: list[int] | None = None) -> None:

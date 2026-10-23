@@ -1,9 +1,0 @@
-# Pulls new orders from oim-api into the running container's database.
-[Unit]
-Description=oim-shop sync from oim-api
-Requires=oim-shop.service
-After=oim-shop.service
-
-[Service]
-Type=oneshot
-ExecStart=/usr/bin/podman exec oim-shop oim-shop sync

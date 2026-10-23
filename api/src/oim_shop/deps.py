@@ -14,9 +14,11 @@ from oim_shop.models import Pagination
 
 
 def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
-    """One connection per request, closed when the response is sent."""
+    """One connection per request, closed when the response is sent, with orders as of now."""
     path: Path = request.app.state.db_path
+    now: Callable[[], datetime] = request.app.state.now
     conn = db.connect(path)
+    db.as_of(conn, now())
     try:
         yield conn
     finally:

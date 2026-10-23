@@ -45,7 +45,7 @@ def dashboard(
             conn,
             f"""
             SELECT substr(o.order_date, 1, 7) AS month, COUNT(*) AS order_count, SUM(o.total_cents) AS revenue_cents
-            FROM orders o WHERE {clause} GROUP BY 1
+            FROM visible_orders o WHERE {clause} GROUP BY 1
             """,  # noqa: S608
             params,
         )
@@ -58,7 +58,7 @@ def dashboard(
         conn,
         f"""
         SELECT t.product_id, p.name, SUM(t.quantity) AS quantity, SUM(t.line_total_cents) AS revenue_cents
-        FROM orders o
+        FROM visible_orders o
         JOIN line_totals t ON t.order_id = o.order_id
         JOIN products p ON p.product_id = t.product_id
         WHERE {clause}
@@ -71,7 +71,7 @@ def dashboard(
         f"""
         SELECT o.employee_id, e.first_name || ' ' || e.last_name AS name,
                COUNT(*) AS order_count, SUM(o.total_cents) AS revenue_cents
-        FROM orders o JOIN employees e ON e.employee_id = o.employee_id
+        FROM visible_orders o JOIN employees e ON e.employee_id = o.employee_id
         WHERE {clause}
         GROUP BY o.employee_id ORDER BY revenue_cents DESC, o.employee_id
         """,  # noqa: S608
@@ -81,7 +81,7 @@ def dashboard(
         conn,
         f"""
         SELECT o.ship_country AS country, COUNT(*) AS order_count, SUM(o.total_cents) AS revenue_cents
-        FROM orders o
+        FROM visible_orders o
         WHERE {clause} AND o.ship_country IS NOT NULL
         GROUP BY o.ship_country ORDER BY revenue_cents DESC, o.ship_country
         """,  # noqa: S608

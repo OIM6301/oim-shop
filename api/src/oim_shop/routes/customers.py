@@ -15,7 +15,7 @@ CUSTOMER = """
            COALESCE(SUM(o.total_cents), 0) AS revenue_cents,
            MAX(o.order_date) AS last_order_date
     FROM customers c
-    LEFT JOIN orders o ON o.customer_id = c.customer_id
+    LEFT JOIN visible_orders o ON o.customer_id = c.customer_id
 """
 SORT = {
     "company_name": "c.company_name",
@@ -71,5 +71,5 @@ def customer(conn: Conn, customer_id: str) -> Customer:
 @router.get("/countries", tags=["orders"])
 def countries(conn: Conn) -> list[str]:
     """Every country orders have shipped to, for filtering orders."""
-    found = rows(conn, "SELECT DISTINCT ship_country FROM orders WHERE ship_country IS NOT NULL ORDER BY 1")
+    found = rows(conn, "SELECT DISTINCT ship_country FROM visible_orders WHERE ship_country IS NOT NULL ORDER BY 1")
     return [r["ship_country"] for r in found]

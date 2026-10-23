@@ -1,8 +1,8 @@
 """The shop's clock.
 
 oim-api moves every Northwind date forward by CLOCK_SHIFT_DAYS so that orders keep
-arriving until 2027-06-30, and lists only orders placed by now, Boston time. The
-seed is loaded on the same clock, and sync stops if oim-api reports another shift.
+arriving until 2027-06-30, and lists only orders placed by now, Boston time. This
+app loads the seed on the same clock and shows the same orders at the same moment.
 """
 
 from datetime import datetime, timedelta

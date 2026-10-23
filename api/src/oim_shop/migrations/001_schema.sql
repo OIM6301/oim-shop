@@ -52,8 +52,9 @@ CREATE TABLE shippers (
 
 -- total_cents and line_count are stored so that reports over 16,000 orders
 -- never have to read 609,000 lines. They are set from line_totals below.
--- source: 'seed' (loaded from data/seed), 'sync' (pulled from oim-api),
--- 'entered' (taken in this app, from v3).
+-- Every order through 2027-06-30 is here, on the shifted clock; routes read them
+-- through visible_orders (db.as_of), which hides the ones not yet placed.
+-- source: 'seed' (loaded from data/seed) or 'entered' (taken in this app, from v3).
 CREATE TABLE orders (
     order_id      INTEGER PRIMARY KEY,
     customer_id   TEXT NOT NULL REFERENCES customers,
@@ -67,7 +68,7 @@ CREATE TABLE orders (
     ship_country  TEXT,
     total_cents   INTEGER NOT NULL DEFAULT 0,
     line_count    INTEGER NOT NULL DEFAULT 0,
-    source        TEXT NOT NULL CHECK (source IN ('seed', 'sync', 'entered'))
+    source        TEXT NOT NULL CHECK (source IN ('seed', 'entered'))
 ) STRICT;
 
 CREATE INDEX orders_by_date ON orders (order_date);
