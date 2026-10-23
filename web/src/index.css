@@ -63,7 +63,9 @@
     --muted-foreground: oklch(0.556 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
+    /* Darker than shadcn's 0.577: on its own 10% tint, as in a destructive badge, that red was
+       3.99:1, under WCAG AA's 4.5:1 for small text. This one is 4.87:1 there and 5.85:1 on white. */
+    --destructive: oklch(0.53 0.22 27.325);
     --border: oklch(0.922 0 0);
     --input: oklch(0.922 0 0);
     --ring: oklch(0.556 0 0);
