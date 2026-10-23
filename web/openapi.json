@@ -794,10 +794,264 @@
           }
         }
       }
+    },
+    "/api/auth/login": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Login",
+        "description": "Send the browser to GitHub to sign in, and come back to `next` afterwards.",
+        "operationId": "login_api_auth_login_get",
+        "parameters": [
+          {
+            "name": "next",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 500,
+              "default": "/",
+              "title": "Next"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/callback": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Callback",
+        "description": "Where GitHub sends the browser back. Ends on the page the person came from, or on /sign-in with an error.",
+        "operationId": "callback_api_auth_callback_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Error"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Successful Response"
+          },
+          "503": {
+            "description": "Service Unavailable"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Logout",
+        "operationId": "logout_api_auth_logout_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          }
+        }
+      }
+    },
+    "/api/me": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Me",
+        "description": "Who is signed in in this browser, if anyone.",
+        "operationId": "me_api_me_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Choose Name",
+        "description": "Choose the name you see for yourself. Everyone but you and the managers sees 'Sales rep <your number>'.",
+        "operationId": "choose_name_api_me_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NameChange"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "Account": {
+        "properties": {
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "display_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display Name",
+            "description": "The name this person chose; null until they choose one"
+          },
+          "public_name": {
+            "type": "string",
+            "title": "Public Name",
+            "description": "What everyone else sees, such as 'Sales rep 12'"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "rep",
+              "manager"
+            ],
+            "title": "Role"
+          },
+          "csrf_token": {
+            "type": "string",
+            "title": "Csrf Token",
+            "description": "Send it back as the X-CSRF-Token header with every write"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "display_name",
+          "public_name",
+          "role",
+          "csrf_token"
+        ],
+        "title": "Account"
+      },
       "Category": {
         "properties": {
           "category_id": {
@@ -1225,6 +1479,32 @@
         ],
         "title": "Health"
       },
+      "Me": {
+        "properties": {
+          "sign_in_available": {
+            "type": "boolean",
+            "title": "Sign In Available",
+            "description": "False when the server has no GitHub app set up"
+          },
+          "account": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Account"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when not signed in"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sign_in_available",
+          "account"
+        ],
+        "title": "Me"
+      },
       "MonthRevenue": {
         "properties": {
           "month": {
@@ -1248,6 +1528,23 @@
           "revenue_cents"
         ],
         "title": "MonthRevenue"
+      },
+      "NameChange": {
+        "properties": {
+          "display_name": {
+            "type": "string",
+            "maxLength": 40,
+            "minLength": 1,
+            "pattern": "^[^\\x00-\\x1f\\x7f]+$",
+            "title": "Display Name",
+            "description": "1 to 40 characters on one line; shown only to you and to managers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "display_name"
+        ],
+        "title": "NameChange"
       },
       "Order": {
         "properties": {

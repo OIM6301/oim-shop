@@ -5,7 +5,9 @@ Money is integer cents (`*_cents`) and discounts integer percents (`*_pct`).
 Dates are ISO 8601 text on the shop's clock, Boston time.
 """
 
-from pydantic import BaseModel, Field
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, Field, StringConstraints
 
 
 class Pagination(BaseModel):
@@ -148,3 +150,23 @@ class Dashboard(BaseModel):
     top_products: list[ProductRevenue] = Field(description="The 10 products with the most revenue")
     by_employee: list[EmployeeRevenue]
     by_country: list[CountryRevenue]
+
+
+class Account(BaseModel):
+    employee_id: int
+    display_name: str | None = Field(description="The name this person chose; null until they choose one")
+    public_name: str = Field(description="What everyone else sees, such as 'Sales rep 12'")
+    role: Literal["rep", "manager"]
+    csrf_token: str = Field(description="Send it back as the X-CSRF-Token header with every write")
+
+
+class Me(BaseModel):
+    sign_in_available: bool = Field(description="False when the server has no GitHub app set up")
+    account: Account | None = Field(description="Null when not signed in")
+
+
+class NameChange(BaseModel):
+    display_name: Annotated[
+        str,
+        StringConstraints(strip_whitespace=True, min_length=1, max_length=40, pattern=r"^[^\x00-\x1f\x7f]+$"),
+    ] = Field(description="1 to 40 characters on one line; shown only to you and to managers")

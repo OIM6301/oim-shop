@@ -11,10 +11,11 @@ import anyio.to_thread
 from fastapi import APIRouter, FastAPI
 
 from oim_shop import clock
+from oim_shop.accounts import SignIn
 from oim_shop.deps import Conn
 from oim_shop.limits import RateLimit, cache_headers
 from oim_shop.models import Health
-from oim_shop.routes import customers, dashboard, employees, orders, products
+from oim_shop.routes import auth, customers, dashboard, employees, orders, products
 from oim_shop.routes.dashboard import MinuteCache
 from oim_shop.web import web_router
 
@@ -32,6 +33,8 @@ def create_app(
     dashboards_waiting: int = 8,
     monotonic: Callable[[], float] = time.monotonic,
     web_dist: Path | None = None,
+    # GitHub and the allowlist; without them, no one can sign in and the app is read-only.
+    sign_in: SignIn | None = None,
 ) -> FastAPI:
     """Build the app over the database at db_path, and serve web_dist's build if given.
 
@@ -55,6 +58,7 @@ def create_app(
     )
     app.state.db_path = db_path
     app.state.now = now
+    app.state.sign_in = sign_in
     app.middleware("http")(cache_headers)
     app.state.dashboard_cache = MinuteCache()
     app.state.dashboards_waiting = dashboards_waiting
@@ -73,7 +77,7 @@ def create_app(
         conn.execute("SELECT 1").fetchone()
         return Health(status="ok")
 
-    for module in (products, customers, orders, employees, dashboard):
+    for module in (products, customers, orders, employees, dashboard, auth):
         api.include_router(module.router)
     app.include_router(api)
     if web_dist is not None:

@@ -8,6 +8,11 @@ Settings come from the environment:
     OIM_SHOP_DB     the SQLite file (default: oim-shop.db in the current directory)
     OIM_SHOP_SEED   the seed directory (default: data/seed in this repository)
     OIM_SHOP_WEB    the built web app (default: web/dist in this repository, if built)
+    OIM_SHOP_PUBLIC_URL  where browsers reach the app (default: http://127.0.0.1:8000)
+    OIM_SHOP_GITHUB_CLIENT_ID, OIM_SHOP_GITHUB_CLIENT_SECRET  the GitHub OAuth app people sign in with
+    OIM_SHOP_ALLOWED_USERS  a file of the GitHub usernames who may sign in (see accounts.py)
+                    Without the last three, no one can sign in. Set all three or none.
+    OIM_SHOP_GITHUB_URL, OIM_SHOP_GITHUB_API_URL  GitHub's addresses; tests point them at a fake
     OIM_SHOP_NOW    a fixed moment such as 2026-10-22T17:00:00 (Boston time, unless it names a zone), used instead of
                     the clock, so tests and screenshots show the same figures every day
 """
@@ -24,8 +29,10 @@ from pathlib import Path
 import uvicorn
 
 from oim_shop import clock, db, seed
+from oim_shop.accounts import SignIn
 from oim_shop.app import create_app
 from oim_shop.deps import FIRST_DAY, LAST_DAY
+from oim_shop.github import GitHub
 
 REPO = Path(__file__).resolve().parents[3]
 REPO_SEED = REPO / "data" / "seed"
@@ -58,6 +65,27 @@ def clock_from_env() -> Callable[[], datetime]:
     return lambda: moment
 
 
+def sign_in_from_env() -> SignIn | None:
+    names = ["OIM_SHOP_GITHUB_CLIENT_ID", "OIM_SHOP_GITHUB_CLIENT_SECRET", "OIM_SHOP_ALLOWED_USERS"]
+    values = [os.environ.get(name, "") for name in names]
+    if not any(values):
+        return None
+    if missing := [name for name, value in zip(names, values, strict=True) if not value]:
+        raise SystemExit(f"Signing in needs {', '.join(names)}; {', '.join(missing)} is not set")
+    client_id, client_secret, allowlist = values
+    defaults = GitHub(client_id, client_secret)
+    return SignIn(
+        github=GitHub(
+            client_id,
+            client_secret,
+            web_url=os.environ.get("OIM_SHOP_GITHUB_URL", defaults.web_url),
+            api_url=os.environ.get("OIM_SHOP_GITHUB_API_URL", defaults.api_url),
+        ),
+        allowlist=Path(allowlist),
+        public_url=os.environ.get("OIM_SHOP_PUBLIC_URL", "http://127.0.0.1:8000"),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="oim-shop", description="Northwind Traders' sales system")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -83,10 +111,13 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     conn.close()
     now = clock_from_env()
+    sign_in = sign_in_from_env()
+    if sign_in is None:
+        print("Signing in is not set up, so the app is read-only. See .env.example to set it up.")
     web = Path(os.environ.get("OIM_SHOP_WEB", REPO_WEB))
     if not (web / "index.html").is_file():
         print(f"No web build at {web}; serving the API only. Build it with: npm --prefix web run build")
-    app = create_app(db_path, now=now, web_dist=web if (web / "index.html").is_file() else None)
+    app = create_app(db_path, now=now, web_dist=web if (web / "index.html").is_file() else None, sign_in=sign_in)
     uvicorn.run(app, host=args.host, port=args.port, proxy_headers=True)
     return 0
 

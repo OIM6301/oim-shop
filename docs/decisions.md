@@ -32,6 +32,20 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **No response is cached.** In v2, a route whose answer was the same for every visitor let browsers keep it for a minute. Since v3, a rep can enter an order at any moment, and a list kept for a minute would leave it out, so every API response is `no-store` ([limits.py](../api/src/oim_shop/limits.py)). Cloudflare never cached these responses anyway; the dashboard's own cache, above, is what keeps the server's work in bounds.
 
+## Signing in
+
+**Only the people on a list.** Anyone with a GitHub account could otherwise sign in and enter orders. The server reads a file of GitHub usernames, one per line, at every sign-in, so adding or removing someone takes effect without a restart. A word after a username, `manager`, makes that person a manager. The file stays on the server and never goes into git.
+
+**GitHub's id, and nothing else.** GitHub tells the app a person's id, username, name and email. The app keeps the id, which never changes, and forgets the rest, along with the token GitHub gave it. It asks for no scope, so GitHub shows nothing to approve beyond reading a public profile.
+
+**Your name is yours.** Every rep appears on public pages as "Sales rep 12", after their employee number. The name you choose is shown only to you and to the managers, so a name you type can never put you on a public page.
+
+**A session is a random token.** The cookie holds 32 random bytes; the database holds only their SHA-256 hash, so a copy of the database cannot be used to sign in. A session lasts a week. The cookie is `HttpOnly`, so no script on the page can read it, and `SameSite=Lax`.
+
+**Every write proves where it comes from.** A browser sends the session cookie with any request to the site, including a form posted from someone else's page. So every write must also carry a second token, which only this app's own pages can read, and the browser's `Origin` header, when it sends one, must be this site.
+
+**Two checks against a forged sign-in.** The `state` value ties GitHub's answer to the browser that asked, and PKCE ties the code GitHub returns to the server that asked for it. Both are kept in a short-lived cookie between the two steps.
+
 ## The web app
 
 **Types come from the API.** `npm run api:types` turns the API's OpenAPI schema into TypeScript types. CI checks that the committed schema matches the API and that the types match the schema, so a field renamed in the API without regenerating them fails CI; regenerate them, and TypeScript points at every place the web app still uses the old name. Either way the change cannot be deployed until the web app follows it.

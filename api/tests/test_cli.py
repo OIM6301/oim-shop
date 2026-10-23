@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from oim_shop.cli import clock_from_env, main, open_database
+from oim_shop.cli import clock_from_env, main, open_database, sign_in_from_env
 
 from .conftest import NOW, SEED_DIR
 
@@ -52,3 +52,46 @@ def test_a_fixed_clock_must_fall_where_the_shop_has_dates(monkeypatch: pytest.Mo
     monkeypatch.setenv("OIM_SHOP_NOW", moment)
     with pytest.raises(SystemExit, match="between 2010 and 2030"):
         clock_from_env()
+
+
+SIGN_IN_ENV = {
+    "OIM_SHOP_GITHUB_CLIENT_ID": "id",
+    "OIM_SHOP_GITHUB_CLIENT_SECRET": "secret",
+    "OIM_SHOP_ALLOWED_USERS": "/srv/allowed-users",
+}
+
+
+def test_sign_in_is_off_without_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name in [*SIGN_IN_ENV, "OIM_SHOP_PUBLIC_URL"]:
+        monkeypatch.delenv(name, raising=False)
+    assert sign_in_from_env() is None
+
+
+def test_sign_in_comes_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name, value in SIGN_IN_ENV.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv("OIM_SHOP_PUBLIC_URL", "https://shop.test")
+    sign_in = sign_in_from_env()
+    assert sign_in is not None
+    assert (sign_in.github.client_id, sign_in.github.client_secret) == ("id", "secret")
+    assert sign_in.github.web_url == "https://github.com"
+    assert str(sign_in.allowlist) == "/srv/allowed-users"
+    assert sign_in.redirect_uri == "https://shop.test/api/auth/callback"
+
+
+def test_the_public_url_defaults_to_the_local_server(monkeypatch: pytest.MonkeyPatch) -> None:
+    for name, value in SIGN_IN_ENV.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv("OIM_SHOP_PUBLIC_URL", raising=False)
+    sign_in = sign_in_from_env()
+    assert sign_in is not None
+    assert sign_in.redirect_uri == "http://127.0.0.1:8000/api/auth/callback"
+
+
+@pytest.mark.parametrize("missing", list(SIGN_IN_ENV))
+def test_half_the_sign_in_settings_is_an_error(monkeypatch: pytest.MonkeyPatch, missing: str) -> None:
+    for name, value in SIGN_IN_ENV.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.delenv(missing)
+    with pytest.raises(SystemExit, match=missing):
+        sign_in_from_env()
