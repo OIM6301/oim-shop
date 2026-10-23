@@ -59,7 +59,7 @@ The app's own API and database, and a web interface built to the frontend stack 
 - **Customers**: list with search; detail with the customer's order history and totals.
 - **Orders**: list with filters (customer, employee, country, date range); detail with lines and totals.
 - **Employees**: list, reporting hierarchy, each employee's sales.
-- **Sync**: a command that pulls new orders from `oim-api` incrementally; run on a timer.
+- **The shop's clock**: pages show only the orders placed by now, and an order whose shipped date is still ahead shows as not shipped, so the site matches `oim-api` at every moment without fetching from it.
 - `/api/health`, and FastAPI's generated API docs page.
 
 Acceptance: every page meets §9; dashboard figures match an independent SQL query in the tests; a fresh clone runs locally from the README in at most three commands.
@@ -87,10 +87,10 @@ Each comes from a field already in the Northwind data.
 ## 7. Data
 
 - **Source**: Northwind Traders, the expanded build at [jpwhite3/northwind-SQLite3](https://github.com/jpwhite3/northwind-SQLite3) (MIT, copyright JP White) of Microsoft's Northwind sample in [microsoft/sql-server-samples](https://github.com/microsoft/sql-server-samples) (MIT, copyright Microsoft Corporation). The repository ships seed data from it with both copyright notices, so it runs without `oim-api`.
-- **oim-api** (`https://oim.zhili.dev/shop`) serves the same data on a shifted clock: dates are moved forward so that orders keep "arriving" until 2027-06-30, and only orders placed by now are listed. `/shop` returns the shift in days as `clock_shift_days`. `/shop/products` and `/shop/customers` take `name`, part of the name in any case. `per_page` is capped at 100.
-- **Sync**: the database first loads from the seed, with its dates moved forward by the same number of days as `oim-api`'s clock and only the orders placed by the time of loading. Later runs fetch only orders newer than the latest one stored, with their lines. Respect `oim-api`'s rate limits.
-- **Dependency**: `oim-api` serves employees (`/shop/employees`) and `employee_id` on orders. Employees expose name, title, reports-to, hire date, city and country only; birth date, home address, phone, photo and notes are not served, even though the people are fictional. Search in v1 waits for `name`, and sync waits for `clock_shift_days`.
-- **Simplifications, stated on the site**: synced orders do not reduce stock, only orders entered here do; synced orders carry the shifted clock's dates, entered orders the real date.
+- **oim-api** (`https://oim.zhili.dev/shop`) serves the same data on a shifted clock: dates are moved forward so that orders keep "arriving" until 2027-06-30, and only orders placed by now are listed. `/shop/products` and `/shop/customers` take `name`, part of the name in any case. `per_page` is capped at 100. v1 reads it; v2 does not.
+- **Loading**: on first start, the database loads every order from the seed, through 2027-06-30, with its dates moved forward by the same number of days as `oim-api`'s clock. After that the seeded data never changes: which orders exist, and which have shipped, is decided at the moment they are read.
+- **Employees**: only name, title, reports-to, hire date, city and country are kept, the same columns `oim-api` serves; birth date, home address, phone, photo and notes are left out, even though the people are fictional.
+- **Simplifications, stated on the site**: seeded orders do not reduce stock, only orders entered here do; seeded orders carry the shifted clock's dates, entered orders the real date.
 - **Nightly reset**: orders entered here, and stock, return to their seeded state. Accounts are kept.
 
 ## 8. Architecture
@@ -108,7 +108,7 @@ oim-shop/
 - One origin: `/api/*` is FastAPI, everything else is the built web app. No CORS, simple cookies.
 - Frontend types are generated from FastAPI's OpenAPI schema (`openapi-typescript`), so a contract mismatch fails the build. Forms validate with zod, as the frontend stack in [CLAUDE.md](../CLAUDE.md) specifies.
 - SQLite, because this is an application with writes; DuckDB is for analysis. The README explains the choice.
-- Sync and reset are CLI commands (`oim-shop sync`, `oim-shop reset`) run by systemd timers; the app has no scheduler of its own.
+- The nightly reset (v3) is a CLI command, `oim-shop reset`, run by a systemd timer; the app has no scheduler of its own.
 - Python `>=3.14,<3.15`.
 
 ## 9. Interface quality bar

@@ -43,7 +43,8 @@ Then open <http://127.0.0.1:8000>. The first start creates `oim-shop.db` and loa
 ### What to read in it
 
 - **Why a server.** v1 could only show what oim-api already offers. With its own API, v2 answers questions oim-api does not, such as revenue by employee for any date range, and it decides what each answer looks like.
-- **Why store data that could be fetched.** The dashboard adds up 600,000 order lines. Fetching them from another service on every visit would be slow and would hit that service's rate limit, so v2 keeps its own copy in SQLite and `oim-shop sync` adds new orders every hour ([api/src/oim_shop/sync.py](api/src/oim_shop/sync.py)).
+- **Why keep a copy of the data.** The dashboard adds up 600,000 order lines. Fetching them from oim-api on every visit would be slow and would hit its rate limit, so v2 loads its own copy into SQLite once, from `data/seed`.
+- **The shop's clock.** The copy holds every order through 2027-06-30, and the data itself never changes. Each request sees only the orders placed by that moment, through the `visible_orders` view in [api/src/oim_shop/db.py](api/src/oim_shop/db.py), so new orders appear as time passes, the same ones oim-api lists.
 - **Why SQLite.** DuckDB is built for analysis, which reads many rows to answer one question. This is an application that will also write, an order at a time, from many visitors (v3). SQLite is built for that, and the dashboard's questions are still fast enough on it.
 - **Money in cents.** Prices are stored as integer cents and discounts as integer percents, so every total is exact. A line's total is computed in one place, the `line_totals` view in [the schema](api/src/oim_shop/migrations/001_schema.sql).
 - **One contract for both halves.** The web app's types are generated from the API's OpenAPI schema. Change a field in [api/src/oim_shop/models.py](api/src/oim_shop/models.py) without regenerating them, and the build fails.

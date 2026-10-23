@@ -6,7 +6,7 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **The seed is rebuilt from a public source.** [scripts/build-seed.py](../scripts/build-seed.py) downloads `northwind.db` from jpwhite3/northwind-SQLite3 at a pinned commit and writes the tables v2 reads as gzipped CSV. It stops if the counts and totals differ from the copy oim-api serves (16,282 orders, 609,283 lines, freight of $4,047,470.50), so a different upstream build cannot change the data without anyone noticing.
 
-**Dates stay as published until the app loads them.** Loading moves every date forward by `CLOCK_SHIFT_DAYS`, the same 1,341 days oim-api uses, and keeps only orders placed by now. A shipped date later than now loads as empty, as in oim-api. A fresh database therefore matches what oim-api lists at that moment.
+**Dates stay as published until the app loads them.** Loading moves every date forward by `CLOCK_SHIFT_DAYS`, the same 1,341 days oim-api uses.
 
 **Money is integer cents, and discounts integer percents.** Every price in the data is a whole number of cents and every discount a whole percent, and the seed script checks both. A line's total is `price × quantity × (100 − discount) / 100`, rounded half up in integer arithmetic, computed in one place: the `line_totals` view in [the schema](../api/src/oim_shop/migrations/001_schema.sql). Computing it with floating-point numbers, as oim-api does, gives a different cent on 4 of the 609,283 lines.
 
@@ -14,13 +14,13 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **The seed loads as a stream.** Rows go from the CSV file straight into the database, one at a time. Read into memory first, loading peaked at 215 MB, more than the server gives the app.
 
-## Sync
+## The clock
 
-**New orders are found by date.** Order numbers and dates disagree: the original 830 orders have the lowest numbers but are not the earliest. Asking for "orders with a number above the highest stored" would miss orders, so sync asks oim-api for orders placed from a given day.
+**Every order is loaded once, and time decides which ones show.** The database holds all 16,282 orders, through 2027-06-30, and never changes after the first start. Each request gets a temporary view, `visible_orders` ([db.py](../api/src/oim_shop/db.py)), that hides the orders not yet placed and reads a shipped date still ahead as empty. oim-api applies the same shift to the same data, so the two always list the same orders.
 
-**Sync looks back 45 days every time.** An order ships up to 37 days after it is placed. Looking only for orders newer than the latest stored one would leave every order stored before it shipped marked unshipped forever. Listing the last 45 days costs about two pages of results and updates their shipped dates.
+**No sync.** An earlier version of v2 started from the orders placed so far and pulled new ones from oim-api every hour. That needed a timer on the server, a window that went back 45 days to catch orders shipped since, and a check that both used the same clock. Loading everything and filtering by time gives the same pages with none of that, and the site no longer depends on oim-api while it runs.
 
-**Sync stops if the clocks differ.** It reads `clock_shift_days` from oim-api first. If oim-api ever moves its dates by a different number of days, sync stops with an error, so two clocks never mix in one database.
+**The view is the only way to orders.** Every route reads `visible_orders`, never the `orders` table, so no query can forget the time. "Now" is written into the view as a constant, which lets SQLite still use the index on the order date.
 
 ## The API
 
