@@ -67,7 +67,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -190,6 +192,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Product Id"
             }
           }
@@ -451,7 +455,9 @@
             "schema": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
                 },
                 {
                   "type": "null"
@@ -491,8 +497,10 @@
                   "type": "null"
                 }
               ],
+              "description": "First day included",
               "title": "From"
-            }
+            },
+            "description": "First day included"
           },
           {
             "name": "to",
@@ -508,8 +516,10 @@
                   "type": "null"
                 }
               ],
+              "description": "Last day included",
               "title": "To"
-            }
+            },
+            "description": "Last day included"
           },
           {
             "name": "sort",
@@ -605,6 +615,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Order Id"
             }
           }
@@ -675,6 +687,8 @@
             "required": true,
             "schema": {
               "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
               "title": "Employee Id"
             }
           }
@@ -712,7 +726,7 @@
           "dashboard"
         ],
         "summary": "Dashboard",
-        "description": "Revenue by month, top products, and sales by employee and by country, for one date range.\n\nRevenue is the order lines after discount, without freight.",
+        "description": "Revenue by month, top products, and sales by employee and by country, for one date range.\n\nWithout `from`, the range starts on the first day of the month eleven months ago; without\n`to`, it ends today. Revenue is the order lines after discount, without freight. Orders\ncount to the start of the current minute.",
         "operationId": "dashboard_api_dashboard_get",
         "parameters": [
           {
@@ -729,10 +743,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Default: 11 months before this month",
+              "description": "First day included",
               "title": "From"
             },
-            "description": "Default: 11 months before this month"
+            "description": "First day included"
           },
           {
             "name": "to",
@@ -748,10 +762,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Default: today",
+              "description": "Last day included",
               "title": "To"
             },
-            "description": "Default: today"
+            "description": "Last day included"
           }
         ],
         "responses": {
@@ -764,6 +778,9 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Too many dashboards are waiting; try again shortly"
           },
           "422": {
             "description": "Validation Error",

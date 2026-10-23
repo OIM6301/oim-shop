@@ -71,8 +71,9 @@ async def dashboard(
 ) -> Dashboard:
     """Revenue by month, top products, and sales by employee and by country, for one date range.
 
-    Revenue is the order lines after discount, without freight. Orders count from the start of
-    the current minute.
+    Without `from`, the range starts on the first day of the month eleven months ago; without
+    `to`, it ends today. Revenue is the order lines after discount, without freight. Orders
+    count to the start of the current minute.
     """
     last = to_date or now.date()
     if from_date is None:

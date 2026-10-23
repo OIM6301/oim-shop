@@ -205,7 +205,9 @@ export interface paths {
          * Dashboard
          * @description Revenue by month, top products, and sales by employee and by country, for one date range.
          *
-         *     Revenue is the order lines after discount, without freight.
+         *     Without `from`, the range starts on the first day of the month eleven months ago; without
+         *     `to`, it ends today. Revenue is the order lines after discount, without freight. Orders
+         *     count to the start of the current minute.
          */
         get: operations["dashboard_api_dashboard_get"];
         put?: never;
@@ -770,7 +772,9 @@ export interface operations {
                 customer_id?: string | null;
                 employee_id?: number | null;
                 country?: string | null;
+                /** @description First day included */
                 from?: string | null;
+                /** @description Last day included */
                 to?: string | null;
                 sort?: "order_date" | "order_id" | "total";
                 order?: "asc" | "desc";
@@ -903,9 +907,9 @@ export interface operations {
     dashboard_api_dashboard_get: {
         parameters: {
             query?: {
-                /** @description Default: 11 months before this month */
+                /** @description First day included */
                 from?: string | null;
-                /** @description Default: today */
+                /** @description Last day included */
                 to?: string | null;
             };
             header?: never;
@@ -931,6 +935,13 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+            /** @description Too many dashboards are waiting; try again shortly */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
