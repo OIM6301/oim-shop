@@ -1,5 +1,5 @@
 # The production image: the built web app and the API in one container.
-# Built in GitHub Actions for linux/amd64 (see .github/workflows/image.yml); the
+# Built in GitHub Actions for linux/amd64 by the image job in .github/workflows/ci.yml, after every test passes; the
 # server only pulls it. Build context: the repository root.
 
 # 1. Build the web app.
