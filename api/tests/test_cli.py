@@ -45,3 +45,10 @@ def test_a_fixed_clock_with_a_time_zone_becomes_boston_time(monkeypatch: pytest.
     monkeypatch.setenv("OIM_SHOP_NOW", "2026-10-22T17:00:00+00:00")
     moment = clock_from_env()()
     assert (moment.isoformat(), moment.tzinfo) == ("2026-10-22T13:00:00", None)
+
+
+@pytest.mark.parametrize("moment", ["0001-01-01T12:00:00", "2031-01-01T00:00:00"])
+def test_a_fixed_clock_must_fall_where_the_shop_has_dates(monkeypatch: pytest.MonkeyPatch, moment: str) -> None:
+    monkeypatch.setenv("OIM_SHOP_NOW", moment)
+    with pytest.raises(SystemExit, match="between 2010 and 2030"):
+        clock_from_env()

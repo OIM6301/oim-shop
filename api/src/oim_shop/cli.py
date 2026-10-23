@@ -24,6 +24,7 @@ import uvicorn
 
 from oim_shop import clock, db, seed
 from oim_shop.app import create_app
+from oim_shop.deps import FIRST_DAY, LAST_DAY
 
 REPO = Path(__file__).resolve().parents[3]
 REPO_SEED = REPO / "data" / "seed"
@@ -51,6 +52,8 @@ def clock_from_env() -> Callable[[], datetime]:
     if moment.tzinfo is not None:
         # The data's timestamps are Boston time without a zone; a moment with one is converted.
         moment = moment.astimezone(clock.BOSTON).replace(tzinfo=None)
+    if not FIRST_DAY <= moment.date() <= LAST_DAY:
+        raise SystemExit(f"OIM_SHOP_NOW={fixed!r} must fall between 2010 and 2030, where the shop has dates")
     return lambda: moment
 
 

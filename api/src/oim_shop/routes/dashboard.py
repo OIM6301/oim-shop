@@ -38,23 +38,27 @@ class MinuteCache:
 
     def __init__(self, max_entries: int = 64) -> None:
         self.max_entries = max_entries
-        self.minute: datetime | None = None
-        self.entries: dict[tuple[date, date], Dashboard] = {}
+        # The minute and its answers are replaced together, as one tuple, so a reader on another
+        # thread never pairs one minute with the next minute's answers.
+        self.current: tuple[datetime | None, dict[tuple[date, date], Dashboard]] = (None, {})
         self.lock = threading.Lock()
 
     def peek(self, minute: datetime, key: tuple[date, date]) -> Dashboard | None:
         """The answer already computed this minute, if there is one."""
-        return self.entries.get(key) if minute == self.minute else None
+        current_minute, entries = self.current
+        return entries.get(key) if minute == current_minute else None
 
     def get(self, minute: datetime, key: tuple[date, date], compute: Callable[[], Dashboard]) -> Dashboard:
         with self.lock:
-            if minute != self.minute:
-                self.minute, self.entries = minute, {}
-            if key in self.entries:
-                return self.entries[key]
+            current_minute, entries = self.current
+            if minute != current_minute:
+                entries = {}
+                self.current = (minute, entries)
+            if key in entries:
+                return entries[key]
             answer = compute()
-            if len(self.entries) < self.max_entries:
-                self.entries[key] = answer
+            if len(entries) < self.max_entries:
+                entries[key] = answer
             return answer
 
 

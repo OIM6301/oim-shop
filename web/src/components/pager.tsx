@@ -14,7 +14,15 @@ export function Pager({
   noun: string
   onPage: (page: number) => void
 }) {
-  if (!pagination || pagination.total === 0) return null
+  if (!pagination) return null
+  if (pagination.total === 0) {
+    // The table says it is empty; this tells a screen reader, which hears statuses, not tables.
+    return (
+      <p role="status" className="sr-only">
+        No {noun}
+      </p>
+    )
+  }
   if (pagination.page > pagination.pages) {
     return (
       <nav aria-label="Pages" className="mt-4 flex flex-wrap items-center justify-between gap-3">

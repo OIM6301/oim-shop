@@ -170,3 +170,9 @@ test('the employees sort is kept in the address', async ({ page }) => {
   await page.reload()
   await expect(page.locator('tbody tr').first()).toContainText('Andrew Fuller')
 })
+
+test('no results are announced too', async ({ page }) => {
+  await page.goto('/products')
+  await page.getByRole('searchbox', { name: 'Search products by name' }).fill('zzz')
+  await expect(page.getByRole('status').filter({ hasText: 'No products' })).toBeAttached()
+})
