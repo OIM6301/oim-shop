@@ -8,8 +8,9 @@ Northwind Traders' sales system, built as a ladder of versions. Each version is 
 |---|---|---|
 | v1 | One HTML file that calls a public API | [tree/v1](../../tree/v1) |
 | v2 | Its own server, database and API; a professional web interface; tests, CI, deployment | [tree/v2](../../tree/v2), [what changed since v1](../../compare/v1...v2) |
+| v3 | Sign-in, and orders you enter, edit, ship and cancel | [tree/v3](../../tree/v3), [what changed since v2](../../compare/v2...v3) |
 
-v3 will add sign-in and order entry, and will appear here when it is tagged. The live site is at <https://oim-shop.zhili.dev>.
+The live site is at <https://oim-shop.zhili.dev>.
 
 ## v1: product lookup
 
@@ -56,6 +57,35 @@ Then open <http://127.0.0.1:8000>. The first start creates `oim-shop.db` and loa
 
 - Dates follow oim-api's clock: every Northwind date is moved forward so that orders keep arriving until 2027-06-30.
 - Orders are fictional and nothing ships; an order's shipped date comes from the data.
+
+## v3: order entry
+
+v3 lets people change things. You sign in with GitHub, become one of Northwind's sales reps, and enter orders for its customers; you can edit an order, mark it shipped or cancel it until it ships. A manager can do the same to any rep's order. New orders show at once on the dashboard and in every list.
+
+### Run it
+
+Without the steps below, v3 runs as v2 did and every page is read-only. To sign in on your own computer:
+
+1. On GitHub, under Settings, Developer settings, OAuth Apps, create an app with the homepage `http://127.0.0.1:8000` and the callback `http://127.0.0.1:8000/api/auth/callback`. Generate a client secret.
+2. Write your GitHub username in a file, for example `allowed-users`, outside the repository. Add `manager` after it to be a manager.
+3. Copy `.env.example` to `.env`, fill in `OIM_SHOP_GITHUB_CLIENT_ID`, `OIM_SHOP_GITHUB_CLIENT_SECRET` and `OIM_SHOP_ALLOWED_USERS` (the path of that file), and start the app with them: `uv run --project api --env-file .env oim-shop serve`.
+
+`.env` holds your secret, and `.gitignore` keeps it out of git.
+
+### What to read in it
+
+- **Who may change what.** Every write in [api/src/oim_shop/routes/order_entry.py](api/src/oim_shop/routes/order_entry.py) takes a `Writer`, a signed-in person, and `changeable` decides whether that person may change this order: only the rep who entered it or a manager, only before it ships, and never one of Northwind's own orders.
+- **A forged request.** Your browser sends the session cookie with any request to the site, even from a page on another site. So every write also carries a token that only this site's pages can read, and the server checks it ([accounts.py](api/src/oim_shop/accounts.py)).
+- **Signing in with GitHub.** [github.py](api/src/oim_shop/github.py) makes the three requests of GitHub's OAuth flow, one after the other. The site keeps your GitHub account number and nothing else; the name you choose is shown only to you and to managers.
+- **All or nothing.** An order and its lines are written, and stock taken, in one transaction that holds the database's write lock from its first statement, so two reps cannot both take the last unit, and a failure halfway leaves nothing behind.
+- **The rules, as tests.** Each rule in [the requirements](docs/prd.md), section 6, has a test in [api/tests/test_order_entry.py](api/tests/test_order_entry.py) that fails without it. The browser tests in [web/e2e/v3.spec.ts](web/e2e/v3.spec.ts) sign in against a fake GitHub ([fake-github.ts](web/e2e/fake-github.ts)).
+- **A form that explains itself.** When the server refuses an order, each problem it names appears beside its field ([web/src/components/order-form.tsx](web/src/components/order-form.tsx)).
+
+### Simplifications
+
+- Orders from Northwind's history never took stock; only orders entered here do.
+- Freight is free, and an order ships to its customer's own city and country.
+- Every night, orders entered here are deleted and stock goes back to the seed. Accounts stay.
 
 ## Data
 
