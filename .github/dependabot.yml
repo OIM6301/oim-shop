@@ -1,4 +1,7 @@
 # Weekly updates, grouped so each ecosystem opens one pull request.
+# Versions the project pins on purpose are held at their line: Node 24 (the LTS the README
+# asks for), Python 3.14 (requires-python), and TypeScript 5, the newest openapi-typescript
+# supports.
 version: 2
 updates:
   - package-ecosystem: uv
@@ -9,6 +12,11 @@ updates:
     directory: /web
     schedule: { interval: weekly }
     groups: { npm: { patterns: ['*'] } }
+    ignore:
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/node'
+        update-types: [version-update:semver-major]
   - package-ecosystem: github-actions
     directory: /
     schedule: { interval: weekly }
@@ -16,3 +24,8 @@ updates:
   - package-ecosystem: docker
     directory: /deploy
     schedule: { interval: weekly }
+    ignore:
+      - dependency-name: node
+        update-types: [version-update:semver-major]
+      - dependency-name: python
+        update-types: [version-update:semver-major, version-update:semver-minor]
