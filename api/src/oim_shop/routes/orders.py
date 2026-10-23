@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from oim_shop.deps import Conn, PageNumber, PerPage, SortOrder, page_of, rows
+from oim_shop.deps import Conn, FromDay, PageNumber, PathId, PerPage, QueryId, SortOrder, ToDay, page_of, rows
 from oim_shop.limits import shared_cache
 from oim_shop.models import Order, OrderDetail, OrderLine, OrderPage
 
@@ -41,10 +41,10 @@ def date_range(from_date: date | None, to_date: date | None) -> tuple[list[str],
 def orders(
     conn: Conn,
     customer_id: Annotated[str | None, Query(max_length=10)] = None,
-    employee_id: int | None = None,
+    employee_id: QueryId = None,
     country: Annotated[str | None, Query(max_length=100)] = None,
-    from_date: Annotated[date | None, Query(alias="from")] = None,
-    to_date: Annotated[date | None, Query(alias="to")] = None,
+    from_date: FromDay = None,
+    to_date: ToDay = None,
     sort: Annotated[Literal["order_date", "order_id", "total"], Query()] = "order_date",
     order: SortOrder = "desc",
     page: PageNumber = 1,
@@ -75,7 +75,7 @@ def orders(
 
 
 @router.get("/orders/{order_id}", responses={404: {"description": "No such order"}})
-def order_detail(conn: Conn, order_id: int) -> OrderDetail:
+def order_detail(conn: Conn, order_id: PathId) -> OrderDetail:
     found = rows(conn, f"{ORDER} WHERE o.order_id = ?", [order_id])
     if not found:
         raise HTTPException(status_code=404, detail=f"No order {order_id}")

@@ -364,3 +364,34 @@ def test_other_customer_ids_match_as_before(client: TestClient) -> None:
     assert get(client, "/api/customers/%20ALFKI%20")["company_name"] == "Alfreds Futterkiste"
     get(client, "/api/customers/VAL", 404)
     assert get(client, "/api/orders?customer_id=VAL")["pagination"]["total"] == 0
+
+
+# --- input bounds (Codex review of v2) ------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "/api/dashboard?from=0001-01-01&to=9999-11-30",  # 120,000 months
+        "/api/dashboard?to=0001-01-01",  # the default start would be in year 0
+        "/api/dashboard?from=2016-01-01&to=9999-12-31",
+        "/api/orders?to=9999-12-31",  # the day after does not exist
+        "/api/orders?from=1899-12-31",
+    ],
+)
+def test_dates_outside_the_shop_are_rejected(client: TestClient, url: str) -> None:
+    get(client, url, 422)
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "/api/orders/9223372036854775808",
+        "/api/products/9223372036854775808",
+        "/api/employees/9223372036854775808",
+        "/api/orders?employee_id=9223372036854775808",
+        "/api/products?category_id=9223372036854775808",
+    ],
+)
+def test_ids_too_large_for_the_database_are_rejected(client: TestClient, url: str) -> None:
+    get(client, url, 422)

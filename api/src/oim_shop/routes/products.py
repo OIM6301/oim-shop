@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from oim_shop.deps import Conn, Name, PageNumber, PerPage, SortOrder, page_of, rows
+from oim_shop.deps import Conn, Name, PageNumber, PathId, PerPage, QueryId, SortOrder, page_of, rows
 from oim_shop.limits import shared_cache
 from oim_shop.models import Category, Product, ProductPage
 
@@ -26,7 +26,7 @@ def categories(conn: Conn) -> list[Category]:
 @router.get("/products")
 def products(
     conn: Conn,
-    category_id: int | None = None,
+    category_id: QueryId = None,
     name: Name = None,
     sort: Annotated[Literal["product_id", "name", "unit_price", "stock"], Query()] = "product_id",
     order: SortOrder = "asc",
@@ -55,7 +55,7 @@ def products(
 
 
 @router.get("/products/{product_id}", responses={404: {"description": "No such product"}})
-def product(conn: Conn, product_id: int) -> Product:
+def product(conn: Conn, product_id: PathId) -> Product:
     found = rows(conn, f"{PRODUCT} WHERE p.product_id = ?", [product_id])
     if not found:
         raise HTTPException(status_code=404, detail=f"No product {product_id}")

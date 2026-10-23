@@ -2,13 +2,12 @@ import sqlite3
 import threading
 from collections.abc import Callable
 from datetime import date, datetime
-from typing import Annotated
 
 import anyio
 import anyio.to_thread
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, Request
 
-from oim_shop.deps import Conn, Now, rows
+from oim_shop.deps import Conn, FromDay, Now, ToDay, rows
 from oim_shop.limits import shared_cache
 from oim_shop.models import CountryRevenue, Dashboard, EmployeeRevenue, MonthRevenue, ProductRevenue
 from oim_shop.routes.orders import date_range
@@ -36,7 +35,7 @@ class MinuteCache:
     `max_entries` ranges are kept.
     """
 
-    def __init__(self, max_entries: int = 256) -> None:
+    def __init__(self, max_entries: int = 64) -> None:
         self.max_entries = max_entries
         self.minute: datetime | None = None
         self.entries: dict[tuple[date, date], Dashboard] = {}
@@ -63,8 +62,8 @@ async def dashboard(
     request: Request,
     conn: Conn,
     now: Now,
-    from_date: Annotated[date | None, Query(alias="from", description="Default: 11 months before this month")] = None,
-    to_date: Annotated[date | None, Query(alias="to", description="Default: today")] = None,
+    from_date: FromDay = None,
+    to_date: ToDay = None,
 ) -> Dashboard:
     """Revenue by month, top products, and sales by employee and by country, for one date range.
 

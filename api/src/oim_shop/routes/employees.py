@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from oim_shop.deps import Conn, rows
+from oim_shop.deps import Conn, PathId, rows
 from oim_shop.limits import shared_cache
 from oim_shop.models import Employee, EmployeeDetail, MonthRevenue
 
@@ -22,7 +22,7 @@ def employees(conn: Conn) -> list[Employee]:
 
 
 @router.get("/employees/{employee_id}", responses={404: {"description": "No such employee"}})
-def employee(conn: Conn, employee_id: int) -> EmployeeDetail:
+def employee(conn: Conn, employee_id: PathId) -> EmployeeDetail:
     found = rows(conn, f"{EMPLOYEE} WHERE e.employee_id = ? GROUP BY e.employee_id", [employee_id])
     if not found:
         raise HTTPException(status_code=404, detail=f"No employee {employee_id}")
