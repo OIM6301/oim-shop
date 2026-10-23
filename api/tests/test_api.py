@@ -395,3 +395,47 @@ def test_dates_outside_the_shop_are_rejected(client: TestClient, url: str) -> No
 )
 def test_ids_too_large_for_the_database_are_rejected(client: TestClient, url: str) -> None:
     get(client, url, 422)
+
+
+def test_the_dashboard_counts_orders_to_the_start_of_the_minute(seeded_path: Path) -> None:
+    """Order 21646 was placed at 14:59:35. The dashboard is cached for a minute, so it counts
+    orders to the start of the minute it was computed in, and a whole minute shows one answer."""
+    from datetime import datetime
+
+    day = "/api/dashboard?from=2026-10-22&to=2026-10-22"
+
+    def count_at(moment: datetime) -> int:
+        with TestClient(create_app(seeded_path, now=lambda: moment, requests_per_minute=10_000)) as c:
+            return get(c, day)["order_count"]
+
+    before = count_at(datetime(2026, 10, 22, 14, 59, 59))
+    assert count_at(datetime(2026, 10, 22, 14, 59, 0)) == before
+    assert count_at(datetime(2026, 10, 22, 15, 0, 0)) == before + 1
+
+
+def test_waiting_dashboards_are_capped(seeded_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """With one dashboard computing and the queue full, the next answers 503 at once."""
+    import asyncio
+    import time
+
+    import httpx2
+
+    from oim_shop.routes import dashboard as dashboard_route
+
+    compute = dashboard_route.compute
+
+    def slow(conn: sqlite3.Connection, first: Any, last: Any) -> Any:
+        time.sleep(0.5)
+        return compute(conn, first, last)
+
+    monkeypatch.setattr(dashboard_route, "compute", slow)
+    app = create_app(seeded_path, now=lambda: NOW, requests_per_minute=10_000, dashboards_waiting=1)
+
+    async def run() -> list[int]:
+        transport = httpx2.ASGITransport(app=app)
+        async with httpx2.AsyncClient(transport=transport, base_url="http://test") as c:
+            urls = [f"/api/dashboard?from=202{i}-01-01" for i in range(3)]
+            responses = await asyncio.gather(*(c.get(u) for u in urls))
+            return sorted(r.status_code for r in responses)
+
+    assert asyncio.run(run()) == [200, 200, 503]

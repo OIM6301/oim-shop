@@ -2,12 +2,14 @@ import sqlite3
 import threading
 from collections.abc import Callable
 from datetime import date, datetime
+from pathlib import Path
 
 import anyio
 import anyio.to_thread
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 
-from oim_shop.deps import Conn, FromDay, Now, ToDay, rows
+from oim_shop import db
+from oim_shop.deps import FromDay, Now, ToDay, rows
 from oim_shop.limits import shared_cache
 from oim_shop.models import CountryRevenue, Dashboard, EmployeeRevenue, MonthRevenue, ProductRevenue
 from oim_shop.routes.orders import date_range
@@ -28,11 +30,10 @@ def months_between(first: date, last: date) -> list[str]:
 class MinuteCache:
     """Dashboards computed in the current minute, by date range, one computation at a time.
 
-    Orders change only as time passes, so within one minute the same range always gives the
-    same answer: compute it once and keep it until the minute is over. Only one dashboard is
-    computed at a time, so a burst of them cannot take every thread or fill the memory while
-    other pages wait, and requests for a range already being computed get that answer. At most
-    `max_entries` ranges are kept.
+    A dashboard counts the orders placed by the start of the minute it is computed in, so
+    within one minute the same range always gives the same answer: compute it once and keep
+    it until the minute is over. Requests for a range already being computed get that answer.
+    At most `max_entries` ranges are kept.
     """
 
     def __init__(self, max_entries: int = 64) -> None:
@@ -40,6 +41,10 @@ class MinuteCache:
         self.minute: datetime | None = None
         self.entries: dict[tuple[date, date], Dashboard] = {}
         self.lock = threading.Lock()
+
+    def peek(self, minute: datetime, key: tuple[date, date]) -> Dashboard | None:
+        """The answer already computed this minute, if there is one."""
+        return self.entries.get(key) if minute == self.minute else None
 
     def get(self, minute: datetime, key: tuple[date, date], compute: Callable[[], Dashboard]) -> Dashboard:
         with self.lock:
@@ -53,33 +58,60 @@ class MinuteCache:
             return answer
 
 
-# Dashboards wait for this one thread, outside the pool that serves every other page.
+# Dashboards are computed on this one thread, outside the pool that serves every other page.
 DASHBOARD_THREADS = anyio.CapacityLimiter(1)
 
 
-@router.get("/dashboard")
+@router.get("/dashboard", responses={503: {"description": "Too many dashboards are waiting; try again shortly"}})
 async def dashboard(
     request: Request,
-    conn: Conn,
     now: Now,
     from_date: FromDay = None,
     to_date: ToDay = None,
 ) -> Dashboard:
     """Revenue by month, top products, and sales by employee and by country, for one date range.
 
-    Revenue is the order lines after discount, without freight.
+    Revenue is the order lines after discount, without freight. Orders count from the start of
+    the current minute.
     """
     last = to_date or now.date()
     if from_date is None:
         months_back = last.year * 12 + last.month - 1 - 11
         from_date = date(months_back // 12, months_back % 12 + 1, 1)
     first = from_date
-    cache: MinuteCache = request.app.state.dashboard_cache
+    if last < first:
+        raise HTTPException(status_code=422, detail="to is before from")
+
+    state = request.app.state
+    cache: MinuteCache = state.dashboard_cache
     minute = now.replace(second=0, microsecond=0)
-    # Waiting happens here, in the event loop, so a queue of dashboards holds no thread.
-    return await anyio.to_thread.run_sync(
-        lambda: cache.get(minute, (first, last), lambda: compute(conn, first, last)), limiter=DASHBOARD_THREADS
-    )
+    answer = cache.peek(minute, (first, last))
+    if answer is not None:
+        return answer
+    # One dashboard computes; at most `dashboards_waiting` more may queue. Past that, say so at
+    # once, instead of holding the request and its memory for as long as the queue takes.
+    if state.dashboards_admitted > state.dashboards_waiting:
+        raise HTTPException(status_code=503, detail="The dashboard is busy; try again in a few seconds",
+                            headers={"Retry-After": "5"})  # fmt: skip
+    state.dashboards_admitted += 1
+    try:
+        # Waiting happens here, in the event loop, so a queue of dashboards holds no thread and
+        # no database connection: each opens its own only when its turn comes.
+        return await anyio.to_thread.run_sync(
+            lambda: cache.get(minute, (first, last), lambda: compute_as_of(state.db_path, minute, first, last)),
+            limiter=DASHBOARD_THREADS,
+        )
+    finally:
+        state.dashboards_admitted -= 1
+
+
+def compute_as_of(path: Path, moment: datetime, first: date, last: date) -> Dashboard:
+    conn = db.connect(path)
+    try:
+        db.as_of(conn, moment)
+        return compute(conn, first, last)
+    finally:
+        conn.close()
 
 
 def compute(conn: sqlite3.Connection, from_date: date, last: date) -> Dashboard:

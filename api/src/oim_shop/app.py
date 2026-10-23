@@ -26,8 +26,10 @@ def create_app(
     requests_per_minute: int = 1500,
     # The dashboard is the one expensive page; no one reading it needs two a second.
     dashboard_per_minute: int = 120,
-    # Requests handled at once; more wait their turn, so a burst cannot open connections without end.
+    # Requests handled at once by the thread pool that serves every ordinary route.
     max_concurrent: int = 4,
+    # Dashboards that may wait behind the one being computed; more are turned away with 503.
+    dashboards_waiting: int = 8,
     monotonic: Callable[[], float] = time.monotonic,
     web_dist: Path | None = None,
 ) -> FastAPI:
@@ -55,6 +57,8 @@ def create_app(
     app.state.now = now
     app.middleware("http")(cache_headers)
     app.state.dashboard_cache = MinuteCache()
+    app.state.dashboards_waiting = dashboards_waiting
+    app.state.dashboards_admitted = 0
     app.add_middleware(
         RateLimit,
         per_minute=requests_per_minute,
