@@ -96,3 +96,13 @@ test('filter orders by the customer Val2, told apart from the other IT', async (
   await page.getByRole('option', { name: 'IT (Val2)' }).click()
   await expect(page.getByText('1 to 20 of 147 orders')).toBeVisible()
 })
+
+test('charts do not animate when the reader asks for reduced motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  const bars = page.locator('.recharts-bar-rectangle path')
+  await bars.first().waitFor()
+  // Read the heights the moment the bars appear: an animation would start them near zero.
+  const heights = await bars.evaluateAll((els) => els.slice(0, 12).map((e) => e.getBoundingClientRect().height))
+  expect(Math.min(...heights)).toBeGreaterThan(20)
+})
