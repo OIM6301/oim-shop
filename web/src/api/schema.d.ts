@@ -570,6 +570,12 @@ export interface components {
             sign_in_available: boolean;
             /** @description Null when not signed in */
             account: components["schemas"]["Account"] | null;
+            /**
+             * Today
+             * Format: date
+             * @description Today on the shop's clock, which a required date is counted from
+             */
+            today: string;
         };
         /** MonthRevenue */
         MonthRevenue: {

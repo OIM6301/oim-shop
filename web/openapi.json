@@ -1865,12 +1865,19 @@
               }
             ],
             "description": "Null when not signed in"
+          },
+          "today": {
+            "type": "string",
+            "format": "date",
+            "title": "Today",
+            "description": "Today on the shop's clock, which a required date is counted from"
           }
         },
         "type": "object",
         "required": [
           "sign_in_available",
-          "account"
+          "account",
+          "today"
         ],
         "title": "Me"
       },

@@ -36,7 +36,7 @@ def test_a_line_the_allowlist_cannot_read_is_an_error(tmp_path: Path, line: str)
 
 def test_without_settings_no_one_can_sign_in(path: Path) -> None:
     with TestClient(create_app(path, now=lambda: NOW), follow_redirects=False) as c:
-        assert me(c) == {"sign_in_available": False, "account": None}
+        assert me(c) == {"sign_in_available": False, "account": None, "today": "2026-10-22"}
         assert c.get("/api/auth/login").status_code == 503
 
 
@@ -57,7 +57,7 @@ def test_signing_in_asks_github_for_no_scope_with_pkce(client: TestClient) -> No
 
 
 def test_a_first_sign_in_makes_a_rep_who_then_chooses_a_name(client: TestClient, github: FakeGitHub) -> None:
-    assert me(client) == {"sign_in_available": True, "account": None}
+    assert me(client) == {"sign_in_available": True, "account": None, "today": "2026-10-22"}
     assert sign_in(client, github, STUDENT, next_path="/orders/new") == "/welcome?next=%2Forders%2Fnew"
     account = me(client)["account"]
     assert account["role"] == "rep"

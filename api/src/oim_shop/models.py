@@ -169,6 +169,7 @@ class Account(BaseModel):
 class Me(BaseModel):
     sign_in_available: bool = Field(description="False when the server has no GitHub app set up")
     account: Account | None = Field(description="Null when not signed in")
+    today: date = Field(description="Today on the shop's clock, which a required date is counted from")
 
 
 class NameChange(BaseModel):

@@ -24,7 +24,7 @@ from oim_shop.accounts import (
     read_allowlist,
     start_session,
 )
-from oim_shop.deps import Conn
+from oim_shop.deps import Conn, Now
 from oim_shop.github import GitHubError
 from oim_shop.models import Account, Me, NameChange
 
@@ -141,14 +141,15 @@ def account_of(viewer: Session | None) -> Account | None:
 
 
 @router.get("/me")
-def me(request: Request, conn: Conn, viewer: Viewer) -> Me:
+def me(request: Request, viewer: Viewer, now: Now) -> Me:
     """Who is signed in in this browser, if anyone."""
-    return Me(sign_in_available=request.app.state.sign_in is not None, account=account_of(viewer))
+    return Me(sign_in_available=request.app.state.sign_in is not None, account=account_of(viewer), today=now.date())
 
 
 @router.put("/me", responses={401: {}, 403: {}})
-def choose_name(change: NameChange, conn: Conn, writer: Writer) -> Me:
+def choose_name(change: NameChange, conn: Conn, writer: Writer, now: Now) -> Me:
     """Choose the name you see for yourself. Everyone but you and the managers sees 'Sales rep <your number>'."""
     conn.execute("UPDATE accounts SET display_name = ? WHERE github_id = ?", (change.display_name, writer.github_id))
     conn.commit()
-    return Me(sign_in_available=True, account=account_of(replace(writer, display_name=change.display_name)))
+    account = account_of(replace(writer, display_name=change.display_name))
+    return Me(sign_in_available=True, account=account, today=now.date())
