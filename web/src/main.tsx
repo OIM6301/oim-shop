@@ -4,6 +4,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 
 import './index.css'
+import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ApiError } from '@/api/client'
 import { routeTree } from './routeTree.gen'
@@ -13,7 +14,8 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 60_000,
-      // New orders appear a few a day, so coming back to the tab is no reason to ask again.
+      // Your own changes refresh what they touch (api/writes.ts); others' show within a minute of
+      // coming back to a page, so returning to the tab is no reason to ask again.
       refetchOnWindowFocus: false,
       // A 4xx will not change on retry (a missing order stays missing); a network error or 5xx might.
       retry: (failures, error) => !(error instanceof ApiError && error.status < 500) && failures < 2,
@@ -40,6 +42,7 @@ createRoot(root).render(
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <RouterProvider router={router} />
+        <Toaster />
       </TooltipProvider>
     </QueryClientProvider>
   </StrictMode>,

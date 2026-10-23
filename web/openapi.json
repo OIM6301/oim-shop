@@ -1954,6 +1954,17 @@
             "title": "Shipped Date",
             "description": "Null until the order has shipped"
           },
+          "shipper_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper Id"
+          },
           "shipper": {
             "anyOf": [
               {
@@ -2025,6 +2036,7 @@
           "order_date",
           "required_date",
           "shipped_date",
+          "shipper_id",
           "shipper",
           "ship_city",
           "ship_country",
@@ -2122,6 +2134,17 @@
             "title": "Shipped Date",
             "description": "Null until the order has shipped"
           },
+          "shipper_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper Id"
+          },
           "shipper": {
             "anyOf": [
               {
@@ -2188,6 +2211,7 @@
           "order_date",
           "required_date",
           "shipped_date",
+          "shipper_id",
           "shipper",
           "ship_city",
           "ship_country",
@@ -2246,6 +2270,17 @@
             ],
             "title": "Shipped Date",
             "description": "Null until the order has shipped"
+          },
+          "shipper_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper Id"
           },
           "shipper": {
             "anyOf": [
@@ -2320,6 +2355,7 @@
           "order_date",
           "required_date",
           "shipped_date",
+          "shipper_id",
           "shipper",
           "ship_city",
           "ship_country",

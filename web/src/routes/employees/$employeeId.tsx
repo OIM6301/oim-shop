@@ -17,6 +17,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatMoney, formatMonth, formatNumber } from '@/lib/format'
 import { compact, isOneOf, order, page, positiveInt, sortOf } from '@/lib/search'
+import { useNameOf } from '@/lib/me'
 
 export const Route = createFileRoute('/employees/$employeeId')({
   validateSearch: z.object({ sort: sortOf(ORDER_SORTS), order, page }),
@@ -42,6 +43,7 @@ function EmployeePage() {
   const navigate = Route.useNavigate()
   const { data, error, isPending, refetch } = useQuery({ ...employeeQuery(employeeId ?? 0), enabled: employeeId !== null })
   const everyone = useQuery(employeesQuery)
+  const nameOf = useNameOf()
   const back = <BackLink to="/employees">Employees</BackLink>
 
   if (employeeId === null || isNotFound(error)) {
@@ -75,7 +77,7 @@ function EmployeePage() {
     <>
       <PageHeader
         back={back}
-        title={data ? `${data.first_name} ${data.last_name}` : <Skeleton className="h-8 w-56" />}
+        title={data ? nameOf(data.employee_id, `${data.first_name} ${data.last_name}`) : <Skeleton className="h-8 w-56" />}
         description={data?.title}
       />
       {error && !data ? (

@@ -11,7 +11,7 @@ router = APIRouter(tags=["orders"])
 ORDER_COLUMNS = """
     o.order_id, o.customer_id, c.company_name AS customer_name,
     o.employee_id, e.first_name || ' ' || e.last_name AS employee_name,
-    o.order_date, o.required_date, o.shipped_date, s.company_name AS shipper,
+    o.order_date, o.required_date, o.shipped_date, o.shipper_id, s.company_name AS shipper,
     o.ship_city, o.ship_country, o.freight_cents, o.line_count, o.total_cents, o.source
 """
 ORDER_FROM = """

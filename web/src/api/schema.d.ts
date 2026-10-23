@@ -610,6 +610,8 @@ export interface components {
              * @description Null until the order has shipped
              */
             shipped_date: string | null;
+            /** Shipper Id */
+            shipper_id: number | null;
             /** Shipper */
             shipper: string | null;
             /** Ship City */
@@ -672,6 +674,8 @@ export interface components {
              * @description Null until the order has shipped
              */
             shipped_date: string | null;
+            /** Shipper Id */
+            shipper_id: number | null;
             /** Shipper */
             shipper: string | null;
             /** Ship City */
@@ -715,6 +719,8 @@ export interface components {
              * @description Null until the order has shipped
              */
             shipped_date: string | null;
+            /** Shipper Id */
+            shipper_id: number | null;
             /** Shipper */
             shipper: string | null;
             /** Ship City */

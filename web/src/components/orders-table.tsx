@@ -7,10 +7,15 @@ import { DataTable } from '@/components/data-table'
 import { Pager } from '@/components/pager'
 import { Badge } from '@/components/ui/badge'
 import { formatDate, formatMoney } from '@/lib/format'
+import { useNameOf } from '@/lib/me'
 import { type Column, columnHelper, type Sort } from '@/lib/table'
 
 type Order = Schemas['Order']
 const col = columnHelper<Order>()
+
+function OwnName({ employeeId, publicName }: { employeeId: number; publicName: string }) {
+  return useNameOf()(employeeId, publicName)
+}
 
 export function ShipStatus({ shipped }: { shipped: string | null }) {
   return shipped ? <Badge variant="secondary">Shipped</Badge> : <Badge variant="outline">Not shipped</Badge>
@@ -47,7 +52,7 @@ const all: Column<Order>[] = col.columns([
     enableSorting: false,
     cell: ({ row }) => (
       <Link to="/employees/$employeeId" params={{ employeeId: String(row.original.employee_id) }} className="hover:underline">
-        {row.original.employee_name}
+        <OwnName employeeId={row.original.employee_id} publicName={row.original.employee_name} />
       </Link>
     ),
   }),

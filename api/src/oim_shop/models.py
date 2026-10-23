@@ -77,6 +77,7 @@ class Order(BaseModel):
     order_date: str
     required_date: str | None
     shipped_date: str | None = Field(description="Null until the order has shipped")
+    shipper_id: int | None
     shipper: str | None
     ship_city: str | None
     ship_country: str | None

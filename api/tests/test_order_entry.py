@@ -105,7 +105,7 @@ def test_entering_an_order(rep: TestClient, path: Path) -> None:
     assert placed["order_date"] == NOW.isoformat()
     assert placed["required_date"] == f"{REQUIRED}T00:00:00"
     assert placed["shipped_date"] is None
-    assert placed["shipper"] == "Speedy Express"
+    assert (placed["shipper_id"], placed["shipper"]) == (1, "Speedy Express")
     assert (placed["ship_city"], placed["ship_country"], placed["freight_cents"]) == ("Berlin", "Germany", 0)
     assert placed["source"] == "entered"
     # Chai: 3 x $18.00 less 10% = $48.60; Chang: 2 x $19.00 = $38.00.

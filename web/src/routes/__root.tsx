@@ -1,6 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query'
 import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
 
+import { AccountMenu } from '@/components/account-menu'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -22,7 +23,8 @@ function Layout() {
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 data-[orientation=vertical]:h-4" />
           <span className="text-sm text-muted-foreground">Northwind Traders</span>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <AccountMenu />
             <ThemeToggle />
           </div>
         </header>

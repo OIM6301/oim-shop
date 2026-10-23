@@ -10,18 +10,44 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MyOrdersRouteImport } from './routes/my-orders'
+import { Route as PrivacyRouteImport } from './routes/privacy'
+import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as CustomersIndexRouteImport } from './routes/customers/index'
 import { Route as CustomersCustomerIdRouteImport } from './routes/customers/$customerId'
 import { Route as EmployeesIndexRouteImport } from './routes/employees/index'
 import { Route as EmployeesEmployeeIdRouteImport } from './routes/employees/$employeeId'
 import { Route as OrdersIndexRouteImport } from './routes/orders/index'
 import { Route as OrdersOrderIdRouteImport } from './routes/orders/$orderId'
+import { Route as OrdersNewRouteImport } from './routes/orders/new'
 import { Route as ProductsIndexRouteImport } from './routes/products/index'
 import { Route as ProductsProductIdRouteImport } from './routes/products/$productId'
+import { Route as OrdersOrderIdEditRouteImport } from './routes/orders/$orderId_.edit'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyOrdersRoute = MyOrdersRouteImport.update({
+  id: '/my-orders',
+  path: '/my-orders',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WelcomeRoute = WelcomeRouteImport.update({
+  id: '/welcome',
+  path: '/welcome',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CustomersIndexRoute = CustomersIndexRouteImport.update({
@@ -54,6 +80,11 @@ const OrdersOrderIdRoute = OrdersOrderIdRouteImport.update({
   path: '/orders/$orderId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdersNewRoute = OrdersNewRouteImport.update({
+  id: '/orders/new',
+  path: '/orders/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProductsIndexRoute = ProductsIndexRouteImport.update({
   id: '/products/',
   path: '/products/',
@@ -64,87 +95,134 @@ const ProductsProductIdRoute = ProductsProductIdRouteImport.update({
   path: '/products/$productId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OrdersOrderIdEditRoute = OrdersOrderIdEditRouteImport.update({
+  id: '/orders/$orderId_/edit',
+  path: '/orders/$orderId/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/my-orders': typeof MyOrdersRoute
+  '/privacy': typeof PrivacyRoute
+  '/sign-in': typeof SignInRoute
+  '/welcome': typeof WelcomeRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/employees/$employeeId': typeof EmployeesEmployeeIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/orders/new': typeof OrdersNewRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/customers/': typeof CustomersIndexRoute
   '/employees/': typeof EmployeesIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/products/': typeof ProductsIndexRoute
+  '/orders/$orderId/edit': typeof OrdersOrderIdEditRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/my-orders': typeof MyOrdersRoute
+  '/privacy': typeof PrivacyRoute
+  '/sign-in': typeof SignInRoute
+  '/welcome': typeof WelcomeRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/employees/$employeeId': typeof EmployeesEmployeeIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/orders/new': typeof OrdersNewRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/customers': typeof CustomersIndexRoute
   '/employees': typeof EmployeesIndexRoute
   '/orders': typeof OrdersIndexRoute
   '/products': typeof ProductsIndexRoute
+  '/orders/$orderId/edit': typeof OrdersOrderIdEditRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/my-orders': typeof MyOrdersRoute
+  '/privacy': typeof PrivacyRoute
+  '/sign-in': typeof SignInRoute
+  '/welcome': typeof WelcomeRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/employees/$employeeId': typeof EmployeesEmployeeIdRoute
   '/orders/$orderId': typeof OrdersOrderIdRoute
+  '/orders/new': typeof OrdersNewRoute
   '/products/$productId': typeof ProductsProductIdRoute
   '/customers/': typeof CustomersIndexRoute
   '/employees/': typeof EmployeesIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/products/': typeof ProductsIndexRoute
+  '/orders/$orderId_/edit': typeof OrdersOrderIdEditRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/my-orders'
+    | '/privacy'
+    | '/sign-in'
+    | '/welcome'
     | '/customers/$customerId'
     | '/employees/$employeeId'
     | '/orders/$orderId'
+    | '/orders/new'
     | '/products/$productId'
     | '/customers/'
     | '/employees/'
     | '/orders/'
     | '/products/'
+    | '/orders/$orderId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/my-orders'
+    | '/privacy'
+    | '/sign-in'
+    | '/welcome'
     | '/customers/$customerId'
     | '/employees/$employeeId'
     | '/orders/$orderId'
+    | '/orders/new'
     | '/products/$productId'
     | '/customers'
     | '/employees'
     | '/orders'
     | '/products'
+    | '/orders/$orderId/edit'
   id:
     | '__root__'
     | '/'
+    | '/my-orders'
+    | '/privacy'
+    | '/sign-in'
+    | '/welcome'
     | '/customers/$customerId'
     | '/employees/$employeeId'
     | '/orders/$orderId'
+    | '/orders/new'
     | '/products/$productId'
     | '/customers/'
     | '/employees/'
     | '/orders/'
     | '/products/'
+    | '/orders/$orderId_/edit'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MyOrdersRoute: typeof MyOrdersRoute
+  PrivacyRoute: typeof PrivacyRoute
+  SignInRoute: typeof SignInRoute
+  WelcomeRoute: typeof WelcomeRoute
   CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
   EmployeesEmployeeIdRoute: typeof EmployeesEmployeeIdRoute
   OrdersOrderIdRoute: typeof OrdersOrderIdRoute
+  OrdersNewRoute: typeof OrdersNewRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
   CustomersIndexRoute: typeof CustomersIndexRoute
   EmployeesIndexRoute: typeof EmployeesIndexRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
+  OrdersOrderIdEditRoute: typeof OrdersOrderIdEditRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -154,6 +232,34 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-orders': {
+      id: '/my-orders'
+      path: '/my-orders'
+      fullPath: '/my-orders'
+      preLoaderRoute: typeof MyOrdersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/welcome': {
+      id: '/welcome'
+      path: '/welcome'
+      fullPath: '/welcome'
+      preLoaderRoute: typeof WelcomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/customers/': {
@@ -198,6 +304,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OrdersOrderIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orders/new': {
+      id: '/orders/new'
+      path: '/orders/new'
+      fullPath: '/orders/new'
+      preLoaderRoute: typeof OrdersNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/products/': {
       id: '/products/'
       path: '/products'
@@ -212,19 +325,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/orders/$orderId_/edit': {
+      id: '/orders/$orderId_/edit'
+      path: '/orders/$orderId/edit'
+      fullPath: '/orders/$orderId/edit'
+      preLoaderRoute: typeof OrdersOrderIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MyOrdersRoute: MyOrdersRoute,
+  PrivacyRoute: PrivacyRoute,
+  SignInRoute: SignInRoute,
+  WelcomeRoute: WelcomeRoute,
   CustomersCustomerIdRoute: CustomersCustomerIdRoute,
   EmployeesEmployeeIdRoute: EmployeesEmployeeIdRoute,
   OrdersOrderIdRoute: OrdersOrderIdRoute,
+  OrdersNewRoute: OrdersNewRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
   CustomersIndexRoute: CustomersIndexRoute,
   EmployeesIndexRoute: EmployeesIndexRoute,
   OrdersIndexRoute: OrdersIndexRoute,
   ProductsIndexRoute: ProductsIndexRoute,
+  OrdersOrderIdEditRoute: OrdersOrderIdEditRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

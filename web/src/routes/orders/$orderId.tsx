@@ -1,13 +1,30 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link } from '@tanstack/react-router'
+import type { ReactNode } from 'react'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { Pencil, Truck, X } from 'lucide-react'
+import { toast } from 'sonner'
 
+import type { Schemas } from '@/api/client'
 import { orderQuery } from '@/api/queries'
+import { useCancelOrder, useShipOrder } from '@/api/writes'
 import { BackLink, Facts } from '@/components/detail'
-import { isNotFound } from '@/lib/errors'
+import { explain, isNotFound } from '@/lib/errors'
+import { useCanChange, useNameOf } from '@/lib/me'
 import { positiveInt } from '@/lib/search'
 import { ShipStatus } from '@/components/orders-table'
 import { PageHeader } from '@/components/page-header'
 import { NotFound, QueryError } from '@/components/states'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -22,6 +39,8 @@ function OrderPage() {
   const orderId = positiveInt(Route.useParams().orderId)
   const { data, error, isPending, refetch } = useQuery({ ...orderQuery(orderId ?? 0), enabled: orderId !== null })
   const back = <BackLink to="/orders">Orders</BackLink>
+  const nameOf = useNameOf()
+  const canChange = useCanChange()
 
   if (orderId === null || isNotFound(error)) {
     return (
@@ -53,6 +72,7 @@ function OrderPage() {
           </span>
         }
         description={data ? `Placed ${formatDate(data.order_date)}` : <Skeleton className="h-4 w-40" />}
+        actions={data && canChange(data) && <OrderActions order={data} />}
       />
       {error && !data ? (
         <QueryError error={error} onRetry={() => void refetch()} title="Could not load this order" />
@@ -75,7 +95,7 @@ function OrderPage() {
                         params={{ employeeId: String(data.employee_id) }}
                         className="hover:underline"
                       >
-                        {data.employee_name}
+                        {nameOf(data.employee_id, data.employee_name)}
                       </Link>
                     ),
                   },
@@ -145,5 +165,95 @@ function OrderPage() {
         </div>
       )}
     </>
+  )
+}
+
+/** Edit, mark shipped and cancel, for an order the signed-in person may still change. */
+function OrderActions({ order }: { order: Schemas['OrderDetail'] }) {
+  const ship = useShipOrder()
+  const cancel = useCancelOrder()
+  const navigate = useNavigate()
+  const orderId = String(order.order_id)
+  return (
+    <div className="flex flex-wrap gap-2">
+      <Button asChild variant="outline">
+        <Link to="/orders/$orderId/edit" params={{ orderId }}>
+          <Pencil />
+          Edit
+        </Link>
+      </Button>
+      <Confirm
+        trigger={
+          <Button variant="outline" disabled={ship.isPending}>
+            <Truck />
+            Mark shipped
+          </Button>
+        }
+        title={`Mark order #${orderId} shipped?`}
+        description="It ships today. After that the order can no longer be edited or cancelled."
+        confirm="Mark shipped"
+        onConfirm={() =>
+          ship.mutate(order.order_id, {
+            onSuccess: () => toast.success(`Order #${orderId} shipped`),
+            onError: (error) => toast.error(explain(error)),
+          })
+        }
+      />
+      <Confirm
+        trigger={
+          <Button variant="destructive" disabled={cancel.isPending}>
+            <X />
+            Cancel order
+          </Button>
+        }
+        title={`Cancel order #${orderId}?`}
+        description="The order is deleted and its stock goes back. This cannot be undone."
+        confirm="Cancel the order"
+        destructive
+        onConfirm={() =>
+          cancel.mutate(order.order_id, {
+            onSuccess: () => {
+              toast.success(`Order #${orderId} cancelled`)
+              void navigate({ to: '/my-orders' })
+            },
+            onError: (error) => toast.error(explain(error)),
+          })
+        }
+      />
+    </div>
+  )
+}
+
+function Confirm({
+  trigger,
+  title,
+  description,
+  confirm,
+  destructive = false,
+  onConfirm,
+}: {
+  trigger: ReactNode
+  title: string
+  description: string
+  confirm: string
+  destructive?: boolean
+  onConfirm: () => void
+}) {
+  return (
+    <AlertDialog>
+      <AlertDialogTrigger asChild>{trigger}</AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Keep it as it is</AlertDialogCancel>
+          <AlertDialogAction variant={destructive ? 'destructive' : 'default'} onClick={onConfirm}>
+            {confirm}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   )
 }

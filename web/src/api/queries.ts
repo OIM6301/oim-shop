@@ -12,6 +12,7 @@ export type ProductQuery = Query<'/api/products'>
 export type CustomerQuery = Query<'/api/customers'>
 export type OrderQuery = Query<'/api/orders'>
 export type DashboardQuery = Query<'/api/dashboard'>
+export type MyOrdersQuery = Query<'/api/me/orders'>
 
 export const categoriesQuery = queryOptions({
   queryKey: ['categories'],
@@ -82,4 +83,30 @@ export const dashboardQuery = (query: DashboardQuery) =>
     queryKey: ['dashboard', query],
     // No placeholder: figures from the previous range must never sit under the new range's label.
     queryFn: () => unwrap(api.GET('/api/dashboard', { params: { query } })),
+  })
+
+/** Who is signed in. It changes only when someone signs in (a new page load) or out (a write that refreshes it). */
+export const meQuery = queryOptions({
+  queryKey: ['me'],
+  queryFn: () => unwrap(api.GET('/api/me')),
+  staleTime: Infinity,
+})
+
+export const shippersQuery = queryOptions({
+  queryKey: ['shippers'],
+  queryFn: () => unwrap(api.GET('/api/shippers')),
+  staleTime: Infinity,
+})
+
+/** Every product on one page: there are 77, and the order form searches them as you type. */
+export const allProductsQuery = queryOptions({
+  queryKey: ['products', 'all'],
+  queryFn: () => unwrap(api.GET('/api/products', { params: { query: { per_page: 100 } } })),
+})
+
+export const myOrdersQuery = (query: MyOrdersQuery) =>
+  queryOptions({
+    queryKey: ['my-orders', query],
+    queryFn: () => unwrap(api.GET('/api/me/orders', { params: { query } })),
+    placeholderData: keepPreviousData,
   })

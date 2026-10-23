@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { Building2, LayoutDashboard, Package, ReceiptText, Users } from 'lucide-react'
+import { Building2, ClipboardList, LayoutDashboard, Package, Plus, ReceiptText, Users } from 'lucide-react'
 
 import {
   Sidebar,
@@ -7,12 +7,14 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { useMe } from '@/lib/me'
 
 const pages = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -22,8 +24,14 @@ const pages = [
   { to: '/employees', label: 'Employees', icon: Users, exact: false },
 ] as const
 
+const yours = [
+  { to: '/orders/new', label: 'New order', icon: Plus, exact: true },
+  { to: '/my-orders', label: 'My orders', icon: ClipboardList, exact: false },
+] as const
+
 export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar()
+  const signedIn = Boolean(useMe()?.account)
   return (
     <Sidebar>
       <SidebarHeader>
@@ -54,14 +62,41 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        {signedIn && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Your work</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {yours.map((page) => (
+                  <SidebarMenuItem key={page.to}>
+                    <SidebarMenuButton asChild>
+                      <Link
+                        to={page.to}
+                        activeOptions={{ exact: page.exact, includeSearch: false }}
+                        activeProps={{ 'data-active': true, 'aria-current': 'page' }}
+                        onClick={() => isMobile && setOpenMobile(false)}
+                      >
+                        <page.icon />
+                        <span>{page.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
       </SidebarContent>
       <SidebarFooter>
         <div className="space-y-1 px-2 text-xs text-muted-foreground">
           <p>A demo on Northwind's fictional data. Dates are moved forward so that orders keep arriving.</p>
-          <p>
+          <p className="flex gap-3">
             <a className="underline underline-offset-2" href="/api/docs">
               API docs
             </a>
+            <Link className="underline underline-offset-2" to="/privacy">
+              Privacy
+            </Link>
           </p>
         </div>
       </SidebarFooter>

@@ -67,7 +67,15 @@ function ProductPage() {
               items={[
                 { label: 'Unit price', value: data && formatMoney(data.unit_price_cents) },
                 { label: 'Quantity per unit', value: data?.quantity_per_unit },
-                { label: 'Units in stock', value: data && (data.units_in_stock === 0 ? 'Out of stock' : formatNumber(data.units_in_stock)) },
+                {
+                  label: 'Units in stock',
+                  value: data && (
+                    <span className="flex flex-wrap items-center gap-2">
+                      {data.units_in_stock === 0 ? 'Out of stock' : formatNumber(data.units_in_stock)}
+                      {data.below_reorder_level && !data.discontinued && <Badge variant="destructive">Below reorder level</Badge>}
+                    </span>
+                  ),
+                },
                 { label: 'Reorder level', value: data && formatNumber(data.reorder_level) },
                 { label: 'Supplier', value: data?.supplier },
                 { label: 'Category', value: data?.category },
