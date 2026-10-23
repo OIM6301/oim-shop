@@ -61,8 +61,11 @@ function MyOrders() {
           >
             #{row.original.order_id}
           </Link>
-          {/* Placed is hidden on a phone; the date shows here instead. */}
+          {/* Placed and Status are hidden on a phone, so the subtotal fits; they show here instead. */}
           <span className="block text-xs text-muted-foreground md:hidden">{formatDate(row.original.order_date)}</span>
+          <span className="block text-xs text-muted-foreground md:hidden">
+            {row.original.shipped_date ? 'Shipped' : 'Not shipped'}
+          </span>
         </>
       ),
     }),
@@ -149,7 +152,7 @@ function MyOrders() {
         error={orders.error}
         onRetry={() => void orders.refetch()}
         numeric={['total']}
-        wide={['order_date']}
+        wide={['order_date', 'shipped_date']}
         wrap={['customer_name', 'rep_name']}
         empty={
           (orders.data?.pagination.total ?? 0) > 0
