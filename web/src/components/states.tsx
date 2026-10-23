@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useDocumentTitle } from '@/hooks/use-document-title'
-import { explain } from '@/lib/errors'
+import { canRetry, explain } from '@/lib/errors'
 
 // The three states every data view has besides its data: loading, empty, and error.
 
@@ -21,9 +21,11 @@ export function QueryError({ error, onRetry, title = 'Could not load this' }: {
       <AlertTitle>{title}</AlertTitle>
       <AlertDescription>
         <p>{explain(error)}</p>
-        <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
-          Try again
-        </Button>
+        {canRetry(error) && (
+          <Button variant="outline" size="sm" className="mt-2" onClick={onRetry}>
+            Try again
+          </Button>
+        )}
       </AlertDescription>
     </Alert>
   )

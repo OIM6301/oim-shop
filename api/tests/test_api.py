@@ -468,3 +468,16 @@ def test_waiting_dashboards_are_capped(seeded_path: Path, monkeypatch: pytest.Mo
             return sorted(r.status_code for r in responses)
 
     assert asyncio.run(run()) == [200, 200, 503]
+
+
+def test_a_range_that_ends_before_it_starts_says_which_days(client: TestClient) -> None:
+    """Without `to`, the range ends today, so a first day in the future is refused, and the message says so."""
+    answer = client.get("/api/dashboard?from=2027-01-01")
+    assert answer.status_code == 422
+    assert answer.json()["detail"] == "The first day, 2027-01-01, is after the last day, today, 2026-10-22."
+    answer = client.get("/api/orders?from=2025-02-01&to=2025-01-01")
+    assert answer.json()["detail"] == "The first day, 2025-02-01, is after the last day, 2025-01-01."
+
+
+def test_a_customer_id_too_long_is_refused(client: TestClient) -> None:
+    get(client, "/api/customers/" + "A" * 11, 422)

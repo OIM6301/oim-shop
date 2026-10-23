@@ -89,7 +89,9 @@ async def dashboard(
         from_date = date(months_back // 12, months_back % 12 + 1, 1)
     first = from_date
     if last < first:
-        raise HTTPException(status_code=422, detail="to is before from")
+        # Without `to`, the last day is today, which a first day in the future is after.
+        end = str(last) if to_date else f"today, {last}"
+        raise HTTPException(status_code=422, detail=f"The first day, {first}, is after the last day, {end}.")
 
     state = request.app.state
     cache: MinuteCache = state.dashboard_cache

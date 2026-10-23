@@ -136,7 +136,11 @@ def main(argv: list[str] | None = None) -> int:
     if not (web / "index.html").is_file():
         print(f"No web build at {web}; serving the API only. Build it with: npm --prefix web run build")
     app = create_app(db_path, now=now, web_dist=web if (web / "index.html").is_file() else None, sign_in=sign_in)
-    uvicorn.run(app, host=args.host, port=args.port, proxy_headers=True, log_config=LOG_CONFIG)
+    # On stop (podman sends SIGTERM, then kills after ten seconds), requests still running get five
+    # seconds; a sign-in waiting on GitHub could otherwise outlast the ten.
+    uvicorn.run(
+        app, host=args.host, port=args.port, proxy_headers=True, log_config=LOG_CONFIG, timeout_graceful_shutdown=5
+    )
     return 0
 
 

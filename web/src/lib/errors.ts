@@ -10,3 +10,8 @@ export function explain(error: unknown): string {
 export function isNotFound(error: unknown): boolean {
   return error instanceof ApiError && error.status === 404
 }
+
+/** Whether asking again could help: not when the server refused the request itself (4xx), unless it was busy (429). */
+export function canRetry(error: unknown): boolean {
+  return !(error instanceof ApiError && error.status >= 400 && error.status < 500 && error.status !== 429)
+}

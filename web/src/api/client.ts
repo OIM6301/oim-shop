@@ -39,7 +39,8 @@ function errorOf(error: unknown, status: number): ApiError {
     return new ApiError(status, detail[0]?.msg ?? 'Some fields need attention.', detail)
   }
   if (status === 429) return new ApiError(status, 'Too many requests. Wait a minute and try again.')
-  return new ApiError(status, `The server answered with status ${status}.`)
+  if (status >= 500) return new ApiError(status, `The server had a problem (status ${status}). Try again in a moment.`)
+  return new ApiError(status, `The server refused the request (status ${status}).`)
 }
 
 /** The data of a successful response; anything else becomes an ApiError for react-query to show. */

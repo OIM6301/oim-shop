@@ -27,7 +27,7 @@ SORT = {"order_date": "o.order_date", "order_id": "o.order_id", "total": "o.tota
 def date_range(from_date: date | None, to_date: date | None) -> tuple[list[str], list[object]]:
     """SQL conditions for orders placed from one day through another, both included."""
     if from_date and to_date and to_date < from_date:
-        raise HTTPException(status_code=422, detail="to is before from")
+        raise HTTPException(status_code=422, detail=f"The first day, {from_date}, is after the last day, {to_date}.")
     where: list[str] = []
     params: list[object] = []
     if from_date:

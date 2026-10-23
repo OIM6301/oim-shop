@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Path, Query
 
 from oim_shop.deps import Conn, Name, PageNumber, PerPage, SortOrder, page_of, rows
 from oim_shop.models import Customer, CustomerPage
@@ -60,7 +60,8 @@ def customers(
 
 
 @router.get("/customers/{customer_id}", responses={404: {"description": "No such customer"}})
-def customer(conn: Conn, customer_id: str) -> Customer:
+def customer(conn: Conn, customer_id: Annotated[str, Path(max_length=10)]) -> Customer:
+    # Every id is five characters; ten leaves room for spaces, and a longer one is refused before any SQL.
     # One id in the data, "Val2 ", has lower case and a trailing space; compare both sides trimmed, in upper case.
     found = rows(
         conn, f"{CUSTOMER} WHERE upper(trim(c.customer_id)) = upper(?) GROUP BY c.customer_id", [customer_id.strip()]

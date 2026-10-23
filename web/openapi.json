@@ -365,6 +365,7 @@
             "required": true,
             "schema": {
               "type": "string",
+              "maxLength": 10,
               "title": "Customer Id"
             }
           }
