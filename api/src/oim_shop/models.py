@@ -136,7 +136,7 @@ class ProductRevenue(BaseModel):
 
 
 class EmployeeRevenue(BaseModel):
-    employee_id: int
+    employee_id: int | None = Field(description="Null on the last row when more than ten are added up as one")
     name: str
     order_count: int
     revenue_cents: int

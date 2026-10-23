@@ -46,6 +46,8 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **State and PKCE, against a forged sign-in.** The `state` value ties GitHub's answer to the browser that asked, and PKCE ties the code GitHub returns to the server that asked for it. Both are kept in a short-lived cookie between the two steps.
 
+**Reps on the public pages.** Every student who signs in becomes an employee, and accounts outlast the nightly reset. So the Employees list shows Northwind's nine and only the reps who have orders now, and Sales by employee shows the ten largest and adds up the rest as one bar. A rep's own page is always there.
+
 ## Entering orders
 
 **A transaction that holds the lock from the start.** A write begins with `BEGIN IMMEDIATE`, which takes SQLite's write lock before reading anything. Two reps who order the last unit at the same moment are then served one after the other: the second one reads the stock the first one left, and is told there is none. With a plain `BEGIN`, both would read one unit in stock. The update that takes the stock also repeats the check in its `WHERE` clause, so it can never go below zero.

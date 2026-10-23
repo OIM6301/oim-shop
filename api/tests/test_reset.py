@@ -170,3 +170,65 @@ def test_a_reset_reaches_the_cached_dashboard(path: Path) -> None:
         seed.reset(conn)
         conn.close()
         assert get(c, TODAY)["order_count"] == before - 1
+
+
+# --- reps on the public pages ------------------------------------------------------
+
+
+def add_reps(conn: sqlite3.Connection, count: int) -> list[int]:
+    ids = [
+        conn.execute(
+            "INSERT INTO employees (first_name, last_name, title, reports_to, hire_date) "
+            "VALUES ('Sales rep', '', 'Sales Representative', 5, ?) RETURNING employee_id",
+            (NOW.isoformat(),),
+        ).fetchone()[0]
+        for _ in range(count)
+    ]
+    for employee_id in ids:
+        conn.execute(
+            "INSERT INTO accounts (github_id, employee_id, role, created_at) VALUES (?, ?, 'rep', ?)",
+            (100_000 + employee_id, employee_id, NOW.isoformat()),
+        )
+    conn.commit()
+    return ids
+
+
+def enter_as(conn: sqlite3.Connection, employee_id: int, quantity: int) -> None:
+    order_id = enter_order(conn, NOW - timedelta(minutes=1), quantity=quantity)
+    conn.execute("UPDATE orders SET employee_id = ? WHERE order_id = ?", (employee_id, order_id))
+    conn.commit()
+
+
+def test_the_employee_list_shows_reps_only_while_they_have_orders(path: Path) -> None:
+    conn = connect(path)
+    busy, idle = add_reps(conn, 2)
+    enter_as(conn, busy, 1)
+    conn.close()
+    with TestClient(create_app(path, now=lambda: NOW)) as c:
+        listed = {e["employee_id"] for e in get(c, "/api/employees")}
+        assert listed == {*range(1, 10), busy}
+        # A rep's own page is there either way.
+        assert get(c, f"/api/employees/{idle}")["order_count"] == 0
+
+
+def test_sales_by_employee_shows_ten_and_adds_up_the_rest(path: Path) -> None:
+    conn = connect(path)
+    for i, rep in enumerate(add_reps(conn, 4)):
+        enter_as(conn, rep, i + 1)
+    conn.close()
+    with TestClient(create_app(path, now=lambda: NOW)) as c:
+        board = get(c, "/api/dashboard?from=2026-10-01&to=2026-10-22")
+    rows = board["by_employee"]
+    assert len(rows) == 11
+    rest = rows[-1]
+    assert (rest["employee_id"], rest["name"]) == (None, "3 others")
+    assert sum(r["revenue_cents"] for r in rows) == board["revenue_cents"]
+    assert sum(r["order_count"] for r in rows) == board["order_count"]
+    assert [r["revenue_cents"] for r in rows[:10]] == sorted((r["revenue_cents"] for r in rows[:10]), reverse=True)
+
+
+def test_ten_or_fewer_employees_are_all_shown(path: Path) -> None:
+    with TestClient(create_app(path, now=lambda: NOW)) as c:
+        rows = get(c, "/api/dashboard?from=2026-10-01&to=2026-10-22")["by_employee"]
+    assert len(rows) == 9
+    assert all(r["employee_id"] is not None for r in rows)

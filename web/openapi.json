@@ -992,6 +992,7 @@
           "employees"
         ],
         "summary": "Employees",
+        "description": "Northwind's nine employees, and the reps who signed in here while they have orders.\n\nEvery student who signs in becomes a rep, and accounts outlast the nightly reset, so\nlisting them all would bury the nine under rows of reps with nothing to show. A rep's\nown page is there either way. The list is short enough not to be paged.",
         "operationId": "employees_api_employees_get",
         "responses": {
           "200": {
@@ -1766,8 +1767,16 @@
       "EmployeeRevenue": {
         "properties": {
           "employee_id": {
-            "type": "integer",
-            "title": "Employee Id"
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employee Id",
+            "description": "Null on the last row when more than ten are added up as one"
           },
           "name": {
             "type": "string",

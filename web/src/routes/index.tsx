@@ -34,7 +34,8 @@ function Dashboard() {
     quantity: p.quantity,
   }))
   const employees: RevenueRow[] | undefined = data?.by_employee.map((e) => ({
-    key: String(e.employee_id),
+    // Past ten employees, the API adds up the rest as one row with no id.
+    key: e.employee_id === null ? 'others' : String(e.employee_id),
     label: e.name,
     revenue_cents: e.revenue_cents,
     order_count: e.order_count,

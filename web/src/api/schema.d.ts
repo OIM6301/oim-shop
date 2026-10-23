@@ -239,7 +239,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Employees */
+        /**
+         * Employees
+         * @description Northwind's nine employees, and the reps who signed in here while they have orders.
+         *
+         *     Every student who signs in becomes a rep, and accounts outlast the nightly reset, so
+         *     listing them all would bury the nine under rows of reps with nothing to show. A rep's
+         *     own page is there either way. The list is short enough not to be paged.
+         */
         get: operations["employees_api_employees_get"];
         put?: never;
         post?: never;
@@ -527,8 +534,11 @@ export interface components {
         };
         /** EmployeeRevenue */
         EmployeeRevenue: {
-            /** Employee Id */
-            employee_id: number;
+            /**
+             * Employee Id
+             * @description Null on the last row when more than ten are added up as one
+             */
+            employee_id: number | null;
             /** Name */
             name: string;
             /** Order Count */

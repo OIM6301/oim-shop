@@ -133,6 +133,24 @@ def compute_as_of(path: Path, moment: datetime, first: date, last: date) -> Dash
         conn.close()
 
 
+# Sales by employee shows this many, largest first, and adds up the rest as one more bar. Every
+# student who signs in is a rep, so on a busy day there are dozens.
+SHOWN_EMPLOYEES = 10
+
+
+def top_and_rest(employees: list[EmployeeRevenue]) -> list[EmployeeRevenue]:
+    if len(employees) <= SHOWN_EMPLOYEES:
+        return employees
+    rest = employees[SHOWN_EMPLOYEES:]
+    others = EmployeeRevenue(
+        employee_id=None,
+        name=f"{len(rest)} others",
+        order_count=sum(e.order_count for e in rest),
+        revenue_cents=sum(e.revenue_cents for e in rest),
+    )
+    return [*employees[:SHOWN_EMPLOYEES], others]
+
+
 def compute(conn: sqlite3.Connection, from_date: date, last: date) -> Dashboard:
     """The dashboard for orders placed from from_date through last, read from visible_orders."""
     where, params = date_range(from_date, last)
@@ -194,7 +212,7 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date) -> Dashboard:
             "revenue_cents": sum(m.revenue_cents for m in revenue_by_month),
             "revenue_by_month": revenue_by_month,
             "top_products": [ProductRevenue(**r) for r in top_products],
-            "by_employee": [EmployeeRevenue(**r) for r in by_employee],
+            "by_employee": top_and_rest([EmployeeRevenue(**r) for r in by_employee]),
             "by_country": [CountryRevenue(**r) for r in by_country],
         }
     )
