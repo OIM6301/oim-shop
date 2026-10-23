@@ -19,6 +19,7 @@ from oim_shop.accounts import (
     SESSION_LENGTH,
     AllowlistError,
     Session,
+    SignedIn,
     SignIn,
     Viewer,
     Writer,
@@ -28,7 +29,7 @@ from oim_shop.accounts import (
 )
 from oim_shop.deps import Conn, Now
 from oim_shop.github import GitHubError
-from oim_shop.models import Account, Me, NameChange
+from oim_shop.models import Account, Me, NameChange, RepName
 
 router = APIRouter(tags=["account"])
 log = logging.getLogger(__name__)
@@ -170,3 +171,19 @@ def choose_name(change: NameChange, conn: Conn, writer: Writer, now: Now) -> Me:
         )
     account = account_of(replace(writer, display_name=change.display_name))
     return Me(sign_in_available=True, account=account, today=now.date())
+
+
+@router.get("/me/reps", responses={401: {"description": "Not signed in"}, 403: {"description": "Not a manager"}})
+def rep_names(conn: Conn, viewer: SignedIn) -> list[RepName]:
+    """For a manager: every rep's chosen name, so each page can show it in place of 'Sales rep <number>'.
+
+    One row for each rep who has chosen a name; there are as many as the allowlist has people.
+    """
+    if viewer.role != "manager":
+        raise HTTPException(status_code=403, detail="Only a manager sees the names reps chose")
+    return [
+        RepName(**r)
+        for r in conn.execute(
+            "SELECT employee_id, display_name FROM accounts WHERE display_name IS NOT NULL ORDER BY employee_id"
+        )
+    ]

@@ -40,7 +40,7 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **GitHub's id, and nothing else.** GitHub tells the app a person's id, username, name and email. The app keeps the id, which never changes, and forgets the rest, along with the token GitHub gave it. It asks for no scope, so GitHub shows nothing to approve beyond reading a public profile.
 
-**Your name is yours.** Every rep appears on public pages as "Sales rep 12", after their employee number. The name you choose is shown only to you and to the managers, so a name you type can never put you on a public page.
+**Your name is yours.** Every rep appears on public pages as "Sales rep 12", after their employee number. The name you choose is shown only to you and to the managers, so a name you type can never put you on a public page. No public answer carries it: your browser puts it in place of "Sales rep 12", from `/api/me`, and a manager's browser puts every rep's name in place, from `/api/me/reps`, which answers only a manager.
 
 **A session is a random token.** The cookie holds 32 random bytes; the database holds only their SHA-256 hash, so a copy of the database cannot be used to sign in. A session lasts a week. The cookie is `HttpOnly`, so no script on the page can read it, and `SameSite=Lax`.
 

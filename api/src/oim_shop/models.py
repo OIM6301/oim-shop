@@ -174,6 +174,11 @@ class Me(BaseModel):
     today: date = Field(description="Today on the shop's clock, which a required date is counted from")
 
 
+class RepName(BaseModel):
+    employee_id: int
+    display_name: str
+
+
 class NameChange(BaseModel):
     display_name: Annotated[
         str,

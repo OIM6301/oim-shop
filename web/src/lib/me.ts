@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { meQuery } from '@/api/queries'
+import { meQuery, repNamesQuery } from '@/api/queries'
 
 /** Who is signed in, with the query's loading and error states, for a page that depends on it. */
 export function useMeQuery() {
@@ -13,13 +13,17 @@ export function useMe() {
 
 /**
  * The name to show for an employee. Public pages call every rep "Sales rep 12"; on your own
- * orders and your own page you see the name you chose, which only you and the managers know.
- * It comes from /api/me, never from a public endpoint.
+ * orders and your own page you see the name you chose, and a manager sees every rep's. The
+ * names come from /api/me and /api/me/reps, never from a public endpoint.
  */
 export function useNameOf(): (employeeId: number, publicName: string) => string {
   const account = useMe()?.account
-  return (employeeId, publicName) =>
-    account && account.employee_id === employeeId && account.display_name ? account.display_name : publicName
+  const manager = account?.role === 'manager'
+  const reps = useQuery({ ...repNamesQuery, enabled: manager }).data
+  return (employeeId, publicName) => {
+    if (account && account.employee_id === employeeId && account.display_name) return account.display_name
+    return (manager && reps?.get(employeeId)) || publicName
+  }
 }
 
 /** Whether the signed-in person may change this order: an entered order, not shipped, theirs or any if a manager. */

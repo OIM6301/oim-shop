@@ -437,3 +437,16 @@ def test_my_orders_sort(rep: TestClient) -> None:
     assert [o["order_id"] for o in by_total_up] == [small, large]
     by_number = rep.get("/api/me/orders?sort=order_id&order=desc").json()["items"]
     assert [o["order_id"] for o in by_number] == [small, large]
+
+
+def test_a_manager_sees_every_reps_chosen_name(
+    client: TestClient, rep: TestClient, other: TestClient, manager: TestClient
+) -> None:
+    """So a manager's pages agree with My orders, which already names every rep."""
+    rep.put("/api/me", json={"display_name": "Ana"}, headers=csrf(rep))
+    other.get("/api/me")  # signed in, no name chosen yet
+    ana = rep.get("/api/me").json()["account"]["employee_id"]
+    assert manager.get("/api/me/reps").json() == [{"employee_id": ana, "display_name": "Ana"}]
+    assert rep.get("/api/me/reps").status_code == 403
+    rep.post("/api/auth/logout", headers=csrf(rep))
+    assert client.get("/api/me/reps").status_code == 401

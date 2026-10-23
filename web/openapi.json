@@ -1369,6 +1369,38 @@
           }
         }
       }
+    },
+    "/api/me/reps": {
+      "get": {
+        "tags": [
+          "account"
+        ],
+        "summary": "Rep Names",
+        "description": "For a manager: every rep's chosen name, so each page can show it in place of 'Sales rep <number>'.\n\nOne row for each rep who has chosen a name; there are as many as the allowlist has people.",
+        "operationId": "rep_names_api_me_reps_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RepName"
+                  },
+                  "type": "array",
+                  "title": "Response Rep Names Api Me Reps Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "403": {
+            "description": "Not a manager"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2653,6 +2685,24 @@
           "revenue_cents"
         ],
         "title": "ProductRevenue"
+      },
+      "RepName": {
+        "properties": {
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "display_name"
+        ],
+        "title": "RepName"
       },
       "Shipper": {
         "properties": {

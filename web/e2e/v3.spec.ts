@@ -127,6 +127,8 @@ test('a rep cannot change another rep’s order; a manager can', async ({ browse
   await manager.goto('/my-orders?scope=all')
   await expect(manager.getByRole('row', { name: /Ana/ })).toBeVisible()
   await manager.goto(url)
+  // The manager sees the name the rep chose here too, as in the list.
+  await expect(manager.getByRole('link', { name: 'Ana' })).toBeVisible()
   await manager.getByRole('button', { name: 'Mark shipped' }).click()
   await manager.getByRole('alertdialog').getByRole('button', { name: 'Mark shipped' }).click()
   await expect(manager.getByRole('heading', { level: 1 })).toContainText('Shipped')

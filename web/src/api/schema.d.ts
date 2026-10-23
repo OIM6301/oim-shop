@@ -380,6 +380,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/reps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rep Names
+         * @description For a manager: every rep's chosen name, so each page can show it in place of 'Sales rep <number>'.
+         *
+         *     One row for each rep who has chosen a name; there are as many as the allowlist has people.
+         */
+        get: operations["rep_names_api_me_reps_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -858,6 +880,13 @@ export interface components {
             quantity: number;
             /** Revenue Cents */
             revenue_cents: number;
+        };
+        /** RepName */
+        RepName: {
+            /** Employee Id */
+            employee_id: number;
+            /** Display Name */
+            display_name: string;
         };
         /** Shipper */
         Shipper: {
@@ -1781,6 +1810,40 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    rep_names_api_me_reps_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RepName"][];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a manager */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

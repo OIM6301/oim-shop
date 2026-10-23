@@ -96,6 +96,13 @@ export const meQuery = queryOptions({
   refetchInterval: 10 * 60_000,
 })
 
+/** For a manager only: every rep's chosen name. */
+export const repNamesQuery = queryOptions({
+  queryKey: ['me', 'reps'],
+  queryFn: () => unwrap(api.GET('/api/me/reps')),
+  select: (reps) => new Map(reps.map((r) => [r.employee_id, r.display_name])),
+})
+
 export const shippersQuery = queryOptions({
   queryKey: ['shippers'],
   queryFn: () => unwrap(api.GET('/api/shippers')),
