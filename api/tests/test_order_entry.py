@@ -428,9 +428,12 @@ def test_an_order_number_is_never_used_twice(rep: TestClient, path: Path) -> Non
 
 
 def test_my_orders_sort(rep: TestClient) -> None:
-    small = post(rep, order(lines=[line(CHAI, 1)]))["order_id"]
+    # The larger order comes first, so sorting by total and by number give different answers.
     large = post(rep, order(lines=[line(CHAI, 9)]))["order_id"]
+    small = post(rep, order(lines=[line(CHAI, 1)]))["order_id"]
     by_total = rep.get("/api/me/orders?sort=total&order=desc").json()["items"]
     assert [o["order_id"] for o in by_total] == [large, small]
-    by_number = rep.get("/api/me/orders?sort=order_id&order=asc").json()["items"]
+    by_total_up = rep.get("/api/me/orders?sort=total&order=asc").json()["items"]
+    assert [o["order_id"] for o in by_total_up] == [small, large]
+    by_number = rep.get("/api/me/orders?sort=order_id&order=desc").json()["items"]
     assert [o["order_id"] for o in by_number] == [small, large]

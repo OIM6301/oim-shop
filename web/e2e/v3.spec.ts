@@ -22,6 +22,13 @@ async function signIn(page: Page, login: string, next = '/') {
   await page.request.post(`${GITHUB}/test/next-user`, { data: { login } })
   await page.goto(`/sign-in?next=${encodeURIComponent(next)}`)
   await page.getByRole('link', { name: 'Sign in with GitHub' }).click()
+  // Back from the fake GitHub: on the page signing in leads to, or on /sign-in with an error.
+  await page.waitForURL(
+    (url) =>
+      url.port === '8799' &&
+      !url.pathname.startsWith('/api/') &&
+      (url.pathname !== '/sign-in' || url.searchParams.has('error')),
+  )
 }
 
 async function chooseName(page: Page, name: string) {
@@ -59,10 +66,13 @@ async function dashboardOrders(page: Page): Promise<number> {
 
 test('a rep signs in, enters an order, sees it everywhere, and cancels it', async ({ page }) => {
   await signIn(page, 'e2e-rep')
-  await chooseName(page, 'Ana')
-  await expect(page).toHaveURL(/\/my-orders$/)
-  await expect(page.getByText('You have not entered an order since the last nightly reset.')).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Ana' })).toBeVisible()
+  // The first sign-in asks for a name and then shows My orders; a retry finds the name already chosen.
+  if (new URL(page.url()).pathname === '/welcome') {
+    await chooseName(page, 'Ana')
+    await expect(page).toHaveURL(/\/my-orders$/)
+    await expect(page.getByText('You have not entered an order since the last nightly reset.')).toBeVisible()
+  }
+  await nameAs(page, 'Ana')
 
   const before = await dashboardOrders(page)
   await enterOrder(page, 'Chai', '3')
@@ -151,7 +161,9 @@ test('a product below its reorder level is flagged', async ({ page }) => {
 
 test('when the account cannot be loaded, the page says so and can try again', async ({ page }) => {
   let fail = true
-  await page.route('**/api/me', (route) => (fail ? route.fulfill({ status: 500, json: { detail: 'Down' } }) : route.fallback()))
+  await page.route('**/api/me', (route) =>
+    fail ? route.fulfill({ status: 500, json: { detail: 'Down' } }) : route.fallback(),
+  )
   await page.goto('/orders/new')
   await expect(page.getByText('Could not check who is signed in')).toBeVisible({ timeout: 15_000 })
   fail = false
@@ -187,4 +199,12 @@ test('my orders sort by subtotal', async ({ page }) => {
   await page.getByRole('button', { name: 'Subtotal' }).click()
   await expect(page).toHaveURL(/sort=total&order=asc/)
   await expect.poll(async () => (await position(small)) < (await position(large))).toBe(true)
+})
+
+test('when the account cannot be loaded, the header still leads to signing in', async ({ page }) => {
+  await page.route('**/api/me', (route) => route.fulfill({ status: 500, json: { detail: 'Down' } }))
+  await page.goto('/products/1')
+  await page.getByRole('link', { name: 'Sign in' }).click({ timeout: 15_000 })
+  await expect(page).toHaveURL(/\/sign-in\?next=%2Fproducts%2F1/)
+  await expect(page.getByText('Could not check who is signed in')).toBeVisible({ timeout: 15_000 })
 })

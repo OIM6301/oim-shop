@@ -13,14 +13,25 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { explain } from '@/lib/errors'
-import { signInHref } from '@/lib/me'
-import { useMe } from '@/lib/me'
+import { signInHref, useMeQuery } from '@/lib/me'
 
 export function AccountMenu() {
-  const me = useMe()
+  const query = useMeQuery()
+  const me = query.data
   const here = useLocation().href
   const navigate = useNavigate()
   const signOut = useSignOut()
+  if (query.isError && !me) {
+    // Who is signed in could not be checked; the sign-in page says why and can try again.
+    return (
+      <Button asChild variant="outline" size="sm">
+        <Link to="/sign-in" search={{ next: here }}>
+          <LogIn />
+          Sign in
+        </Link>
+      </Button>
+    )
+  }
   if (!me?.sign_in_available) return null
 
   if (!me.account) {

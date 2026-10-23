@@ -113,6 +113,7 @@ def test_a_body_too_large_is_refused_before_it_is_read(seeded_path: Path) -> Non
     with TestClient(create_app(seeded_path, now=lambda: NOW)) as c:
         response = c.post("/api/orders", content=b"x" * 70_000, headers={"Content-Type": "application/json"})
         assert response.status_code == 413
+        assert response.headers["Cache-Control"] == "no-store"
 
 
 def test_a_chunked_body_too_large_is_refused(seeded_path: Path) -> None:

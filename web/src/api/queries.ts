@@ -87,11 +87,13 @@ export const dashboardQuery = (query: DashboardQuery) =>
 
 /**
  * Who is signed in, and today's date on the shop's clock. It is fetched again like any other
- * data once a minute old, so a page opened after midnight gets the new date.
+ * data once a minute old, and every ten minutes while a page stays open, so a form left open
+ * past midnight moves on to the new day's dates.
  */
 export const meQuery = queryOptions({
   queryKey: ['me'],
   queryFn: () => unwrap(api.GET('/api/me')),
+  refetchInterval: 10 * 60_000,
 })
 
 export const shippersQuery = queryOptions({

@@ -19,9 +19,10 @@ function useWrite<V, R>(write: (csrf: string, variables: V) => Promise<R>) {
     },
     // A write can change any list, total or stock figure, so everything shown is fetched again;
     // so does a refusal for stock (409), since someone else changed it, and a 401, which means
-    // the session ended. Only a 422, an order that was wrong as sent, leaves nothing to refresh.
+    // the session ended. A 422, an order that was wrong as sent, refreshes only /api/me, in
+    // case the date it was checked against has moved on.
     onSettled: (_data, error) =>
-      error instanceof ApiError && error.status === 422 ? undefined : queryClient.invalidateQueries(),
+      queryClient.invalidateQueries(error instanceof ApiError && error.status === 422 ? meQuery : undefined),
   })
 }
 

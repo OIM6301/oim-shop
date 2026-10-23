@@ -37,7 +37,7 @@ function Welcome() {
   const me = query.data
   const { next } = Route.useSearch()
 
-  if (query.isError) {
+  if (query.isError && !me) {
     return (
       <QueryError error={query.error} onRetry={() => void query.refetch()} title="Could not check who is signed in" />
     )

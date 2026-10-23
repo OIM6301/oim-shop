@@ -22,7 +22,8 @@ export function NeedsAccount({
   children: (account: Schemas['Account'], today: string) => ReactNode
 }) {
   if (me.isPending) return <Skeleton className="h-96 w-full" />
-  if (me.isError) {
+  // Only when there is nothing to show: a failed refresh in the background keeps the page, and any form on it.
+  if (!me.data) {
     return <QueryError error={me.error} onRetry={() => void me.refetch()} title="Could not check who is signed in" />
   }
   if (!me.data.account) return <SignInFirst what={what} next={next} available={me.data.sign_in_available} />

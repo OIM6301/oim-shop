@@ -81,7 +81,10 @@ class BodyLimit:
         if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
-        too_large = JSONResponse({"detail": "The request is too large"}, status_code=413)
+        # Answered here, outside cache_headers, so the refusal says no-store itself.
+        too_large = JSONResponse(
+            {"detail": "The request is too large"}, status_code=413, headers={"Cache-Control": "no-store"}
+        )
         declared = dict(scope["headers"]).get(b"content-length")
         if declared is not None and (not declared.isdigit() or int(declared) > self.max_bytes):
             await too_large(scope, receive, send)

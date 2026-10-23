@@ -307,10 +307,11 @@ def test_with_sign_in_turned_off_an_old_session_cannot_write(
 ) -> None:
     sign_in(client, github, STUDENT)
     token = client.cookies["oim_shop_session"]
+    headers = csrf(client)  # a valid token, so only the missing settings can refuse the write
     with TestClient(create_app(path, now=lambda: NOW), base_url=PUBLIC_URL) as off:
         off.cookies.set("oim_shop_session", token)
         assert me(off)["account"] is None
-        assert off.put("/api/me", json={"display_name": "Ana"}).status_code == 401
+        assert off.put("/api/me", json={"display_name": "Ana"}, headers=headers).status_code == 401
 
 
 def test_a_rep_who_appears_publicly_appears_by_number(client: TestClient, github: FakeGitHub) -> None:
