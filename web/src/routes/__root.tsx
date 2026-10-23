@@ -1,5 +1,6 @@
 import type { QueryClient } from '@tanstack/react-query'
-import { createRootRouteWithContext, Link, Outlet } from '@tanstack/react-router'
+import { createRootRouteWithContext, Link, Outlet, useRouter } from '@tanstack/react-router'
+import { useEffect } from 'react'
 
 import { AccountMenu } from '@/components/account-menu'
 import { AppSidebar } from '@/components/app-sidebar'
@@ -8,15 +9,41 @@ import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from '@/components/ui/empty'
 import { Separator } from '@/components/ui/separator'
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { useDocumentTitle } from '@/hooks/use-document-title'
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Layout,
   notFoundComponent: NotFound,
 })
 
+/**
+ * After moving to another page, focus goes to its heading, so a keyboard or screen-reader user
+ * starts there instead of at the top of the document. A change of filter, sort or page stays put.
+ */
+function useFocusOnNewPage() {
+  const router = useRouter()
+  useEffect(
+    () =>
+      router.subscribe('onRendered', ({ fromLocation, pathChanged }) => {
+        if (!fromLocation || !pathChanged) return
+        const target = document.querySelector<HTMLElement>('main h1') ?? document.querySelector<HTMLElement>('main')
+        target?.setAttribute('tabindex', '-1')
+        target?.focus()
+      }),
+    [router],
+  )
+}
+
 function Layout() {
+  useFocusOnNewPage()
   return (
     <SidebarProvider>
+      <a
+        href="#main"
+        className="sr-only z-50 rounded-md bg-background px-3 py-2 text-sm font-medium shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2"
+      >
+        Skip to content
+      </a>
       <AppSidebar />
       <SidebarInset>
         <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
@@ -28,7 +55,7 @@ function Layout() {
             <ThemeToggle />
           </div>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 md:px-6">
+        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none md:px-6">
           <Outlet />
         </main>
       </SidebarInset>
@@ -37,10 +64,13 @@ function Layout() {
 }
 
 function NotFound() {
+  useDocumentTitle('Page not found')
   return (
     <Empty>
       <EmptyHeader>
-        <EmptyTitle>Page not found</EmptyTitle>
+        <EmptyTitle role="heading" aria-level={1} className="text-base">
+          Page not found
+        </EmptyTitle>
         <EmptyDescription>There is no page at this address.</EmptyDescription>
       </EmptyHeader>
       <EmptyContent>
