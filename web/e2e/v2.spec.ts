@@ -106,3 +106,67 @@ test('charts do not animate when the reader asks for reduced motion', async ({ p
   const heights = await bars.evaluateAll((els) => els.slice(0, 12).map((e) => e.getBoundingClientRect().height))
   expect(Math.min(...heights)).toBeGreaterThan(20)
 })
+
+// --- From the Codex review of v2 -----------------------------------------------
+
+test("a new dashboard range never shows the old range's figures", async ({ page }) => {
+  await page.goto('/?from=2025-01-01&to=2025-12-31')
+  const revenue = page.getByText('Revenue', { exact: true }).locator('..')
+  await expect(revenue).toContainText('$')
+  const old = await revenue.textContent()
+  await page.route('**/api/dashboard?**', async (route) => {
+    await new Promise((r) => setTimeout(r, 3000))
+    await route.fallback()
+  })
+  await page.getByRole('button', { name: /Jan 1, 2025 to Dec 31, 2025/ }).click()
+  await page.getByRole('button', { name: 'This year' }).click()
+  // The new answer is held back 3 seconds; in the meantime the old figure must not be shown.
+  await expect(revenue).not.toHaveText(old ?? '', { timeout: 500 })
+})
+
+test('an employee whose manager cannot be loaded is not shown reporting to no one', async ({ page }) => {
+  await page.route((url) => url.pathname === '/api/employees', (route) => route.abort())
+  await page.goto('/employees/5')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Steven Buchanan')
+  await expect(page.getByText('No one')).toHaveCount(0)
+})
+
+test('the orders list and an order call the amount without freight the subtotal', async ({ page }) => {
+  await page.goto('/orders')
+  await expect(page.getByRole('columnheader', { name: /Subtotal/ })).toBeVisible()
+  await page.goto('/orders/10248')
+  await expect(page.getByText('Subtotal')).toBeVisible()
+})
+
+test('a category list that fails to load says so and can be retried', async ({ page }) => {
+  let fail = true
+  await page.route('**/api/categories', (route) => (fail ? route.abort() : route.fallback()))
+  await page.goto('/products')
+  const retry = page.getByRole('button', { name: 'Retry loading categories' })
+  await expect(retry).toBeVisible()
+  fail = false
+  await retry.click()
+  await page.getByRole('combobox', { name: 'Category' }).click()
+  await expect(page.getByRole('option', { name: 'Beverages' })).toBeVisible()
+})
+
+test('a page past the last one says so and leads back', async ({ page }) => {
+  await page.goto('/products?page=99')
+  await expect(page.getByText('Page 99 is past the last page.')).toBeVisible()
+  await expect(page.getByText(/1,961 to/)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Go to page 1' }).click()
+  await expect(page.locator('tbody tr')).toHaveCount(20)
+})
+
+test('the result count is announced when it changes', async ({ page }) => {
+  await page.goto('/products')
+  await expect(page.getByRole('status').filter({ hasText: '1 to 20 of 77 products' })).toBeVisible()
+})
+
+test('the employees sort is kept in the address', async ({ page }) => {
+  await page.goto('/employees')
+  await page.getByRole('button', { name: 'Employee' }).click()
+  await expect(page).toHaveURL(/sort=name/)
+  await page.reload()
+  await expect(page.locator('tbody tr').first()).toContainText('Andrew Fuller')
+})

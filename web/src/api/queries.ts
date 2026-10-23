@@ -80,6 +80,6 @@ export const employeeQuery = (employeeId: number) =>
 export const dashboardQuery = (query: DashboardQuery) =>
   queryOptions({
     queryKey: ['dashboard', query],
+    // No placeholder: figures from the previous range must never sit under the new range's label.
     queryFn: () => unwrap(api.GET('/api/dashboard', { params: { query } })),
-    placeholderData: keepPreviousData,
   })

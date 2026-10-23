@@ -1,4 +1,4 @@
-import { AlertCircle, SearchX } from 'lucide-react'
+import { AlertCircle, RefreshCw, SearchX } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -40,6 +40,16 @@ export function NotFound({ title, description, action }: { title: string; descri
       </EmptyHeader>
       {action && <EmptyContent>{action}</EmptyContent>}
     </Empty>
+  )
+}
+
+/** Stands in for a filter whose choices could not be loaded, so the filter is not silently missing. */
+export function LookupRetry({ what, onRetry, className = '' }: { what: string; onRetry: () => void; className?: string }) {
+  return (
+    <Button variant="outline" className={`text-destructive ${className}`} onClick={onRetry}>
+      <RefreshCw />
+      Retry loading {what}
+    </Button>
   )
 }
 

@@ -131,7 +131,7 @@ function OrderPage() {
                     </TableBody>
                   </Table>
                   <dl className="mt-4 ml-auto grid max-w-xs grid-cols-[1fr_auto] gap-x-8 gap-y-2 border-t pt-4 text-sm tabular-nums">
-                    <dt className="text-muted-foreground">Lines</dt>
+                    <dt className="text-muted-foreground">Subtotal</dt>
                     <dd className="text-right">{formatMoney(data.total_cents)}</dd>
                     <dt className="text-muted-foreground">Freight</dt>
                     <dd className="text-right">{formatMoney(data.freight_cents)}</dd>

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import type { Schemas } from '@/api/client'
 import { employeeQuery, employeesQuery } from '@/api/queries'
 import { ChartCard, ColumnChart, type RevenueRow } from '@/components/charts'
 import { BackLink, Facts } from '@/components/detail'
@@ -21,6 +22,19 @@ export const Route = createFileRoute('/employees/$employeeId')({
   validateSearch: z.object({ sort: sortOf(ORDER_SORTS), order, page }),
   component: EmployeePage,
 })
+
+/** "No one" only when the data says so; while the manager's name is loading, or could not be, say that instead. */
+function ReportsTo({ reportsTo, manager, failed }: { reportsTo: number | null; manager: Schemas['Employee'] | undefined; failed: boolean }) {
+  if (reportsTo === null) return 'No one'
+  if (manager) {
+    return (
+      <Link to="/employees/$employeeId" params={{ employeeId: String(manager.employee_id) }} className="hover:underline">
+        {manager.first_name} {manager.last_name}
+      </Link>
+    )
+  }
+  return failed ? <span className="text-muted-foreground">Employee {reportsTo} (name not loaded)</span> : <Skeleton className="h-5 w-32" />
+}
 
 function EmployeePage() {
   const employeeId = positiveInt(Route.useParams().employeeId)
@@ -74,18 +88,7 @@ function EmployeePage() {
                 <Facts
                   loading={isPending}
                   items={[
-                    { label: 'Reports to', value: manager ? (
-                        <Link
-                          to="/employees/$employeeId"
-                          params={{ employeeId: String(manager.employee_id) }}
-                          className="hover:underline"
-                        >
-                          {manager.first_name} {manager.last_name}
-                        </Link>
-                      ) : (
-                        'No one'
-                      ),
-                    },
+                    { label: 'Reports to', value: data && <ReportsTo reportsTo={data.reports_to} manager={manager} failed={everyone.isError} /> },
                     { label: 'Hired', value: data && formatDate(data.hire_date) },
                     { label: 'Location', value: data && [data.city, data.country].filter(Boolean).join(', ') },
                   ]}

@@ -15,11 +15,24 @@ export function Pager({
   onPage: (page: number) => void
 }) {
   if (!pagination || pagination.total === 0) return null
+  if (pagination.page > pagination.pages) {
+    return (
+      <nav aria-label="Pages" className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <p role="status" className="text-sm text-muted-foreground">
+          Page {formatNumber(pagination.page)} is past the last page.
+        </p>
+        <Button variant="outline" size="sm" onClick={() => onPage(1)}>
+          Go to page 1
+        </Button>
+      </nav>
+    )
+  }
   const first = (pagination.page - 1) * pagination.per_page + 1
   const last = Math.min(pagination.page * pagination.per_page, pagination.total)
   return (
     <nav aria-label="Pages" className="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <p className="text-sm text-muted-foreground tabular-nums">
+      {/* A status, so a screen reader announces the new range after Next or Previous. */}
+      <p role="status" className="text-sm text-muted-foreground tabular-nums">
         {formatNumber(first)} to {formatNumber(last)} of {formatNumber(pagination.total)} {noun}
       </p>
       <div className="flex items-center gap-2">

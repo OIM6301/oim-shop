@@ -9,6 +9,7 @@ import { DateRangeFilter } from '@/components/date-range-filter'
 import { OrdersTable } from '@/components/orders-table'
 import { ORDER_SORTS } from '@/lib/table'
 import { PageHeader } from '@/components/page-header'
+import { LookupRetry } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { compact, day, id, isOneOf, order, page, sortOf, text } from '@/lib/search'
@@ -46,14 +47,19 @@ function Filter({
   value,
   options,
   onChange,
+  failed = false,
+  onRetry,
   width = 'sm:w-48',
 }: {
   label: string
   value: string | undefined
   options: { value: string; label: string }[] | undefined
   onChange: (value: string | undefined) => void
+  failed?: boolean
+  onRetry?: () => void
   width?: string
 }) {
+  if (failed && onRetry) return <LookupRetry what={label.toLowerCase()} className={`w-full ${width}`} onRetry={onRetry} />
   return (
     <Select value={value ?? ALL} onValueChange={(v) => onChange(v === ALL ? undefined : v)}>
       <SelectTrigger className={`w-full ${width}`} aria-label={label}>
@@ -91,18 +97,24 @@ function Orders() {
           value={search.customer}
           width="sm:w-60"
           options={customerOptions(customers.data?.items)}
+          failed={customers.isError}
+          onRetry={() => void customers.refetch()}
           onChange={(customer) => set({ customer })}
         />
         <Filter
           label="Employees"
           value={search.employee ? String(search.employee) : undefined}
           options={employees.data?.map((e) => ({ value: String(e.employee_id), label: `${e.first_name} ${e.last_name}` }))}
+          failed={employees.isError}
+          onRetry={() => void employees.refetch()}
           onChange={(v) => set({ employee: v ? Number(v) : undefined })}
         />
         <Filter
           label="Countries"
           value={search.country}
           options={countries.data?.map((c) => ({ value: c, label: c }))}
+          failed={countries.isError}
+          onRetry={() => void countries.refetch()}
           onChange={(country) => set({ country })}
         />
         <DateRangeFilter value={{ from: search.from, to: search.to }} onChange={(r) => set({ from: r.from, to: r.to })} defaultLabel="Any date" />

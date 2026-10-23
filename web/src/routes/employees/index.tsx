@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useState } from 'react'
+import { z } from 'zod'
 
 import type { Schemas } from '@/api/client'
 import { employeesQuery } from '@/api/queries'
@@ -11,8 +11,12 @@ import { QueryError } from '@/components/states'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
+import { isOneOf, order, sortOf } from '@/lib/search'
+
+const SORTS = ['name', 'hire_date', 'order_count', 'revenue'] as const
 
 export const Route = createFileRoute('/employees/')({
+  validateSearch: z.object({ sort: sortOf(SORTS), order }),
   component: Employees,
 })
 
@@ -83,7 +87,13 @@ function Hierarchy({ employees }: { employees: Employee[] }) {
 
 function Employees() {
   const employees = useQuery(employeesQuery)
-  const [sort, setSort] = useState<Sort>({ id: 'revenue', desc: true })
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const sort: Sort = { id: search.sort ?? 'revenue', desc: (search.order ?? 'desc') === 'desc' }
+  const setSort = ({ id, desc }: Sort) => {
+    if (!isOneOf(SORTS, id)) return
+    void navigate({ search: { sort: id, order: desc ? 'desc' : 'asc' } })
+  }
   const byId = new Map((employees.data ?? []).map((e) => [e.employee_id, e]))
 
   return (

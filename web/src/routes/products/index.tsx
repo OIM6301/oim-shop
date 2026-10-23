@@ -10,6 +10,7 @@ import { type Column, columnHelper } from '@/lib/table'
 import { PageHeader } from '@/components/page-header'
 import { Pager } from '@/components/pager'
 import { SearchInput } from '@/components/search-input'
+import { LookupRetry } from '@/components/states'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { formatMoney, formatNumber } from '@/lib/format'
@@ -70,24 +71,28 @@ function Products() {
       <PageHeader title="Products" description="Northwind's catalog, with list prices and stock on hand." />
       <div className="mb-4 flex flex-wrap gap-2">
         <SearchInput value={search.name ?? ''} onChange={setName} label="Search products by name" placeholder="Search by name" />
+        {categories.isError ? (
+          <LookupRetry what="categories" className="w-full sm:w-52" onRetry={() => void categories.refetch()} />
+        ) : (
         <Select
-          value={search.category ? String(search.category) : 'all'}
-          onValueChange={(v) =>
-            void navigate({ search: (prev) => compact({ ...prev, category: v === 'all' ? undefined : Number(v), page: undefined }) })
-          }
-        >
-          <SelectTrigger className="w-full sm:w-52" aria-label="Category">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All categories</SelectItem>
-            {categories.data?.map((c) => (
-              <SelectItem key={c.category_id} value={String(c.category_id)}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+            value={search.category ? String(search.category) : 'all'}
+            onValueChange={(v) =>
+              void navigate({ search: (prev) => compact({ ...prev, category: v === 'all' ? undefined : Number(v), page: undefined }) })
+            }
+          >
+            <SelectTrigger className="w-full sm:w-52" aria-label="Category">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All categories</SelectItem>
+              {categories.data?.map((c) => (
+                <SelectItem key={c.category_id} value={String(c.category_id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
       <DataTable
         caption="Products"
@@ -105,7 +110,13 @@ function Products() {
         numeric={['unit_price', 'stock']}
         wide={['category', 'supplier']}
         wrap={['name']}
-        empty={search.name ? `No product matches “${search.name}”.` : 'No products in this category.'}
+        empty={
+          (products.data?.pagination.total ?? 0) > 0
+            ? 'No products on this page.'
+            : search.name
+              ? `No product matches “${search.name}”.`
+              : 'No products in this category.'
+        }
       />
       <Pager
         pagination={products.data?.pagination}

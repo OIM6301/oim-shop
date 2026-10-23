@@ -60,7 +60,12 @@ export function ChartCard({
       </CardHeader>
       <CardContent>
         {isPending || !rows ? (
-          <Skeleton className="h-64 w-full" />
+          <>
+            <Skeleton className="h-64 w-full" />
+            <span role="status" className="sr-only">
+              Loading {title.toLowerCase()}
+            </span>
+          </>
         ) : rows.every((r) => r.revenue_cents === 0) ? (
           <p className="flex h-64 items-center justify-center text-sm text-muted-foreground">
             No orders in this period.

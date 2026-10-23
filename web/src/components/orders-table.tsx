@@ -58,7 +58,8 @@ const all: Column<Order>[] = col.columns([
     enableSorting: false,
     cell: (c) => <ShipStatus shipped={c.getValue()} />,
   }),
-  col.accessor('total_cents', { id: 'total', header: 'Total', cell: (c) => formatMoney(c.getValue()) }),
+  // Order lines after discount, without freight, as on the dashboard; the order's page adds freight to it.
+  col.accessor('total_cents', { id: 'total', header: 'Subtotal', cell: (c) => formatMoney(c.getValue()) }),
 ])
 
 /** A page of orders for `query`, with sorting and paging. `without` drops columns the page already shows. */
@@ -93,7 +94,7 @@ export function OrdersTable({
         numeric={['total']}
         wide={['order_date', 'employee_name', 'ship_country', 'shipped_date']}
         wrap={['customer_name']}
-        empty={empty}
+        empty={(orders.data?.pagination.total ?? 0) > 0 ? 'No orders on this page.' : empty}
       />
       <Pager pagination={orders.data?.pagination} noun="orders" onPage={onPage} />
     </>

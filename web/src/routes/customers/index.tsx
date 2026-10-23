@@ -81,7 +81,13 @@ function Customers() {
         numeric={['order_count', 'revenue']}
         wide={['contact_name', 'country', 'last_order_date']}
         wrap={['company_name']}
-        empty={search.name ? `No customer matches “${search.name}”.` : 'No customers.'}
+        empty={
+          (customers.data?.pagination.total ?? 0) > 0
+            ? 'No customers on this page.'
+            : search.name
+              ? `No customer matches “${search.name}”.`
+              : 'No customers.'
+        }
       />
       <Pager
         pagination={customers.data?.pagination}
