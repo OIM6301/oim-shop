@@ -38,3 +38,10 @@ def test_a_fixed_clock_comes_from_the_environment(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setenv("OIM_SHOP_NOW", "yesterday")
     with pytest.raises(SystemExit, match="not an ISO date"):
         clock_from_env()
+
+
+def test_a_fixed_clock_with_a_time_zone_becomes_boston_time(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 17:00 UTC is 13:00 in Boston that day (daylight saving time).
+    monkeypatch.setenv("OIM_SHOP_NOW", "2026-10-22T17:00:00+00:00")
+    moment = clock_from_env()()
+    assert (moment.isoformat(), moment.tzinfo) == ("2026-10-22T13:00:00", None)

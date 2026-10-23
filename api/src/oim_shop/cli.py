@@ -7,7 +7,7 @@ Settings come from the environment:
     OIM_SHOP_DB     the SQLite file (default: oim-shop.db in the current directory)
     OIM_SHOP_SEED   the seed directory (default: data/seed in this repository)
     OIM_SHOP_WEB    the built web app (default: web/dist in this repository, if built)
-    OIM_SHOP_NOW    a fixed moment such as 2026-10-22T17:00:00, Boston time, used instead of
+    OIM_SHOP_NOW    a fixed moment such as 2026-10-22T17:00:00 (Boston time, unless it names a zone), used instead of
                     the clock, so tests and screenshots show the same figures every day
 """
 
@@ -48,6 +48,9 @@ def clock_from_env() -> Callable[[], datetime]:
         moment = datetime.fromisoformat(fixed)
     except ValueError:
         raise SystemExit(f"OIM_SHOP_NOW={fixed!r} is not an ISO date and time such as 2026-10-22T17:00:00") from None
+    if moment.tzinfo is not None:
+        # The data's timestamps are Boston time without a zone; a moment with one is converted.
+        moment = moment.astimezone(clock.BOSTON).replace(tzinfo=None)
     return lambda: moment
 
 

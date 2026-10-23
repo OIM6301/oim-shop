@@ -79,7 +79,7 @@ def test_the_dashboard_has_a_lower_limit_of_its_own(seeded_path: Path, clock: Fa
         assert c.get("/api/categories", headers=visitor).status_code == 200
 
 
-def test_at_most_four_requests_are_handled_at_once(seeded_path: Path) -> None:
+def test_the_thread_pool_for_ordinary_routes_has_four_threads(seeded_path: Path) -> None:
     import anyio.to_thread
 
     app = create_app(seeded_path, now=lambda: NOW)
@@ -90,3 +90,12 @@ def test_at_most_four_requests_are_handled_at_once(seeded_path: Path) -> None:
 
     with TestClient(app) as c:
         assert c.get("/api/threads").json() == {"total": 4}
+
+
+def test_a_refused_request_is_not_cached(client: TestClient) -> None:
+    visitor = {"CF-Connecting-IP": "203.0.113.50"}
+    for _ in range(3):
+        client.get("/api/categories", headers=visitor)
+    refused = client.get("/api/categories", headers=visitor)
+    assert refused.status_code == 429
+    assert refused.headers["Cache-Control"] == "no-store"

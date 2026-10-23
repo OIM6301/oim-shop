@@ -58,7 +58,8 @@ class RateLimit(BaseHTTPMiddleware):
             return JSONResponse(
                 {"detail": "Too many requests; try again in a minute"},
                 status_code=429,
-                headers={"Retry-After": str(retry)},
+                # Answered here, before cache_headers runs, so the refusal says no-store itself.
+                headers={"Retry-After": str(retry), "Cache-Control": "no-store"},
             )
         return await call_next(request)
 
