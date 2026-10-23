@@ -5,9 +5,13 @@ Money is integer cents (`*_cents`) and discounts integer percents (`*_pct`).
 Dates are ISO 8601 text on the shop's clock, Boston time.
 """
 
+from datetime import date
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field, StringConstraints
+
+# The largest integer SQLite stores; a larger id could never match, and binding it would fail.
+MAX_ID = 2**63 - 1
 
 
 class Pagination(BaseModel):
@@ -39,6 +43,7 @@ class Product(BaseModel):
     unit_price_cents: int
     units_in_stock: int
     reorder_level: int
+    below_reorder_level: bool = Field(description="Stock has fallen below the reorder level")
     discontinued: bool
 
 
@@ -78,6 +83,7 @@ class Order(BaseModel):
     freight_cents: int
     line_count: int
     total_cents: int = Field(description="The lines after discount, without freight")
+    source: Literal["seed", "entered"] = Field(description="From Northwind's history, or entered in this app")
 
 
 class OrderPage(BaseModel):
@@ -170,3 +176,23 @@ class NameChange(BaseModel):
         str,
         StringConstraints(strip_whitespace=True, min_length=1, max_length=40, pattern=r"^[^\x00-\x1f\x7f]+$"),
     ] = Field(description="1 to 40 characters on one line; shown only to you and to managers")
+
+
+class Shipper(BaseModel):
+    shipper_id: int
+    company_name: str
+
+
+class LineInput(BaseModel):
+    product_id: int = Field(ge=1, le=MAX_ID)
+    quantity: int = Field(ge=1, le=10_000, description="At most the product's stock")
+    discount_pct: int = Field(ge=0, le=25, description="0 to 25, the range in Northwind's own orders")
+
+
+class OrderInput(BaseModel):
+    """A new order, or the whole of an order being edited. Prices come from the products, never from here."""
+
+    customer_id: str = Field(min_length=1, max_length=10)
+    shipper_id: int = Field(ge=1, le=MAX_ID)
+    required_date: date = Field(description="Today to 60 days ahead")
+    lines: list[LineInput] = Field(min_length=1, max_length=20, description="Each product at most once")

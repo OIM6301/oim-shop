@@ -46,6 +46,22 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **Two checks against a forged sign-in.** The `state` value ties GitHub's answer to the browser that asked, and PKCE ties the code GitHub returns to the server that asked for it. Both are kept in a short-lived cookie between the two steps.
 
+## Entering orders
+
+**One transaction, holding the lock from the start.** A write begins with `BEGIN IMMEDIATE`, which takes SQLite's write lock before reading anything. Two reps who order the last unit at the same moment are then served one after the other: the second one reads the stock the first one left, and is told there is none. With a plain `BEGIN`, both would read one unit in stock. The update that takes the stock also repeats the check in its `WHERE` clause, so it can never go below zero.
+
+**The price comes from the product.** An order says which products and how many, never at what price. The server copies each product's current price onto the line, as Northwind's own orders record the price at the time of the order.
+
+**What the form does not ask for.** Freight is 0, and the order ships to the customer's own city and country. Sales by country counts orders by where they ship, so an order without a country would be missing from it.
+
+**Cancelling deletes the order.** Its lines go with it and its stock goes back. A cancelled status would keep a record, but then every report would have to leave cancelled orders out, and the nightly reset clears entered orders anyway.
+
+**Northwind's history is read-only.** Seeded orders were placed by Northwind's own employees, so no one changes them, not even a manager. A rep changes only their own orders, and a manager any rep's; either, only until the order ships.
+
+**Every problem at once.** A refused order lists each problem with the field it is about, in the same shape as FastAPI's own validation errors, so the form shows all of them beside their fields. 422 means the order itself is wrong; 409 means it conflicts with the database as it is now, such as stock another rep just took.
+
+**A limit per person.** The rate limit per address cannot tell apart the students on one campus network, so writes have a second limit: 30 a minute for each signed-in person.
+
 ## The web app
 
 **Types come from the API.** `npm run api:types` turns the API's OpenAPI schema into TypeScript types. CI checks that the committed schema matches the API and that the types match the schema, so a field renamed in the API without regenerating them fails CI; regenerate them, and TypeScript points at every place the web app still uses the old name. Either way the change cannot be deployed until the web app follows it.

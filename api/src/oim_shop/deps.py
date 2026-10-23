@@ -12,7 +12,7 @@ from fastapi import Path as PathParam
 from pydantic import Field
 
 from oim_shop import db
-from oim_shop.models import Pagination
+from oim_shop.models import MAX_ID, Pagination
 
 
 def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
@@ -39,8 +39,6 @@ PerPage = Annotated[int, Query(ge=1, le=100, description="At most 100")]
 SortOrder = Annotated[Literal["asc", "desc"], Query()]
 Name = Annotated[str | None, Query(max_length=100, description="Part of the name, any case")]
 
-# The largest integer SQLite stores; a larger id could never match, and binding it would fail.
-MAX_ID = 2**63 - 1
 PathId = Annotated[int, PathParam(ge=1, le=MAX_ID)]
 QueryId = Annotated[int | None, Query(ge=1, le=MAX_ID)]
 

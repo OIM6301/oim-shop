@@ -171,6 +171,8 @@ def signed_in_write(request: Request, session: Annotated[Session | None, Depends
         origin is not None and (sign_in is None or origin != sign_in.origin)
     ):
         raise HTTPException(status_code=403, detail="This request did not come from the app's own pages")
+    if not request.app.state.write_limit.allow(session.github_id):
+        raise HTTPException(status_code=429, detail="Too many changes; try again in a minute")
     return session
 
 

@@ -1,6 +1,8 @@
 """Connecting to SQLite and applying the numbered migrations."""
 
 import sqlite3
+from collections.abc import Generator
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
@@ -45,6 +47,28 @@ def as_of(conn: sqlite3.Connection, now: datetime) -> None:
         """  # noqa: S608 (moment is datetime.isoformat() of the server's clock)
     )
     conn.commit()
+
+
+@contextmanager
+def transaction(conn: sqlite3.Connection) -> Generator[None]:
+    """A write transaction that holds SQLite's write lock from its first statement (BEGIN IMMEDIATE).
+
+    While it runs, no other connection can write, so what it reads (the stock, an order's
+    owner) cannot change before it commits. A second writer waits at BEGIN, up to the busy
+    timeout, and then reads what the first one wrote. An exception rolls everything back.
+    """
+    conn.commit()  # end the read transaction this connection may be in
+    conn.autocommit = True
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield
+        except BaseException:
+            conn.execute("ROLLBACK")
+            raise
+        conn.execute("COMMIT")
+    finally:
+        conn.autocommit = False
 
 
 def generation(conn: sqlite3.Connection) -> int:

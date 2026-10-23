@@ -72,6 +72,7 @@ def test_product_detail(client: TestClient) -> None:
         "unit_price_cents": 1900,
         "units_in_stock": 17,
         "reorder_level": 25,
+        "below_reorder_level": True,
         "discontinued": False,
     }
 

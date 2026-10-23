@@ -599,6 +599,58 @@
             }
           }
         }
+      },
+      "post": {
+        "tags": [
+          "order entry"
+        ],
+        "summary": "Enter Order",
+        "description": "Enter an order as the signed-in rep. The prices are the products' current ones.",
+        "operationId": "enter_order_api_orders_post",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "403": {
+            "description": "Not your order, or a write from outside the app"
+          },
+          "409": {
+            "description": "Not enough stock, or the order has shipped"
+          },
+          "429": {
+            "description": "Too many changes in a minute"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/orders/{order_id}": {
@@ -634,6 +686,210 @@
           },
           "404": {
             "description": "No such order"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "order entry"
+        ],
+        "summary": "Edit Order",
+        "description": "Replace an order that has not shipped: its customer, shipper, required date and lines.\n\nThe stock its old lines took counts as available to the new ones. It stays the order of\nthe rep who entered it, even when a manager edits it.",
+        "operationId": "edit_order_api_orders__order_id__put",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Order Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such order"
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "403": {
+            "description": "Not your order, or a write from outside the app"
+          },
+          "409": {
+            "description": "Not enough stock, or the order has shipped"
+          },
+          "429": {
+            "description": "Too many changes in a minute"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "order entry"
+        ],
+        "summary": "Cancel Order",
+        "description": "Cancel an order that has not shipped: it is deleted, and its stock goes back.",
+        "operationId": "cancel_order_api_orders__order_id__delete",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "description": "No such order"
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "403": {
+            "description": "Not your order, or a write from outside the app"
+          },
+          "409": {
+            "description": "Not enough stock, or the order has shipped"
+          },
+          "429": {
+            "description": "Too many changes in a minute"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/shippers": {
+      "get": {
+        "tags": [
+          "order entry"
+        ],
+        "summary": "Shippers",
+        "operationId": "shippers_api_shippers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Shipper"
+                  },
+                  "type": "array",
+                  "title": "Response Shippers Api Shippers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/orders/{order_id}/ship": {
+      "post": {
+        "tags": [
+          "order entry"
+        ],
+        "summary": "Ship Order",
+        "description": "Mark an order shipped, now. It cannot be undone.",
+        "operationId": "ship_order_api_orders__order_id__ship_post",
+        "parameters": [
+          {
+            "name": "order_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Order Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OrderDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such order"
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "403": {
+            "description": "Not your order, or a write from outside the app"
+          },
+          "409": {
+            "description": "Not enough stock, or the order has shipped"
+          },
+          "429": {
+            "description": "Too many changes in a minute"
           },
           "422": {
             "description": "Validation Error",
@@ -1479,6 +1735,37 @@
         ],
         "title": "Health"
       },
+      "LineInput": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Product Id"
+          },
+          "quantity": {
+            "type": "integer",
+            "maximum": 10000.0,
+            "minimum": 1.0,
+            "title": "Quantity",
+            "description": "At most the product's stock"
+          },
+          "discount_pct": {
+            "type": "integer",
+            "maximum": 25.0,
+            "minimum": 0.0,
+            "title": "Discount Pct",
+            "description": "0 to 25, the range in Northwind's own orders"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "quantity",
+          "discount_pct"
+        ],
+        "title": "LineInput"
+      },
       "Me": {
         "properties": {
           "sign_in_available": {
@@ -1640,6 +1927,15 @@
             "type": "integer",
             "title": "Total Cents",
             "description": "The lines after discount, without freight"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "seed",
+              "entered"
+            ],
+            "title": "Source",
+            "description": "From Northwind's history, or entered in this app"
           }
         },
         "type": "object",
@@ -1657,7 +1953,8 @@
           "ship_country",
           "freight_cents",
           "line_count",
-          "total_cents"
+          "total_cents",
+          "source"
         ],
         "title": "Order"
       },
@@ -1756,6 +2053,15 @@
             "title": "Total Cents",
             "description": "The lines after discount, without freight"
           },
+          "source": {
+            "type": "string",
+            "enum": [
+              "seed",
+              "entered"
+            ],
+            "title": "Source",
+            "description": "From Northwind's history, or entered in this app"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/OrderLine"
@@ -1780,9 +2086,51 @@
           "freight_cents",
           "line_count",
           "total_cents",
+          "source",
           "lines"
         ],
         "title": "OrderDetail"
+      },
+      "OrderInput": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "maxLength": 10,
+            "minLength": 1,
+            "title": "Customer Id"
+          },
+          "shipper_id": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "minimum": 1.0,
+            "title": "Shipper Id"
+          },
+          "required_date": {
+            "type": "string",
+            "format": "date",
+            "title": "Required Date",
+            "description": "Today to 60 days ahead"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/LineInput"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Lines",
+            "description": "Each product at most once"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "shipper_id",
+          "required_date",
+          "lines"
+        ],
+        "title": "OrderInput",
+        "description": "A new order, or the whole of an order being edited. Prices come from the products, never from here."
       },
       "OrderLine": {
         "properties": {
@@ -1918,6 +2266,11 @@
             "type": "integer",
             "title": "Reorder Level"
           },
+          "below_reorder_level": {
+            "type": "boolean",
+            "title": "Below Reorder Level",
+            "description": "Stock has fallen below the reorder level"
+          },
           "discontinued": {
             "type": "boolean",
             "title": "Discontinued"
@@ -1934,6 +2287,7 @@
           "unit_price_cents",
           "units_in_stock",
           "reorder_level",
+          "below_reorder_level",
           "discontinued"
         ],
         "title": "Product"
@@ -1985,6 +2339,24 @@
           "revenue_cents"
         ],
         "title": "ProductRevenue"
+      },
+      "Shipper": {
+        "properties": {
+          "shipper_id": {
+            "type": "integer",
+            "title": "Shipper Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "shipper_id",
+          "company_name"
+        ],
+        "title": "Shipper"
       },
       "ValidationError": {
         "properties": {

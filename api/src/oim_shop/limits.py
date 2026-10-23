@@ -7,6 +7,7 @@ address is used.
 """
 
 import math
+import threading
 import time
 from collections.abc import Awaitable, Callable
 
@@ -61,6 +62,30 @@ class RateLimit(BaseHTTPMiddleware):
                 headers={"Retry-After": str(retry), "Cache-Control": "no-store"},
             )
         return await call_next(request)
+
+
+class WriteLimit:
+    """At most `per_minute` writes per signed-in person in each one-minute window.
+
+    The rate limit per address cannot tell apart the students who share a campus address;
+    this one counts each person's own writes.
+    """
+
+    def __init__(self, per_minute: int, monotonic: Callable[[], float] = time.monotonic) -> None:
+        self.per_minute = per_minute
+        self.monotonic = monotonic
+        self.window = 0
+        self.counts: dict[int, int] = {}
+        # Writes are checked on the thread pool, several at once.
+        self.lock = threading.Lock()
+
+    def allow(self, person: int) -> bool:
+        with self.lock:
+            window = math.floor(self.monotonic() / 60)
+            if window != self.window:
+                self.window, self.counts = window, {}
+            self.counts[person] = self.counts.get(person, 0) + 1
+            return self.counts[person] <= self.per_minute
 
 
 async def cache_headers(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:

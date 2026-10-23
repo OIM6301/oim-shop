@@ -136,7 +136,11 @@ export interface paths {
         /** Orders */
         get: operations["orders_api_orders_get"];
         put?: never;
-        post?: never;
+        /**
+         * Enter Order
+         * @description Enter an order as the signed-in rep. The prices are the products' current ones.
+         */
+        post: operations["enter_order_api_orders_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -152,8 +156,56 @@ export interface paths {
         };
         /** Order Detail */
         get: operations["order_detail_api_orders__order_id__get"];
+        /**
+         * Edit Order
+         * @description Replace an order that has not shipped: its customer, shipper, required date and lines.
+         *
+         *     The stock its old lines took counts as available to the new ones. It stays the order of
+         *     the rep who entered it, even when a manager edits it.
+         */
+        put: operations["edit_order_api_orders__order_id__put"];
+        post?: never;
+        /**
+         * Cancel Order
+         * @description Cancel an order that has not shipped: it is deleted, and its stock goes back.
+         */
+        delete: operations["cancel_order_api_orders__order_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/shippers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Shippers */
+        get: operations["shippers_api_shippers_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/orders/{order_id}/ship": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ship Order
+         * @description Mark an order shipped, now. It cannot be undone.
+         */
+        post: operations["ship_order_api_orders__order_id__ship_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -474,6 +526,21 @@ export interface components {
             /** Status */
             status: string;
         };
+        /** LineInput */
+        LineInput: {
+            /** Product Id */
+            product_id: number;
+            /**
+             * Quantity
+             * @description At most the product's stock
+             */
+            quantity: number;
+            /**
+             * Discount Pct
+             * @description 0 to 25, the range in Northwind's own orders
+             */
+            discount_pct: number;
+        };
         /** Me */
         Me: {
             /**
@@ -540,6 +607,12 @@ export interface components {
              * @description The lines after discount, without freight
              */
             total_cents: number;
+            /**
+             * Source
+             * @description From Northwind's history, or entered in this app
+             * @enum {string}
+             */
+            source: "seed" | "entered";
         };
         /** OrderDetail */
         OrderDetail: {
@@ -577,8 +650,35 @@ export interface components {
              * @description The lines after discount, without freight
              */
             total_cents: number;
+            /**
+             * Source
+             * @description From Northwind's history, or entered in this app
+             * @enum {string}
+             */
+            source: "seed" | "entered";
             /** Lines */
             lines: components["schemas"]["OrderLine"][];
+        };
+        /**
+         * OrderInput
+         * @description A new order, or the whole of an order being edited. Prices come from the products, never from here.
+         */
+        OrderInput: {
+            /** Customer Id */
+            customer_id: string;
+            /** Shipper Id */
+            shipper_id: number;
+            /**
+             * Required Date
+             * Format: date
+             * @description Today to 60 days ahead
+             */
+            required_date: string;
+            /**
+             * Lines
+             * @description Each product at most once
+             */
+            lines: components["schemas"]["LineInput"][];
         };
         /** OrderLine */
         OrderLine: {
@@ -636,6 +736,11 @@ export interface components {
             units_in_stock: number;
             /** Reorder Level */
             reorder_level: number;
+            /**
+             * Below Reorder Level
+             * @description Stock has fallen below the reorder level
+             */
+            below_reorder_level: boolean;
             /** Discontinued */
             discontinued: boolean;
         };
@@ -655,6 +760,13 @@ export interface components {
             quantity: number;
             /** Revenue Cents */
             revenue_cents: number;
+        };
+        /** Shipper */
+        Shipper: {
+            /** Shipper Id */
+            shipper_id: number;
+            /** Company Name */
+            company_name: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -932,6 +1044,67 @@ export interface operations {
             };
         };
     };
+    enter_order_api_orders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not your order, or a write from outside the app */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough stock, or the order has shipped */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many changes in a minute */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     order_detail_api_orders__order_id__get: {
         parameters: {
             query?: never;
@@ -967,6 +1140,226 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    edit_order_api_orders__order_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrderInput"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not your order, or a write from outside the app */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such order */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough stock, or the order has shipped */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many changes in a minute */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancel_order_api_orders__order_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not your order, or a write from outside the app */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such order */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough stock, or the order has shipped */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many changes in a minute */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    shippers_api_shippers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shipper"][];
+                };
+            };
+        };
+    };
+    ship_order_api_orders__order_id__ship_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                order_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDetail"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not your order, or a write from outside the app */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such order */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not enough stock, or the order has shipped */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many changes in a minute */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

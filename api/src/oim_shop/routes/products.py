@@ -9,7 +9,8 @@ router = APIRouter(tags=["products"])
 
 PRODUCT = """
     SELECT p.product_id, p.name, p.category_id, c.name AS category, s.company_name AS supplier,
-           p.quantity_per_unit, p.unit_price_cents, p.units_in_stock, p.reorder_level, p.discontinued
+           p.quantity_per_unit, p.unit_price_cents, p.units_in_stock, p.reorder_level,
+           p.units_in_stock < p.reorder_level AS below_reorder_level, p.discontinued
     FROM products p
     JOIN categories c ON c.category_id = p.category_id
     JOIN suppliers s ON s.supplier_id = p.supplier_id
