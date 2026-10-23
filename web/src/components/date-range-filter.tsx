@@ -5,32 +5,12 @@ import type { DateRange as PickerRange } from 'react-day-picker'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { type DateRange, isoDay, presets, toDate } from '@/lib/date-range'
 import { formatDate } from '@/lib/format'
+import { useMe } from '@/lib/me'
 
-/** Days as YYYY-MM-DD, both included. An empty range means no limit on that side. */
-export type DateRange = { from?: string; to?: string }
-
-function isoDay(d: Date): string {
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-function toDate(day: string | undefined): Date | undefined {
-  if (!day) return undefined
-  const [y, m, d] = day.split('-').map(Number)
-  return new Date(y ?? 0, (m ?? 1) - 1, d ?? 1)
-}
-
-type Preset = { label: string; range: () => DateRange }
-
-function presets(today = new Date()): Preset[] {
-  const y = today.getFullYear()
-  return [
-    { label: 'Last 30 days', range: () => ({ from: isoDay(new Date(y, today.getMonth(), today.getDate() - 29)), to: isoDay(today) }) },
-    { label: 'This year', range: () => ({ from: `${y}-01-01`, to: isoDay(today) }) },
-    { label: 'Last year', range: () => ({ from: `${y - 1}-01-01`, to: `${y - 1}-12-31` }) },
-  ]
-}
+export type { DateRange }
 
 function describeRange(range: DateRange): string {
   if (range.from && range.to) return `${formatDate(range.from)} to ${formatDate(range.to)}`
@@ -40,7 +20,7 @@ function describeRange(range: DateRange): string {
 }
 
 /**
- * A button showing the range; it opens quick choices and a two-month calendar.
+ * A button showing the range; it opens quick choices and a calendar of two months, one on a phone.
  * `defaultLabel` names what an empty range means on this page.
  */
 export function DateRangeFilter({
@@ -56,6 +36,8 @@ export function DateRangeFilter({
   shown?: DateRange
 }) {
   const [open, setOpen] = useState(false)
+  const today = useMe()?.today
+  const isMobile = useIsMobile()
   const [draft, setDraft] = useState<PickerRange | undefined>()
   const isDefault = !value.from && !value.to
   const label = isDefault ? (shown ? `${defaultLabel}: ${describeRange(shown)}` : defaultLabel) : describeRange(value)
@@ -79,14 +61,18 @@ export function DateRangeFilter({
           <span className="truncate">{label}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      {/* On a short screen the popover scrolls, so Apply is never out of reach. */}
+      <PopoverContent
+        className="max-h-(--radix-popover-content-available-height) w-auto overflow-y-auto p-0"
+        align="start"
+      >
         <div className="flex flex-col sm:flex-row">
           <div className="flex flex-row flex-wrap gap-1 border-b p-2 sm:flex-col sm:border-r sm:border-b-0">
             <Button variant={isDefault ? 'secondary' : 'ghost'} size="sm" className="justify-start" onClick={() => choose({})}>
               {defaultLabel}
             </Button>
-            {presets().map((p) => (
-              <Button key={p.label} variant="ghost" size="sm" className="justify-start" onClick={() => choose(p.range())}>
+            {(today ? presets(today) : []).map((p) => (
+              <Button key={p.label} variant="ghost" size="sm" className="justify-start" onClick={() => choose(p.range)}>
                 {p.label}
               </Button>
             ))}
@@ -94,7 +80,7 @@ export function DateRangeFilter({
           <div className="p-2">
             <Calendar
               mode="range"
-              numberOfMonths={2}
+              numberOfMonths={isMobile ? 1 : 2}
               defaultMonth={draft?.from}
               selected={draft}
               onSelect={setDraft}
