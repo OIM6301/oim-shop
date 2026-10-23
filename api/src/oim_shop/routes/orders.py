@@ -52,7 +52,8 @@ def orders(
 ) -> OrderPage:
     where, params = date_range(from_date, to_date)
     if customer_id and customer_id.strip():
-        where.append("o.customer_id = upper(?)")
+        # One id in the data, "Val2 ", has lower case and a trailing space; compare both sides trimmed, in upper case.
+        where.append("upper(trim(o.customer_id)) = upper(?)")
         params.append(customer_id.strip())
     if employee_id is not None:
         where.append("o.employee_id = ?")

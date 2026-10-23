@@ -62,7 +62,10 @@ def customers(
 
 @router.get("/customers/{customer_id}", responses={404: {"description": "No such customer"}})
 def customer(conn: Conn, customer_id: str) -> Customer:
-    found = rows(conn, f"{CUSTOMER} WHERE c.customer_id = upper(?) GROUP BY c.customer_id", [customer_id.strip()])
+    # One id in the data, "Val2 ", has lower case and a trailing space; compare both sides trimmed, in upper case.
+    found = rows(
+        conn, f"{CUSTOMER} WHERE upper(trim(c.customer_id)) = upper(?) GROUP BY c.customer_id", [customer_id.strip()]
+    )
     if not found:
         raise HTTPException(status_code=404, detail=f"No customer {customer_id}")
     return Customer(**found[0])

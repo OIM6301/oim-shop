@@ -78,3 +78,21 @@ test('switch to dark mode and keep it', async ({ page }) => {
   await page.reload()
   await expect(page.locator('html')).toHaveClass(/dark/)
 })
+
+// One customer id in the data, "Val2 " (the company IT), has lower case and a trailing space.
+// Two customers share the name IT; Val2's orders include 17459.
+test('the customer Val2 opens from its order and lists its orders', async ({ page }) => {
+  await page.goto('/orders/17459')
+  await page.getByRole('link', { name: 'IT', exact: true }).click()
+  await expect(page).toHaveURL(/\/customers\/Val2%20$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('IT')
+  await expect(page.getByText('1 to 10 of 147 orders')).toBeVisible()
+})
+
+test('filter orders by the customer Val2, told apart from the other IT', async ({ page }) => {
+  await page.goto('/orders')
+  await page.getByRole('combobox', { name: 'Customers' }).click()
+  await expect(page.getByRole('option', { name: 'IT (VALON)' })).toBeVisible()
+  await page.getByRole('option', { name: 'IT (Val2)' }).click()
+  await expect(page.getByText('1 to 20 of 147 orders')).toBeVisible()
+})

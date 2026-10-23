@@ -341,3 +341,26 @@ def test_dashboards_are_computed_one_at_a_time() -> None:
         t.join()
     assert calls == 2
     assert not overlap
+
+
+# One customer id in the data, "Val2 " (the company IT), has lower case and a trailing space.
+@pytest.mark.parametrize("customer_id", ["Val2%20", "Val2", "val2", "VAL2"])
+def test_a_customer_id_with_mixed_case_and_a_trailing_space(client: TestClient, customer_id: str) -> None:
+    customer = get(client, f"/api/customers/{customer_id}")
+    assert (customer["customer_id"], customer["company_name"]) == ("Val2 ", "IT")
+
+
+def test_orders_filter_by_that_customer(client: TestClient, conn: sqlite3.Connection) -> None:
+    expected = conn.execute("SELECT COUNT(*) FROM visible_orders WHERE customer_id = 'Val2 '").fetchone()[0]
+    assert expected > 0
+    for customer_id in ["Val2%20", "val2"]:
+        page = get(client, f"/api/orders?customer_id={customer_id}&per_page=100")
+        assert page["pagination"]["total"] == expected
+        assert {o["customer_id"] for o in page["items"]} == {"Val2 "}
+
+
+def test_other_customer_ids_match_as_before(client: TestClient) -> None:
+    assert get(client, "/api/customers/alfki")["company_name"] == "Alfreds Futterkiste"
+    assert get(client, "/api/customers/%20ALFKI%20")["company_name"] == "Alfreds Futterkiste"
+    get(client, "/api/customers/VAL", 404)
+    assert get(client, "/api/orders?customer_id=VAL")["pagination"]["total"] == 0

@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { X } from 'lucide-react'
 import { z } from 'zod'
 
+import type { Schemas } from '@/api/client'
 import { countriesQuery, customersQuery, employeesQuery } from '@/api/queries'
 import { DateRangeFilter } from '@/components/date-range-filter'
 import { OrdersTable } from '@/components/orders-table'
@@ -14,7 +15,8 @@ import { compact, day, id, isOneOf, order, page, sortOf, text } from '@/lib/sear
 
 export const Route = createFileRoute('/orders/')({
   validateSearch: z.object({
-    customer: z.string().regex(/^[A-Za-z]{1,10}$/).optional().catch(undefined),
+    // Customer ids are letters, with one exception in the data: "Val2 ", with a digit and a space.
+    customer: z.string().regex(/^[A-Za-z0-9 ]{1,10}$/).optional().catch(undefined),
     employee: id,
     country: text,
     from: day,
@@ -27,6 +29,17 @@ export const Route = createFileRoute('/orders/')({
 })
 
 const ALL = 'all'
+
+/** Each customer by company name; two companies share the name IT, so a repeated name also shows the id. */
+function customerOptions(customers: Schemas['Customer'][] | undefined) {
+  if (!customers) return undefined
+  const count = new Map<string, number>()
+  for (const c of customers) count.set(c.company_name, (count.get(c.company_name) ?? 0) + 1)
+  return customers.map((c) => ({
+    value: c.customer_id,
+    label: (count.get(c.company_name) ?? 0) > 1 ? `${c.company_name} (${c.customer_id.trim()})` : c.company_name,
+  }))
+}
 
 function Filter({
   label,
@@ -77,7 +90,7 @@ function Orders() {
           label="Customers"
           value={search.customer}
           width="sm:w-60"
-          options={customers.data?.items.map((c) => ({ value: c.customer_id, label: c.company_name }))}
+          options={customerOptions(customers.data?.items)}
           onChange={(customer) => set({ customer })}
         />
         <Filter
