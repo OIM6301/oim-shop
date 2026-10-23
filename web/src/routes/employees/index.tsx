@@ -11,6 +11,7 @@ import { QueryError } from '@/components/states'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
+import { useNameOf } from '@/lib/me'
 import { isOneOf, order, sortOf } from '@/lib/search'
 
 const SORTS = ['name', 'hire_date', 'order_count', 'revenue'] as const
@@ -23,9 +24,10 @@ export const Route = createFileRoute('/employees/')({
 type Employee = Schemas['Employee']
 const col = columnHelper<Employee>()
 
-const name = (e: Employee) => `${e.first_name} ${e.last_name}`
+/** An employee's name as this viewer may see it: a rep's chosen name only for that rep and the managers. */
+type NameOf = (e: Employee) => string
 
-function columnsFor(byId: Map<number, Employee>): Column<Employee>[] {
+function columnsFor(byId: Map<number, Employee>, name: NameOf): Column<Employee>[] {
   return col.columns([
     col.accessor((e) => name(e), {
       id: 'name',
@@ -52,9 +54,9 @@ function columnsFor(byId: Map<number, Employee>): Column<Employee>[] {
   ])
 }
 
-// Northwind's nine employees and the reps with orders arrive in one answer, a few dozen rows
-// at most, so this table sorts in the browser.
-function sorted(employees: Employee[], sort: Sort): Employee[] {
+// Northwind's nine employees and the reps with orders arrive in one answer. Only the people on
+// the allowlist can become reps, so the rows are few enough to sort in the browser.
+function sorted(employees: Employee[], sort: Sort, name: NameOf): Employee[] {
   const value = (e: Employee): string | number =>
     sort.id === 'name' ? name(e) : sort.id === 'hire_date' ? e.hire_date : sort.id === 'order_count' ? e.order_count : e.revenue_cents
   return [...employees].sort((a, b) => {
@@ -64,7 +66,7 @@ function sorted(employees: Employee[], sort: Sort): Employee[] {
   })
 }
 
-function Hierarchy({ employees }: { employees: Employee[] }) {
+function Hierarchy({ employees, name }: { employees: Employee[]; name: NameOf }) {
   const reports = (managerId: number | null) => employees.filter((e) => e.reports_to === managerId)
   const branch = (managerId: number | null, depth: number) => {
     const people = reports(managerId)
@@ -96,6 +98,8 @@ function Employees() {
     void navigate({ search: { sort: id, order: desc ? 'desc' : 'asc' } })
   }
   const byId = new Map((employees.data ?? []).map((e) => [e.employee_id, e]))
+  const nameOf = useNameOf()
+  const name: NameOf = (e) => nameOf(e.employee_id, `${e.first_name} ${e.last_name}`)
 
   return (
     <>
@@ -106,8 +110,8 @@ function Employees() {
         <div className="grid gap-6">
           <DataTable
             caption="Employees"
-            columns={columnsFor(byId)}
-            data={employees.data && sorted(employees.data, sort)}
+            columns={columnsFor(byId, name)}
+            data={employees.data && sorted(employees.data, sort, name)}
             sort={sort}
             onSortChange={setSort}
             isPending={employees.isPending}
@@ -124,7 +128,7 @@ function Employees() {
               <CardDescription>Who reports to whom</CardDescription>
             </CardHeader>
             <CardContent>
-              {employees.data ? <Hierarchy employees={employees.data} /> : <Skeleton className="h-48 w-full" />}
+              {employees.data ? <Hierarchy name={name} employees={employees.data} /> : <Skeleton className="h-48 w-full" />}
             </CardContent>
           </Card>
         </div>

@@ -9,6 +9,7 @@ import { PageHeader } from '@/components/page-header'
 import { StatCard } from '@/components/stat-card'
 import { QueryError } from '@/components/states'
 import { formatMoney, formatMonth, formatNumber } from '@/lib/format'
+import { useNameOf } from '@/lib/me'
 import { compact, day } from '@/lib/search'
 
 export const Route = createFileRoute('/')({
@@ -20,6 +21,7 @@ function Dashboard() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const { data, error, isPending, refetch } = useQuery(dashboardQuery(search))
+  const nameOf = useNameOf()
 
   const months: RevenueRow[] | undefined = data?.revenue_by_month.map((m) => ({
     key: m.month,
@@ -36,7 +38,7 @@ function Dashboard() {
   const employees: RevenueRow[] | undefined = data?.by_employee.map((e) => ({
     // Past ten employees, the API adds up the rest as one row with no id.
     key: e.employee_id === null ? 'others' : String(e.employee_id),
-    label: e.name,
+    label: e.employee_id === null ? e.name : nameOf(e.employee_id, e.name),
     revenue_cents: e.revenue_cents,
     order_count: e.order_count,
   }))
