@@ -97,6 +97,11 @@ jobs:
           platforms: linux/amd64
           load: true
           tags: oim-shop:test
+          # Counting visits (web/src/lib/analytics.ts), from this repository's variables; without
+          # them the web app counts nothing.
+          build-args: |
+            VITE_UMAMI_SCRIPT=${{ vars.UMAMI_SCRIPT }}
+            VITE_UMAMI_WEBSITE_ID=${{ vars.UMAMI_WEBSITE_ID }}
       - name: Smoke test the image
         run: |
           docker run -d --name smoke -p 8000:8000 --memory 200m oim-shop:test
@@ -128,3 +133,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # The same as above, so the image pushed is the image tested.
+          build-args: |
+            VITE_UMAMI_SCRIPT=${{ vars.UMAMI_SCRIPT }}
+            VITE_UMAMI_WEBSITE_ID=${{ vars.UMAMI_WEBSITE_ID }}

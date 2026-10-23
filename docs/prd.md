@@ -129,6 +129,7 @@ The v2 and v3 interface must look and behave like a professional product. Checka
 - Sign-in (v3) with a GitHub OAuth App, no scope, for the accounts on the allowlist only. Store the GitHub id and the chosen display name only; never the username or the email. A chosen name is shown only to its owner and to managers; every other page shows "Sales rep" and the employee number.
 - Session cookie `HttpOnly`, `Secure`, `SameSite=Lax`; CSRF protection on every write; rate limits per user and length caps on writes.
 - Secrets live in `.env` locally and in the server's environment file in production; the repo carries `.env.example` only. The production OAuth app belongs to the project; to sign in on your own computer, you create your own.
+- The privacy page says what the site keeps, and matches it: the server's log keeps each request's time, page and result, never the address it came from; visits are counted with Umami, which sets no cookie, only on a server built with its settings.
 - `SECURITY.md` says how to report a problem.
 
 ## 11. Engineering norms

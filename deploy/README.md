@@ -15,13 +15,25 @@ Signing in needs two files on the server, neither of them in git:
 
 The unit reads both ([oim-shop.container](oim-shop.container)). Signing in needs every setting or none: with only some of them, the app stops at start and says which is missing.
 
+The app reads the allowlist at every sign-in, so a change to it needs no restart, as long as you change the file in place: write to it with `>`, or edit it with an editor that saves in place, such as nano. The unit mounts the file itself, not its directory, so a file put in its place (with `mv`, or by an editor that saves a new file and renames it) leaves the container reading the old one until it restarts.
+
 ## End of term
 
 Empty the allowlist but for the manager, then remove everyone who signed in, with their chosen names and their orders:
 
 ```bash
 printf '%s manager\n' "$MANAGER" > ~/.config/oim-shop/allowed-users   # MANAGER: your GitHub username
+systemctl --user restart oim-shop   # so the container surely reads the new list
 podman exec oim-shop oim-shop forget-accounts
+```
+
+## Counting visits
+
+The web app counts visits with [Umami](https://umami.is) when the image is built with two repository variables, `UMAMI_SCRIPT` (the URL of the Umami instance's `script.js`) and `UMAMI_WEBSITE_ID` (the site's id in it). Without them it counts nothing, and the privacy page does not mention it.
+
+```bash
+gh variable set UMAMI_SCRIPT --body "https://<your Umami>/script.js"
+gh variable set UMAMI_WEBSITE_ID --body "<the website id>"
 ```
 
 ## Nightly reset

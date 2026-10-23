@@ -46,6 +46,10 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **Every write proves where it comes from.** A browser sends the session cookie with any request to the site, including a form posted from someone else's page. So every write must also carry a second token, which only this app's own pages can read, and the browser's `Origin` header, when it sends one, must be this site.
 
+**The log does not know who asked.** Uvicorn's access log starts each line with the address of whoever asked. The privacy page says the log keeps the time, the page and the result, and not who asked, so the app's log format leaves the address out ([cli.py](../api/src/oim_shop/cli.py)). Counting visits is Umami's job, which sets no cookie and is turned on only by the settings the server's image is built with ([analytics.ts](../web/src/lib/analytics.ts)).
+
+**The allowlist is changed in place.** The container sees the file the unit mounted when it started. Writing into that file reaches the app at the next sign-in; putting another file in its place does not, until the container restarts, so the end-of-term steps in [deploy/README.md](../deploy/README.md) restart it.
+
 **State and PKCE, against a forged sign-in.** The `state` value ties GitHub's answer to the browser that asked, and PKCE ties the code GitHub returns to the server that asked for it. Both are kept in a short-lived cookie between the two steps.
 
 **Reps on the public pages.** Every student who signs in becomes an employee, and accounts outlast the nightly reset. So the Employees list shows Northwind's nine and only the reps who have orders now, and Sales by employee shows the ten largest and adds up the rest as one bar. A rep's own page is always there.

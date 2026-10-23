@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { PageHeader } from '@/components/page-header'
 import { Card, CardContent } from '@/components/ui/card'
+import { countsVisits } from '@/lib/analytics'
 
 export const Route = createFileRoute('/privacy')({
   component: Privacy,
@@ -14,9 +15,18 @@ function Privacy() {
       <Card>
         <CardContent className="space-y-4 text-sm leading-relaxed">
           <p>
-            Reading the site needs no account, and nothing is kept about a visitor who does not sign in, beyond a count
-            of requests from each address for one minute, which limits how fast one address can ask.
+            Reading the site needs no account. The server’s log keeps, for a few months, the time of each request, the
+            page asked for and whether it worked, but not who asked or from which address. The server also counts the
+            requests from each address for one minute, which limits how fast one address can ask, and then forgets
+            them.
           </p>
+          {countsVisits && (
+            <p>
+              The site counts visits with Umami, which sets no cookie. It records the page, the site you came from,
+              the browser, the kind of device, the language and the country, and not your address or anything else
+              that identifies you.
+            </p>
+          )}
           <h2 className="pt-2 text-base font-semibold">When you sign in</h2>
           <p>
             You sign in with GitHub, and only if your GitHub username is on this site’s list. GitHub tells the site your

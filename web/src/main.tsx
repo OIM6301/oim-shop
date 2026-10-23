@@ -7,6 +7,7 @@ import './index.css'
 import { Toaster } from '@/components/ui/sonner'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ApiError } from '@/api/client'
+import { startCountingVisits } from '@/lib/analytics'
 import { routeTree } from './routeTree.gen'
 import { applyTheme, useTheme, watchSystemTheme } from './stores/theme'
 
@@ -33,6 +34,7 @@ declare module '@tanstack/react-router' {
 
 applyTheme(useTheme.getState().mode)
 watchSystemTheme()
+startCountingVisits()
 
 const root = document.getElementById('root')
 if (!root) throw new Error('index.html has no #root element')

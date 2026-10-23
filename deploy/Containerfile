@@ -8,6 +8,9 @@ WORKDIR /web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
 COPY web/ ./
+# Empty unless the build passes them: then the web app counts visits with Umami (src/lib/analytics.ts).
+ARG VITE_UMAMI_SCRIPT=
+ARG VITE_UMAMI_WEBSITE_ID=
 RUN npm run build
 
 # 2. The API, with its dependencies installed by uv and nothing for development.
