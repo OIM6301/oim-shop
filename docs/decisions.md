@@ -26,6 +26,8 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **A rate limit per address, sized for a classroom.** Each address may make 1,500 API requests a minute. A class on one network reaches the site from one address, and 60 students opening pages that make several calls each come close to that number.
 
+**The dashboard is protected on its own.** It is the one expensive page: over all dates it adds up 600,000 order lines. Each date range is computed at most once a minute and kept until the minute is over; dashboards are computed one at a time, on a thread of their own, so other pages keep answering while they run; and each address may ask for 120 a minute. Under a test of 300 dashboards for different ranges, 30 at a time, the app's memory peaked at 102 MB instead of 188 MB, and the orders page kept answering in about 10 ms.
+
 **The address comes from Cloudflare.** The server accepts connections only from Cloudflare, so the `CF-Connecting-IP` header, which Cloudflare sets, is the visitor's real address.
 
 **Responses are private unless a route says otherwise.** A route whose answer is the same for every visitor opts in to being cached for a minute (`shared_cache` in [limits.py](../api/src/oim_shop/limits.py)). Every other response, including any route added later, is `no-store`, so a page that depends on who is signed in can never be cached and shown to someone else.
