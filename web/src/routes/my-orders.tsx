@@ -53,13 +53,17 @@ function MyOrders() {
       id: 'order_id',
       header: 'Order',
       cell: ({ row }) => (
-        <Link
-          to="/orders/$orderId"
-          params={{ orderId: String(row.original.order_id) }}
-          className="font-medium hover:underline"
-        >
-          #{row.original.order_id}
-        </Link>
+        <>
+          <Link
+            to="/orders/$orderId"
+            params={{ orderId: String(row.original.order_id) }}
+            className="font-medium hover:underline"
+          >
+            #{row.original.order_id}
+          </Link>
+          {/* Placed is hidden on a phone; the date shows here instead. */}
+          <span className="block text-xs text-muted-foreground md:hidden">{formatDate(row.original.order_date)}</span>
+        </>
       ),
     }),
     col.accessor('order_date', { id: 'order_date', header: 'Placed', cell: (c) => formatDate(c.getValue()) }),
@@ -145,7 +149,7 @@ function MyOrders() {
         error={orders.error}
         onRetry={() => void orders.refetch()}
         numeric={['total']}
-        wide={['order_date', 'shipped_date']}
+        wide={['order_date']}
         wrap={['customer_name', 'rep_name']}
         empty={
           scope === 'all'

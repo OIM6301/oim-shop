@@ -137,6 +137,11 @@ function OrderPage() {
                             >
                               {line.product_name}
                             </Link>
+                            {/* The price and discount columns are hidden on a phone; they show here instead. */}
+                            <div className="text-xs text-muted-foreground tabular-nums sm:hidden">
+                              {formatMoney(line.unit_price_cents)} each
+                              {line.discount_pct ? `, ${formatPercent(line.discount_pct)} off` : ''}
+                            </div>
                           </TableCell>
                           <TableCell className="hidden text-right tabular-nums sm:table-cell">
                             {formatMoney(line.unit_price_cents)}
