@@ -44,11 +44,11 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **Every write proves where it comes from.** A browser sends the session cookie with any request to the site, including a form posted from someone else's page. So every write must also carry a second token, which only this app's own pages can read, and the browser's `Origin` header, when it sends one, must be this site.
 
-**Two checks against a forged sign-in.** The `state` value ties GitHub's answer to the browser that asked, and PKCE ties the code GitHub returns to the server that asked for it. Both are kept in a short-lived cookie between the two steps.
+**State and PKCE, against a forged sign-in.** The `state` value ties GitHub's answer to the browser that asked, and PKCE ties the code GitHub returns to the server that asked for it. Both are kept in a short-lived cookie between the two steps.
 
 ## Entering orders
 
-**One transaction, holding the lock from the start.** A write begins with `BEGIN IMMEDIATE`, which takes SQLite's write lock before reading anything. Two reps who order the last unit at the same moment are then served one after the other: the second one reads the stock the first one left, and is told there is none. With a plain `BEGIN`, both would read one unit in stock. The update that takes the stock also repeats the check in its `WHERE` clause, so it can never go below zero.
+**A transaction that holds the lock from the start.** A write begins with `BEGIN IMMEDIATE`, which takes SQLite's write lock before reading anything. Two reps who order the last unit at the same moment are then served one after the other: the second one reads the stock the first one left, and is told there is none. With a plain `BEGIN`, both would read one unit in stock. The update that takes the stock also repeats the check in its `WHERE` clause, so it can never go below zero.
 
 **The price comes from the product.** An order says which products and how many, never at what price. The server copies each product's current price onto the line, as Northwind's own orders record the price at the time of the order.
 
@@ -56,7 +56,7 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **Cancelling deletes the order.** Its lines go with it and its stock goes back. A cancelled status would keep a record, but then every report would have to leave cancelled orders out, and the nightly reset clears entered orders anyway.
 
-**Northwind's history is read-only.** Seeded orders were placed by Northwind's own employees, so no one changes them, not even a manager. A rep changes only their own orders, and a manager any rep's; either, only until the order ships.
+**Northwind's history is read-only.** Seeded orders were placed by Northwind's own employees, so no one changes them, managers included. A rep changes only their own orders, and a manager any rep's; either, only until the order ships.
 
 **Every problem at once.** A refused order lists each problem with the field it is about, in the same shape as FastAPI's own validation errors, so the form shows all of them beside their fields. 422 means the order itself is wrong; 409 means it conflicts with the database as it is now, such as stock another rep just took.
 

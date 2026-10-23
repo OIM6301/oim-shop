@@ -44,7 +44,7 @@ uv run --script scripts/build-seed.py
 uvx pre-commit run --all-files
 ```
 
-Settings are environment variables, listed in [.env.example](.env.example). `OIM_SHOP_NOW` fixes the clock, which tests and screenshots rely on.
+Settings are environment variables, listed in [.env.example](.env.example). Signing in needs your own GitHub OAuth App (callback `http://127.0.0.1:8000/api/auth/callback`) and an allowlist file with your username. Writes must come from `OIM_SHOP_PUBLIC_URL`'s origin: on the Vite dev server set it to `http://127.0.0.1:5173` (GitHub accepts any port on 127.0.0.1 for a callback registered there), and use `127.0.0.1`, not `localhost`, which is a different origin. `OIM_SHOP_NOW` fixes the clock, which tests and screenshots rely on.
 
 ## Architecture
 

@@ -1,6 +1,6 @@
 # oim-shop Product Requirements
 
-Status: draft, agreed on 2026-10-22. Implementation starts 2026-10-23.
+Status: agreed on 2026-10-22; v3's roles, sign-in and order details revised on 2026-10-23.
 
 ## 1. Purpose
 
@@ -33,10 +33,11 @@ The product is the company's internal sales system: the tool a sales rep uses to
 | Role | Who | Can |
 |---|---|---|
 | Visitor | Anyone, not signed in | Read every v1 and v2 page |
-| Sales rep | Anyone signed in with GitHub (v3) | Everything a visitor can, plus enter orders and manage their own |
+| Sales rep | A person on the allowlist, signed in with GitHub (v3) | Everything a visitor can, plus enter orders and manage their own |
+| Manager | A person the allowlist marks as a manager (v3) | Everything a rep can, plus change any rep's orders and see every rep's chosen name |
 | Historical employees | The nine employees in the Northwind data | Appear in data and reports; cannot sign in |
 
-On first sign-in a sales rep gets a new employee record, chooses a display name, and reports to Steven Buchanan, Northwind's Sales Manager (employee 5, who reports to Andrew Fuller, Vice President, Sales), so the reporting hierarchy covers new reps too. There is no admin role.
+Only GitHub accounts on an allowlist, a file kept on the server, can sign in; the repository holds the mechanism, never the list. On first sign-in a person gets a new employee record and reports to Steven Buchanan, Northwind's Sales Manager (employee 5, who reports to Andrew Fuller, Vice President, Sales), so the reporting hierarchy covers new reps too. They choose a display name, which only they and the managers see; every other page shows them as "Sales rep" and their employee number. Roles come from the allowlist, and no page manages them.
 
 ## 5. Versions
 
@@ -59,16 +60,16 @@ The app's own API and database, and a web interface built to the frontend stack 
 - **Customers**: list with search; detail with the customer's order history and totals.
 - **Orders**: list with filters (customer, employee, country, date range); detail with lines and totals.
 - **Employees**: list, reporting hierarchy, each employee's sales.
-- **The shop's clock**: pages show only the orders placed by now (the dashboard, by the start of the current minute), and an order whose shipped date is still ahead shows as not shipped, so the site matches `oim-api` to the minute without fetching from it. A page already open shows what was true when it loaded.
+- **The shop's clock**: pages show only the orders placed by now (the dashboard, by the start of the current minute), and an order whose shipped date is still ahead shows as not shipped, so for seeded orders the site matches `oim-api` to the minute without fetching from it. A page already open shows what was true when it loaded.
 - `/api/health`, and FastAPI's generated API docs page.
 
 Acceptance: every page meets §9; dashboard figures match an independent SQL query in the tests; a fresh clone runs locally from the README in at most three commands.
 
 ### v3: Order entry
 
-- Sign in with GitHub.
-- **New order**: choose a customer, add product lines, choose a shipper and a required date; submit writes the order and its lines in one transaction and reduces stock.
-- **My orders**: list; edit or cancel an order that has not shipped; mark an order shipped.
+- Sign in with GitHub, for the people on the allowlist (section 4).
+- **New order**: choose a customer, add up to 20 product lines, choose a shipper and a required date (today to 60 days ahead); submit writes the order and its lines in one transaction and reduces stock. The price comes from the product; freight is 0, and the order ships to the customer's city and country.
+- **My orders**: list; edit an order that has not shipped, or cancel it, which deletes it and returns its stock; mark an order shipped. A manager can do the same to any rep's order, and sees every rep's orders with their chosen names. Seeded orders are Northwind's history and cannot be changed.
 - New orders appear immediately in the v2 dashboard and in the rep's own sales.
 - A privacy page: what is stored, and that order data resets nightly.
 
@@ -124,10 +125,10 @@ The v2 and v3 interface must look and behave like a professional product. Checka
 
 ## 10. Security and privacy
 
-- Read-only pages are public. Protection against bots: hard `per_page` caps, rejected unbounded queries, rate limiting in the app, Cloudflare caching of GET responses, `robots.txt`, container memory and CPU limits.
-- Sign-in (v3) with a GitHub OAuth App, minimal scope. Store the GitHub id and the chosen display name only; never the email. Pages show display names, never GitHub usernames.
+- Read-only pages are public. Protection against bots: hard `per_page` caps, rejected unbounded queries, rate limiting in the app, `robots.txt`, container memory and CPU limits. No API response is cached, because orders and stock change at any moment.
+- Sign-in (v3) with a GitHub OAuth App, no scope, for the accounts on the allowlist only. Store the GitHub id and the chosen display name only; never the username or the email. A chosen name is shown only to its owner and to managers; every other page shows "Sales rep" and the employee number.
 - Session cookie `HttpOnly`, `Secure`, `SameSite=Lax`; CSRF protection on every write; rate limits per user and length caps on writes.
-- Secrets live in `.env` locally and in the server's environment file in production; the repo carries `.env.example` only. Separate OAuth apps for development and production.
+- Secrets live in `.env` locally and in the server's environment file in production; the repo carries `.env.example` only. The production OAuth app belongs to the project; to sign in on your own computer, you create your own.
 - `SECURITY.md` says how to report a problem.
 
 ## 11. Engineering norms
