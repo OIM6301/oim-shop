@@ -7,6 +7,7 @@ from datetime import datetime
 from importlib.metadata import version
 from pathlib import Path
 
+import anyio
 import anyio.to_thread
 from fastapi import APIRouter, FastAPI
 
@@ -27,7 +28,7 @@ def create_app(
     requests_per_minute: int = 1500,
     # The dashboard is the one expensive page; no one reading it needs two a second.
     dashboard_per_minute: int = 120,
-    # Requests handled at once by the thread pool that serves every ordinary route.
+    # Ordinary routes running at once, on the thread pool, and database connections open at once.
     max_concurrent: int = 4,
     # Dashboards that may wait behind the one being computed; more are turned away with 503.
     dashboards_waiting: int = 8,
@@ -61,6 +62,7 @@ def create_app(
         openapi_url="/api/openapi.json",
     )
     app.state.db_path = db_path
+    app.state.connections = anyio.CapacityLimiter(max_concurrent)
     app.state.now = now
     app.state.sign_in = sign_in
     app.state.sign_ins_at_once = sign_ins_at_once

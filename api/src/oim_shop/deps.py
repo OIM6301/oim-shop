@@ -2,11 +2,13 @@
 
 import math
 import sqlite3
-from collections.abc import Callable, Iterator
+from collections.abc import AsyncIterator, Callable
 from datetime import date, datetime
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
+import anyio
+import anyio.to_thread
 from fastapi import Depends, Query, Request
 from fastapi import Path as PathParam
 from pydantic import Field
@@ -15,16 +17,28 @@ from oim_shop import db
 from oim_shop.models import MAX_ID, Pagination
 
 
-def get_conn(request: Request) -> Iterator[sqlite3.Connection]:
-    """One connection per request, closed when the response is sent, with orders as of now."""
-    path: Path = request.app.state.db_path
-    now: Callable[[], datetime] = request.app.state.now
+def open_as_of(path: Path, moment: datetime) -> sqlite3.Connection:
     conn = db.connect(path)
-    db.as_of(conn, now())
-    try:
-        yield conn
-    finally:
-        conn.close()
+    db.as_of(conn, moment)
+    return conn
+
+
+async def get_conn(request: Request) -> AsyncIterator[sqlite3.Connection]:
+    """One connection per request, with orders as of now, closed when the response is sent.
+
+    A request holds its connection, and the memory SQLite gives it, from before its route waits
+    for a thread until after the response. The thread pool alone therefore does not bound how many
+    are open: fifty requests at once would open fifty. `connections` does, and a request waits for
+    a place in the event loop, before it opens anything.
+    """
+    connections: anyio.CapacityLimiter = request.app.state.connections
+    now: Callable[[], datetime] = request.app.state.now
+    async with connections:
+        conn = await anyio.to_thread.run_sync(open_as_of, request.app.state.db_path, now())
+        try:
+            yield conn
+        finally:
+            await anyio.to_thread.run_sync(conn.close)
 
 
 def get_now(request: Request) -> datetime:

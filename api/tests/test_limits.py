@@ -1,5 +1,7 @@
+import asyncio
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -84,17 +86,49 @@ def test_the_dashboard_has_a_lower_limit_of_its_own(seeded_path: Path, clock: Fa
         assert c.get("/api/categories", headers=visitor).status_code == 200
 
 
-def test_the_thread_pool_for_ordinary_routes_has_four_threads(seeded_path: Path) -> None:
-    import anyio.to_thread
+def test_at_most_four_database_connections_are_open_at_once(seeded_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The thread pool runs four routes at once, but a request holds its connection from before
+    it waits for a thread until after its response, so the connections need a bound of their own."""
+    import sqlite3
+    import time
 
-    app = create_app(seeded_path, now=lambda: NOW)
+    import httpx2
 
-    @app.get("/api/threads")
-    async def threads() -> dict[str, float]:
-        return {"total": anyio.to_thread.current_default_thread_limiter().total_tokens}
+    from oim_shop.deps import Conn
 
-    with TestClient(app) as c:
-        assert c.get("/api/threads").json() == {"total": 4}
+    open_now = most = 0
+    connect = sqlite3.connect
+
+    class Counted(sqlite3.Connection):
+        def close(self) -> None:
+            nonlocal open_now
+            open_now -= 1
+            super().close()
+
+    def counted(*args: Any, **kwargs: Any) -> sqlite3.Connection:
+        nonlocal open_now, most
+        open_now += 1
+        most = max(most, open_now)
+        return connect(*args, **kwargs, factory=Counted)
+
+    app = create_app(seeded_path, now=lambda: NOW, requests_per_minute=1000)
+
+    @app.get("/api/slow")
+    def slow(conn: Conn) -> dict[str, int]:
+        time.sleep(0.02)
+        return {"one": conn.execute("SELECT 1").fetchone()[0]}
+
+    async def thirty_at_once() -> list[httpx2.Response]:
+        async with app.router.lifespan_context(app):
+            transport = httpx2.ASGITransport(app=app)
+            async with httpx2.AsyncClient(transport=transport, base_url="http://test") as c:
+                return await asyncio.gather(*(c.get("/api/slow") for _ in range(30)))
+
+    monkeypatch.setattr(sqlite3, "connect", counted)
+    answers = asyncio.run(thirty_at_once())
+    assert {answer.status_code for answer in answers} == {200}
+    assert most <= 4
+    assert open_now == 0
 
 
 def test_a_refused_request_is_not_cached(client: TestClient) -> None:
