@@ -130,6 +130,27 @@ def test_a_github_failure_is_reported(client: TestClient, github: FakeGitHub) ->
     assert sign_in(client, github, STUDENT) == "/sign-in?error=github"
 
 
+@pytest.mark.parametrize(
+    ("token_body", "profile_body"),
+    [
+        (b"[]", None),
+        (b"not json", None),
+        (b'{"access_token": 7}', None),
+        (None, b"{"),
+        (None, b"[]"),
+        (None, b'{"id": "4101", "login": "Octo-Student"}'),
+        (None, b'{"id": true, "login": "Octo-Student"}'),
+        (None, b'{"id": 4101}'),
+    ],
+)
+def test_an_answer_github_should_never_give_is_reported(
+    client: TestClient, github: FakeGitHub, token_body: bytes | None, profile_body: bytes | None
+) -> None:
+    github.token_body = token_body
+    github.profile_body = profile_body
+    assert sign_in(client, github, STUDENT) == "/sign-in?error=github"
+
+
 @pytest.mark.parametrize("next_path", ["//evil.test/x", "https://evil.test", "/\\evil.test", "orders"])
 def test_after_signing_in_the_app_only_sends_you_within_itself(
     client: TestClient, github: FakeGitHub, next_path: str

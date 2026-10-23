@@ -12,16 +12,24 @@ from dataclasses import dataclass
 from urllib.parse import urlencode
 
 import httpx2
+from pydantic import BaseModel, ConfigDict, ValidationError
 
 
 class GitHubError(Exception):
     """GitHub did not answer as expected."""
 
 
-@dataclass(frozen=True)
-class GitHubUser:
+class GitHubUser(BaseModel):
+    """The two fields of GitHub's profile the app reads. Strict, so an id of "4101" or true is refused."""
+
+    model_config = ConfigDict(strict=True, frozen=True)
     id: int
     login: str
+
+
+class Token(BaseModel):
+    model_config = ConfigDict(strict=True)
+    access_token: str
 
 
 @dataclass(frozen=True)
@@ -60,18 +68,19 @@ class GitHub:
                     },
                     headers={"Accept": "application/json"},
                 )
-                token = answer.json().get("access_token") if answer.is_success else None
-                if not isinstance(token, str):
+                if not answer.is_success:
                     raise GitHubError(f"no token: HTTP {answer.status_code}")
+                # A refused code is still HTTP 200, with {"error": ...} and no access_token.
+                token = Token.model_validate_json(answer.content).access_token
                 profile = await client.get(
                     f"{self.api_url}/user",
                     headers={"Authorization": f"Bearer {token}", "Accept": "application/vnd.github+json"},
                 )
-            except (httpx2.HTTPError, ValueError) as error:
+                if not profile.is_success:
+                    raise GitHubError(f"no profile: HTTP {profile.status_code}")
+                # Every other field of the profile is ignored, and never stored.
+                return GitHubUser.model_validate_json(profile.content)
+            except ValidationError as error:
+                raise GitHubError(f"an answer GitHub should not give: {error.error_count()} problems") from error
+            except httpx2.HTTPError as error:
                 raise GitHubError(str(error)) from error
-        if not profile.is_success:
-            raise GitHubError(f"no profile: HTTP {profile.status_code}")
-        data = profile.json()
-        if not isinstance(data.get("id"), int) or not isinstance(data.get("login"), str):
-            raise GitHubError("the profile has no id or login")
-        return GitHubUser(id=data["id"], login=data["login"])

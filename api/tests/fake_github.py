@@ -28,6 +28,9 @@ class FakeGitHub:
     codes: dict[str, tuple[dict[str, Any], str]] = field(default_factory=lambda: {})  # code -> (user, challenge)
     tokens: dict[str, dict[str, Any]] = field(default_factory=lambda: {})
     fail_token: bool = False
+    # Bodies to answer with instead, for answers GitHub should never give.
+    token_body: bytes | None = None
+    profile_body: bytes | None = None
 
     def approve(self, user: dict[str, Any], authorize_url: str) -> str:
         """What GitHub does when the user clicks Authorize: a code bound to the PKCE challenge."""
@@ -53,11 +56,15 @@ class FakeGitHub:
                 return httpx2.Response(200, json={"error": "invalid_grant"})
             token = secrets.token_hex(8)
             self.tokens[token] = user
+            if self.token_body is not None:
+                return httpx2.Response(200, content=self.token_body)
             return httpx2.Response(200, json={"access_token": token, "token_type": "bearer", "scope": ""})
         if request.url.path == "/user":
             token = request.headers.get("Authorization", "").removeprefix("Bearer ")
             if token not in self.tokens:
                 return httpx2.Response(401)
+            if self.profile_body is not None:
+                return httpx2.Response(200, content=self.profile_body)
             return httpx2.Response(200, json=self.tokens[token])
         return httpx2.Response(404)
 
