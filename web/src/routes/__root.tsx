@@ -68,8 +68,8 @@ function NotFound() {
   return (
     <Empty>
       <EmptyHeader>
-        <EmptyTitle role="heading" aria-level={1} className="text-base">
-          Page not found
+        <EmptyTitle>
+          <h1 className="text-base outline-none">Page not found</h1>
         </EmptyTitle>
         <EmptyDescription>There is no page at this address.</EmptyDescription>
       </EmptyHeader>

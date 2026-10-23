@@ -61,12 +61,36 @@ test('sort a table from its header', async ({ page }) => {
 
 test('an order that does not exist', async ({ page }) => {
   await page.goto('/orders/99999999')
-  await expect(page.getByText('No such order')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'No such order' })).toBeVisible()
+  await expect(page).toHaveTitle('No such order · Northwind Sales')
 })
 
 test('an address that does not exist', async ({ page }) => {
   await page.goto('/nowhere')
-  await expect(page.getByText('Page not found')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1, name: 'Page not found' })).toBeVisible()
+  await expect(page).toHaveTitle('Page not found · Northwind Sales')
+})
+
+test('a new page names the tab and takes the focus', async ({ page }) => {
+  await page.goto('/products')
+  await expect(page).toHaveTitle('Products · Northwind Sales')
+  await page.getByRole('link', { name: 'Chai', exact: true }).click()
+  const heading = page.getByRole('heading', { level: 1, name: 'Chai' })
+  await expect(heading).toBeFocused()
+  await expect(page).toHaveTitle('Chai · Northwind Sales')
+  // The first Tab reaches the skip link, which leads to the page's content.
+  await page.goto('/products')
+  await page.keyboard.press('Tab')
+  await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused()
+})
+
+test('quick date ranges count from the shop’s today, not the browser’s', async ({ page }) => {
+  // The shop's clock is on October 22 (playwright.config.ts); this browser is two days ahead.
+  await page.clock.setFixedTime(new Date('2026-10-24T12:00:00'))
+  await page.goto('/orders')
+  await page.getByRole('button', { name: 'Any date' }).click()
+  await page.getByRole('button', { name: 'Last 30 days' }).click()
+  await expect(page).toHaveURL(/from=2026-09-23&to=2026-10-22/)
 })
 
 test('switch to dark mode and keep it', async ({ page }) => {

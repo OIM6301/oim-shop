@@ -5,6 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useDocumentTitle } from '@/hooks/use-document-title'
 import { explain } from '@/lib/errors'
 
 // The three states every data view has besides its data: loading, empty, and error.
@@ -28,14 +29,18 @@ export function QueryError({ error, onRetry, title = 'Could not load this' }: {
   )
 }
 
+/** A page that has nothing to show, such as an order that does not exist: its heading names the tab too. */
 export function NotFound({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
+  useDocumentTitle(title)
   return (
     <Empty className="border">
       <EmptyHeader>
         <EmptyMedia variant="icon">
           <SearchX />
         </EmptyMedia>
-        <EmptyTitle>{title}</EmptyTitle>
+        <EmptyTitle>
+          <h1 className="outline-none">{title}</h1>
+        </EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>
       </EmptyHeader>
       {action && <EmptyContent>{action}</EmptyContent>}
