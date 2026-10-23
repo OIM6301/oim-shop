@@ -26,33 +26,38 @@ def months_between(first: date, last: date) -> list[str]:
     return months
 
 
+# The minute a dashboard counts seeded orders to, and the database's generation (db.changed).
+Stamp = tuple[datetime, int]
+
+
 class MinuteCache:
     """Dashboards computed in the current minute, by date range, one computation at a time.
 
-    A dashboard counts the orders placed by the start of the minute it is computed in, so
-    within one minute the same range always gives the same answer: compute it once and keep
-    it until the minute is over. Requests for a range already being computed get that answer.
+    A dashboard counts the seeded orders placed by the start of the minute it is computed in,
+    and every order entered here. Within one minute, and until the next change to orders or
+    stock, the same range gives the same answer: compute it once and keep it until the minute
+    or the generation moves on. Requests for a range already being computed get that answer.
     At most `max_entries` ranges are kept.
     """
 
     def __init__(self, max_entries: int = 64) -> None:
         self.max_entries = max_entries
-        # The minute and its answers are replaced together, as one tuple, so a reader on another
-        # thread never pairs one minute with the next minute's answers.
-        self.current: tuple[datetime | None, dict[tuple[date, date], Dashboard]] = (None, {})
+        # The stamp and its answers are replaced together, as one tuple, so a reader on another
+        # thread never pairs one stamp with the next one's answers.
+        self.current: tuple[Stamp | None, dict[tuple[date, date], Dashboard]] = (None, {})
         self.lock = threading.Lock()
 
-    def peek(self, minute: datetime, key: tuple[date, date]) -> Dashboard | None:
-        """The answer already computed this minute, if there is one."""
-        current_minute, entries = self.current
-        return entries.get(key) if minute == current_minute else None
+    def peek(self, stamp: Stamp, key: tuple[date, date]) -> Dashboard | None:
+        """The answer already computed for this stamp, if there is one."""
+        current_stamp, entries = self.current
+        return entries.get(key) if stamp == current_stamp else None
 
-    def get(self, minute: datetime, key: tuple[date, date], compute: Callable[[], Dashboard]) -> Dashboard:
+    def get(self, stamp: Stamp, key: tuple[date, date], compute: Callable[[], Dashboard]) -> Dashboard:
         with self.lock:
-            current_minute, entries = self.current
-            if minute != current_minute:
+            current_stamp, entries = self.current
+            if stamp != current_stamp:
                 entries = {}
-                self.current = (minute, entries)
+                self.current = (stamp, entries)
             if key in entries:
                 return entries[key]
             answer = compute()
@@ -75,8 +80,8 @@ async def dashboard(
     """Revenue by month, top products, and sales by employee and by country, for one date range.
 
     Without `from`, the range starts on the first day of the month eleven months ago; without
-    `to`, it ends today. Revenue is the order lines after discount, without freight. Orders
-    count to the start of the current minute.
+    `to`, it ends today. Revenue is the order lines after discount, without freight. Seeded
+    orders count to the start of the current minute; orders entered here count at once.
     """
     last = to_date or now.date()
     if from_date is None:
@@ -89,7 +94,9 @@ async def dashboard(
     state = request.app.state
     cache: MinuteCache = state.dashboard_cache
     minute = now.replace(second=0, microsecond=0)
-    answer = cache.peek(minute, (first, last))
+    # Reading the generation takes a moment, so it happens on a thread, not in the event loop.
+    stamp = (minute, await anyio.to_thread.run_sync(read_generation, state.db_path))
+    answer = cache.peek(stamp, (first, last))
     if answer is not None:
         return answer
     # One dashboard computes; at most `dashboards_waiting` more may queue. Past that, say so at
@@ -102,11 +109,19 @@ async def dashboard(
         # Waiting happens here, in the event loop, so a queue of dashboards holds no thread and
         # no database connection: each opens its own only when its turn comes.
         return await anyio.to_thread.run_sync(
-            lambda: cache.get(minute, (first, last), lambda: compute_as_of(state.db_path, minute, first, last)),
+            lambda: cache.get(stamp, (first, last), lambda: compute_as_of(state.db_path, minute, first, last)),
             limiter=DASHBOARD_THREADS,
         )
     finally:
         state.dashboards_admitted -= 1
+
+
+def read_generation(path: Path) -> int:
+    conn = db.connect(path)
+    try:
+        return db.generation(conn)
+    finally:
+        conn.close()
 
 
 def compute_as_of(path: Path, moment: datetime, first: date, last: date) -> Dashboard:

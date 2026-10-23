@@ -1,0 +1,179 @@
+"""v3's writes and the nightly reset, at the level of the database: orders entered here are seen
+at once, a change anywhere tells the dashboard's cache, and `oim-shop reset` undoes them all."""
+
+import shutil
+import sqlite3
+from datetime import timedelta
+from pathlib import Path
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+
+from oim_shop import db, seed
+from oim_shop.app import create_app
+from oim_shop.cli import main
+
+from .conftest import NOW, SEED_DIR, enter_order
+
+TODAY = "/api/dashboard?from=2026-10-22&to=2026-10-22"
+
+
+@pytest.fixture
+def path(seeded_path: Path, tmp_path: Path) -> Path:
+    copy = tmp_path / "shop.db"
+    shutil.copy(seeded_path, copy)
+    return copy
+
+
+def connect(path: Path) -> sqlite3.Connection:
+    conn = db.connect(path)
+    db.as_of(conn, NOW)
+    return conn
+
+
+def get(client: TestClient, url: str) -> Any:
+    response = client.get(url)
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def stock(conn: sqlite3.Connection, product_id: int) -> tuple[int, int]:
+    row = conn.execute(
+        "SELECT units_in_stock, seed_units_in_stock FROM products WHERE product_id = ?", (product_id,)
+    ).fetchone()
+    return row[0], row[1]
+
+
+# --- the seed's stock ---------------------------------------------------------
+
+
+def test_the_seed_stock_is_kept_beside_the_stock(conn: sqlite3.Connection) -> None:
+    assert stock(conn, 1) == (39, 39)
+    differs = conn.execute("SELECT COUNT(*) FROM products WHERE units_in_stock <> seed_units_in_stock")
+    assert differs.fetchone()[0] == 0
+
+
+def test_a_v2_database_keeps_its_stock_as_the_seed_stock(tmp_path: Path) -> None:
+    """The live database was loaded under v2's schema; upgrading it records the stock it has."""
+    v2 = tmp_path / "migrations"
+    v2.mkdir()
+    shutil.copy(db.MIGRATIONS / "001_schema.sql", v2)
+    conn = db.connect(tmp_path / "shop.db")
+    db.migrate(conn, v2)
+    conn.execute("PRAGMA defer_foreign_keys = ON")  # employees report to employees
+    for table in seed.CATALOG:
+        seed.insert(conn, table, seed.columns_of(SEED_DIR, table), seed.read(SEED_DIR, table))
+    conn.commit()
+
+    db.migrate(conn)
+    assert stock(conn, 1) == (39, 39)
+    assert db.generation(conn) == 0
+
+
+# --- orders entered here --------------------------------------------------------
+
+
+def test_an_entered_order_counts_on_the_dashboard_at_once(path: Path) -> None:
+    """Seeded orders count to the start of the minute; one a rep enters counts the moment it exists."""
+    moment = NOW + timedelta(seconds=40)
+    with TestClient(create_app(path, now=lambda: moment)) as c:
+        before = get(c, TODAY)["order_count"]
+        conn = connect(path)
+        order_id = enter_order(conn, NOW + timedelta(seconds=30))
+        conn.close()
+        assert get(c, TODAY)["order_count"] == before + 1
+        assert get(c, "/api/orders?per_page=1")["items"][0]["order_id"] == order_id
+
+
+def test_a_change_from_another_connection_reaches_the_cached_dashboard(path: Path) -> None:
+    with TestClient(create_app(path, now=lambda: NOW)) as c:
+        before = get(c, TODAY)
+        conn = connect(path)
+        enter_order(conn, NOW - timedelta(minutes=5))
+        conn.close()
+        after = get(c, TODAY)
+        assert after["order_count"] == before["order_count"] + 1
+        assert after["revenue_cents"] == before["revenue_cents"] + 2 * 1800
+
+
+def test_an_entered_order_that_shipped_shows_as_shipped(path: Path) -> None:
+    conn = connect(path)
+    order_id = enter_order(conn, NOW - timedelta(minutes=1))
+    conn.execute("UPDATE orders SET shipped_date = ? WHERE order_id = ?", (NOW.isoformat(), order_id))
+    conn.commit()
+    # A minute earlier than the shipment, as the dashboard reads it.
+    db.as_of(conn, NOW - timedelta(seconds=30))
+    shipped = conn.execute("SELECT shipped_date FROM visible_orders WHERE order_id = ?", (order_id,)).fetchone()[0]
+    assert shipped == NOW.isoformat()
+
+
+# --- reset -----------------------------------------------------------------------
+
+
+def test_reset_removes_entered_orders_and_restores_stock(path: Path) -> None:
+    conn = connect(path)
+    order_id = enter_order(conn, NOW, product_id=1, quantity=5)
+    assert stock(conn, 1) == (34, 39)
+    generation = db.generation(conn)
+
+    assert seed.reset(conn) == 1
+    assert conn.execute("SELECT COUNT(*) FROM orders WHERE order_id = ?", (order_id,)).fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM order_lines WHERE order_id = ?", (order_id,)).fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 16_282
+    assert stock(conn, 1) == (39, 39)
+    assert db.generation(conn) == generation + 1
+    conn.close()
+
+
+def test_reset_keeps_employees(path: Path) -> None:
+    conn = connect(path)
+    conn.execute(
+        "INSERT INTO employees (first_name, last_name, title, reports_to, hire_date) "
+        "VALUES ('A rep', '', 'Sales Representative', 5, ?)",
+        (NOW.isoformat(),),
+    )
+    conn.commit()
+    seed.reset(conn)
+    assert conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0] == 10
+    conn.close()
+
+
+def test_a_failed_reset_changes_nothing(path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = connect(path)
+    enter_order(conn, NOW, quantity=5)
+
+    def fail(_: sqlite3.Connection) -> None:
+        raise RuntimeError("disk full")
+
+    monkeypatch.setattr(db, "changed", fail)
+    with pytest.raises(RuntimeError):
+        seed.reset(conn)
+    assert conn.execute("SELECT COUNT(*) FROM orders WHERE source = 'entered'").fetchone()[0] == 1
+    assert stock(conn, 1) == (34, 39)
+    conn.close()
+
+
+def test_the_reset_command(path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    conn = connect(path)
+    enter_order(conn, NOW)
+    conn.close()
+    monkeypatch.setenv("OIM_SHOP_DB", str(path))
+    assert main(["reset"]) == 0
+    assert "Removed 1 order entered here" in capsys.readouterr().out
+    conn = connect(path)
+    assert conn.execute("SELECT COUNT(*) FROM orders WHERE source = 'entered'").fetchone()[0] == 0
+    conn.close()
+
+
+def test_a_reset_reaches_the_cached_dashboard(path: Path) -> None:
+    """The reset runs in another process, so the running app learns of it from the database."""
+    conn = connect(path)
+    enter_order(conn, NOW - timedelta(minutes=5))
+    conn.close()
+    with TestClient(create_app(path, now=lambda: NOW)) as c:
+        before = get(c, TODAY)["order_count"]
+        conn = connect(path)
+        seed.reset(conn)
+        conn.close()
+        assert get(c, TODAY)["order_count"] == before - 1

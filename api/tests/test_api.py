@@ -332,9 +332,9 @@ def test_dashboards_are_computed_one_at_a_time() -> None:
             running -= 1
         return object()
 
-    minute = datetime(2026, 10, 22, 17, 0)
+    stamp = (datetime(2026, 10, 22, 17, 0), 0)
     keys = [(date(2025, 1, 1), date(2025, 6, 30))] * 4 + [(date(2024, 1, 1), date(2024, 6, 30))] * 4
-    threads = [threading.Thread(target=cache.get, args=(minute, key, slow)) for key in keys]
+    threads = [threading.Thread(target=cache.get, args=(stamp, key, slow)) for key in keys]
     for t in threads:
         t.start()
     for t in threads:

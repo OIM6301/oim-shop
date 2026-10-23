@@ -206,8 +206,8 @@ export interface paths {
          * @description Revenue by month, top products, and sales by employee and by country, for one date range.
          *
          *     Without `from`, the range starts on the first day of the month eleven months ago; without
-         *     `to`, it ends today. Revenue is the order lines after discount, without freight. Orders
-         *     count to the start of the current minute.
+         *     `to`, it ends today. Revenue is the order lines after discount, without freight. Seeded
+         *     orders count to the start of the current minute; orders entered here count at once.
          */
         get: operations["dashboard_api_dashboard_get"];
         put?: never;

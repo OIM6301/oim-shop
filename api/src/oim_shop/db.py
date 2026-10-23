@@ -24,9 +24,11 @@ def connect(path: Path) -> sqlite3.Connection:
 def as_of(conn: sqlite3.Connection, now: datetime) -> None:
     """Create visible_orders: the orders placed by `now`, as oim-api shows them at that moment.
 
-    The database holds every order through 2027-06-30. This view hides the ones not yet
-    placed, and a shipped date still in the future reads as null. Every route reads
-    orders through it. The view lives only as long as this connection.
+    The database holds every seeded order through 2027-06-30. This view hides the ones not
+    yet placed, and a shipped date still in the future reads as null. An order entered here
+    is always shown as it is: it was written at the moment it was placed or shipped, even
+    if `now` is the start of the minute, as for the dashboard. Every route reads orders
+    through this view. It lives only as long as this connection.
     """
     # `now` comes from the server's clock, never from a request, so it is safe to write into the SQL.
     # As a constant, it also lets SQLite use the index on order_date.
@@ -36,13 +38,23 @@ def as_of(conn: sqlite3.Connection, now: datetime) -> None:
         f"""
         CREATE TEMP VIEW visible_orders AS
         SELECT order_id, customer_id, employee_id, order_date, required_date,
-               CASE WHEN shipped_date <= '{moment}' THEN shipped_date END AS shipped_date,
+               CASE WHEN source = 'entered' OR shipped_date <= '{moment}' THEN shipped_date END AS shipped_date,
                shipper_id, freight_cents, ship_city, ship_country, total_cents, line_count, source
         FROM main.orders
-        WHERE order_date <= '{moment}'
+        WHERE order_date <= '{moment}' OR source = 'entered'
         """  # noqa: S608 (moment is datetime.isoformat() of the server's clock)
     )
     conn.commit()
+
+
+def generation(conn: sqlite3.Connection) -> int:
+    """A number that goes up with every change to orders or stock."""
+    return conn.execute("SELECT generation FROM meta").fetchone()[0]
+
+
+def changed(conn: sqlite3.Connection) -> None:
+    """Record a change to orders or stock. Call it inside the transaction that makes the change."""
+    conn.execute("UPDATE meta SET generation = generation + 1")
 
 
 def _casefold(text: str | None) -> str | None:

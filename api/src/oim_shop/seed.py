@@ -11,6 +11,7 @@ import sqlite3
 from collections.abc import Iterable, Iterator
 from pathlib import Path
 
+from oim_shop import db
 from oim_shop.clock import shift
 
 # Columns that hold integers; everything else stays text. An empty field is null.
@@ -74,6 +75,7 @@ def load(conn: sqlite3.Connection, seed_dir: Path) -> int:
             if table == "employees":
                 rows = ({**row, "hire_date": shift(str(row["hire_date"]))} for row in rows)
             insert(conn, table, columns_of(seed_dir, table), rows)
+        conn.execute("UPDATE products SET seed_units_in_stock = units_in_stock")
         insert(conn, "orders", [*columns_of(seed_dir, "orders"), "source"], orders())
         insert(conn, "order_lines", columns_of(seed_dir, "order_lines"), read(seed_dir, "order_lines"))
         update_totals(conn)
@@ -82,6 +84,23 @@ def load(conn: sqlite3.Connection, seed_dir: Path) -> int:
         conn.rollback()
         raise
     return loaded
+
+
+def reset(conn: sqlite3.Connection) -> int:
+    """Take out every order entered here and put stock back as the seed had it, in one transaction.
+
+    Seeded orders and every employee, reps included, stay. Returns the number of orders taken out.
+    """
+    try:
+        # Their lines go with them (ON DELETE CASCADE).
+        removed = conn.execute("DELETE FROM orders WHERE source = 'entered'").rowcount
+        conn.execute("UPDATE products SET units_in_stock = seed_units_in_stock")
+        db.changed(conn)
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    return removed
 
 
 def update_totals(conn: sqlite3.Connection, order_ids: list[int] | None = None) -> None:

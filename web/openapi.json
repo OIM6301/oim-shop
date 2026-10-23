@@ -726,7 +726,7 @@
           "dashboard"
         ],
         "summary": "Dashboard",
-        "description": "Revenue by month, top products, and sales by employee and by country, for one date range.\n\nWithout `from`, the range starts on the first day of the month eleven months ago; without\n`to`, it ends today. Revenue is the order lines after discount, without freight. Orders\ncount to the start of the current minute.",
+        "description": "Revenue by month, top products, and sales by employee and by country, for one date range.\n\nWithout `from`, the range starts on the first day of the month eleven months ago; without\n`to`, it ends today. Revenue is the order lines after discount, without freight. Seeded\norders count to the start of the current minute; orders entered here count at once.",
         "operationId": "dashboard_api_dashboard_get",
         "parameters": [
           {
