@@ -67,7 +67,9 @@
        3.99:1, under WCAG AA's 4.5:1 for small text. This one is 4.87:1 there and 5.85:1 on white. */
     --destructive: oklch(0.53 0.22 27.325);
     --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
+    /* Field outlines must stand out 3:1 from the page (WCAG AA, non-text contrast); shadcn's
+       0.922 was 1.26:1. This is 3.95:1 on white. --border, for cards and rules, stays light. */
+    --input: oklch(0.6 0 0);
     --ring: oklch(0.556 0 0);
     --chart-1: #2a78d6;
     --chart-2: oklch(0.556 0 0);
@@ -82,7 +84,8 @@
     --sidebar-accent: oklch(0.97 0 0);
     --sidebar-accent-foreground: oklch(0.205 0 0);
     --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.708 0 0);
+    /* The same as --ring: shadcn's 0.708 was 2.48:1 on the sidebar, under 3:1 for a focus ring. */
+    --sidebar-ring: oklch(0.556 0 0);
 }
 
 .dark {
@@ -100,9 +103,11 @@
     --muted-foreground: oklch(0.708 0 0);
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
+    /* Lighter than shadcn's 0.704, which was 4.26:1 as button text on its own tint in a dialog. */
+    --destructive: oklch(0.8 0.14 22.2);
     --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
+    /* 3.69:1 on a card and 4.08:1 on the page; shadcn's white at 15% was about 1.5:1. */
+    --input: oklch(0.55 0 0);
     --ring: oklch(0.556 0 0);
     --chart-1: #3987e5;
     --chart-2: oklch(0.556 0 0);
@@ -121,7 +126,8 @@
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    /* A full-strength focus outline: at half strength it was 1.96:1 around a link. */
+    @apply border-border outline-ring;
     }
   body {
     @apply bg-background text-foreground;

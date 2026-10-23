@@ -37,9 +37,10 @@ export function ChartCard({
       <CardHeader>
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
+        {/* The pressed one is filled dark: a light gray fill was hardly told apart (1.18:1). */}
         <CardAction className="flex gap-1">
           <Button
-            variant={view === 'chart' ? 'secondary' : 'ghost'}
+            variant={view === 'chart' ? 'default' : 'ghost'}
             size="icon-sm"
             aria-label="Show as chart"
             aria-pressed={view === 'chart'}
@@ -48,7 +49,7 @@ export function ChartCard({
             <BarChart3 />
           </Button>
           <Button
-            variant={view === 'table' ? 'secondary' : 'ghost'}
+            variant={view === 'table' ? 'default' : 'ghost'}
             size="icon-sm"
             aria-label="Show as table"
             aria-pressed={view === 'table'}

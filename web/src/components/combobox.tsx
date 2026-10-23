@@ -50,7 +50,7 @@ export function Combobox({
           aria-expanded={open}
           aria-invalid={invalid}
           disabled={loading}
-          className="w-full justify-between font-normal"
+          className="w-full justify-between border-input font-normal"
         >
           <span className={`truncate ${chosen ? '' : 'text-muted-foreground'}`}>
             {loading ? 'Loading…' : (chosen?.label ?? placeholder)}
@@ -77,7 +77,10 @@ export function Combobox({
                   }}
                 >
                   <span className="min-w-0 flex-1 truncate">{option.label}</span>
-                  {option.hint && <span className="text-xs text-muted-foreground">{option.hint}</span>}
+                  {/* On the highlighted row's gray, muted text was 4.35:1; there it takes the full text color. */}
+                  {option.hint && (
+                    <span className="text-xs text-muted-foreground in-data-[selected=true]:text-foreground">{option.hint}</span>
+                  )}
                 </CommandItem>
               ))}
             </CommandGroup>
