@@ -11,6 +11,12 @@ ContainerName=oim-shop
 # Only Caddy on the same machine reaches it.
 PublishPort=127.0.0.1:8100:8000
 Volume=oim-shop-data:/data
+# Signing in (v3). The secrets file holds OIM_SHOP_GITHUB_CLIENT_ID and OIM_SHOP_GITHUB_CLIENT_SECRET;
+# podman reads it as the server's user, so it stays 600. The allowlist is read inside the container
+# by its own user, so the file is 644, inside a directory only the server's user can enter (700).
+EnvironmentFile=%h/.config/oim-shop.env
+Environment=OIM_SHOP_PUBLIC_URL=https://oim-shop.zhili.dev OIM_SHOP_ALLOWED_USERS=/run/oim-shop/allowed-users
+Volume=%h/.config/oim-shop/allowed-users:/run/oim-shop/allowed-users:ro
 HealthCmd=python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"
 HealthInterval=5m
 

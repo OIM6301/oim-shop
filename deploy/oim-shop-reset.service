@@ -1,0 +1,12 @@
+# Takes out the orders entered on the site and restores the seed's stock (PRD section 7).
+# Started by oim-shop-reset.timer; copy both to ~/.config/systemd/user/ on the server.
+
+[Unit]
+Description=oim-shop nightly reset
+Requires=oim-shop.service
+After=oim-shop.service
+
+[Service]
+Type=oneshot
+# Runs inside the running container, against its database, with its settings.
+ExecStart=/usr/bin/podman exec oim-shop oim-shop reset

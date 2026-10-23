@@ -1,0 +1,12 @@
+# Every night at 3:00 in Boston, when no class is using the site.
+
+[Unit]
+Description=oim-shop nightly reset at 3:00 Boston time
+
+[Timer]
+OnCalendar=*-*-* 03:00:00 America/New_York
+# If the server was off at 3:00, run once when it is back.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -6,6 +6,26 @@ The live site runs on one small Linux server, shared with other services. GitHub
 
 [oim-shop.container](oim-shop.container) is the container, as a Quadlet unit for rootless podman. It publishes the app on `127.0.0.1:8100`, keeps the database on the volume `oim-shop-data`, and caps the container at 200 MB of memory and half a CPU. It is the copy of record: edit it here, then copy it to the server.
 
+## Signing in (v3)
+
+Signing in needs two files on the server, neither of them in git:
+
+- `~/.config/oim-shop.env` (600): `OIM_SHOP_GITHUB_CLIENT_ID=` and `OIM_SHOP_GITHUB_CLIENT_SECRET=`, from the project's GitHub OAuth App, whose callback is `https://oim-shop.zhili.dev/api/auth/callback`.
+- `~/.config/oim-shop/allowed-users` (644, in a 700 directory): the GitHub usernames who may sign in, one per line, with `manager` after a manager's.
+
+The unit reads both ([oim-shop.container](oim-shop.container)). Signing in needs every setting or none: with only some of them, the app stops at start and says which is missing.
+
+## Nightly reset
+
+[oim-shop-reset.timer](oim-shop-reset.timer) runs [oim-shop-reset.service](oim-shop-reset.service) at 3:00 Boston time, which runs `oim-shop reset` inside the container.
+
+```bash
+cp oim-shop-reset.service oim-shop-reset.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now oim-shop-reset.timer
+systemctl --user list-timers oim-shop-reset.timer
+```
+
 ## First setup
 
 As the user that runs the app:
