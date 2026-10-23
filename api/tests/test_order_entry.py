@@ -409,3 +409,28 @@ def test_only_a_manager_sees_every_reps_orders(rep: TestClient, other: TestClien
     everyone = manager.get("/api/me/orders?scope=all").json()
     assert sorted(o["rep_name"] for o in everyone["items"]) == ["Ana", "Ben"]
     assert manager.get("/api/me/orders").json()["pagination"]["total"] == 0
+
+
+# --- Codex review of v3 ----------------------------------------------------------------------------
+
+
+def test_an_order_number_is_never_used_twice(rep: TestClient, path: Path) -> None:
+    """After the nightly reset deletes it, a page still open on order #N must not reach a new order #N."""
+    from oim_shop import seed
+
+    first = post(rep, order())["order_id"]
+    conn = db.connect(path)
+    seed.reset(conn)
+    conn.close()
+    second = post(rep, order())["order_id"]
+    assert second > first
+    assert rep.delete(f"/api/orders/{first}", headers=csrf(rep)).status_code == 404
+
+
+def test_my_orders_sort(rep: TestClient) -> None:
+    small = post(rep, order(lines=[line(CHAI, 1)]))["order_id"]
+    large = post(rep, order(lines=[line(CHAI, 9)]))["order_id"]
+    by_total = rep.get("/api/me/orders?sort=total&order=desc").json()["items"]
+    assert [o["order_id"] for o in by_total] == [large, small]
+    by_number = rep.get("/api/me/orders?sort=order_id&order=asc").json()["items"]
+    assert [o["order_id"] for o in by_number] == [small, large]

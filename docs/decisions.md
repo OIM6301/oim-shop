@@ -52,6 +52,8 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **A transaction that holds the lock from the start.** A write begins with `BEGIN IMMEDIATE`, which takes SQLite's write lock before reading anything. Two reps who order the last unit at the same moment are then served one after the other: the second one reads the stock the first one left, and is told there is none. With a plain `BEGIN`, both would read one unit in stock. The update that takes the stock also repeats the check in its `WHERE` clause, so it can never go below zero.
 
+**An order number is never used twice.** SQLite gives a new row the largest id plus one, so after the nightly reset deletes the day's orders, the next order would get the number of one just deleted, and a page still open on that order could cancel the new one. The largest number ever given is kept in `meta.last_order_id`, and new orders count on from it.
+
 **The price comes from the product.** An order says which products and how many, never at what price. The server copies each product's current price onto the line, as Northwind's own orders record the price at the time of the order.
 
 **What the form does not ask for.** Freight is 0, and the order ships to the customer's own city and country. Sales by country counts orders by where they ship, so an order without a country would be missing from it.
@@ -61,6 +63,8 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 **Northwind's history is read-only.** Seeded orders were placed by Northwind's own employees, so no one changes them, managers included. A rep changes only their own orders, and a manager any rep's; either, only until the order ships.
 
 **Every problem at once.** A refused order lists each problem with the field it is about, in the same shape as FastAPI's own validation errors, so the form shows all of them beside their fields. 422 means the order itself is wrong; 409 means it conflicts with the database as it is now, such as stock another rep just took.
+
+**A body has a size limit.** FastAPI reads and decodes a whole request body before it checks a single field, so a request carrying tens of megabytes would use memory the server does not have. Every request body over 64 KB is refused before the app reads it; the largest order is under 2 KB.
 
 **A limit per person.** The rate limit per address cannot tell apart the students on one campus network, so writes have a second limit: 30 a minute for each signed-in person.
 

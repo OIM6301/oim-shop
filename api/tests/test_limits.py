@@ -104,3 +104,27 @@ def test_a_refused_request_is_not_cached(client: TestClient) -> None:
     refused = client.get("/api/categories", headers=visitor)
     assert refused.status_code == 429
     assert refused.headers["Cache-Control"] == "no-store"
+
+
+# --- request bodies (Codex review of v3) ---------------------------------------------
+
+
+def test_a_body_too_large_is_refused_before_it_is_read(seeded_path: Path) -> None:
+    with TestClient(create_app(seeded_path, now=lambda: NOW)) as c:
+        response = c.post("/api/orders", content=b"x" * 70_000, headers={"Content-Type": "application/json"})
+        assert response.status_code == 413
+
+
+def test_a_chunked_body_too_large_is_refused(seeded_path: Path) -> None:
+    def chunks() -> Iterator[bytes]:
+        for _ in range(100):
+            yield b"x" * 1000
+
+    with TestClient(create_app(seeded_path, now=lambda: NOW)) as c:
+        response = c.post("/api/orders", content=chunks(), headers={"Content-Type": "application/json"})
+        assert response.status_code == 413
+
+
+def test_a_small_body_still_reaches_the_route(seeded_path: Path) -> None:
+    with TestClient(create_app(seeded_path, now=lambda: NOW)) as c:
+        assert c.post("/api/orders", json={"customer_id": "ALFKI"}).status_code == 401

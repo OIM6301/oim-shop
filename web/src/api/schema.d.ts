@@ -221,7 +221,9 @@ export interface paths {
         };
         /**
          * My Orders
-         * @description The orders you entered, newest first, with the name you chose. A manager may ask for every rep's.
+         * @description The orders you entered, with the name you chose, newest first unless sorted.
+         *
+         *     A manager may ask for every rep's.
          */
         get: operations["my_orders_api_me_orders_get"];
         put?: never;
@@ -1464,6 +1466,8 @@ export interface operations {
             query?: {
                 /** @description all: every rep's orders, for managers */
                 scope?: "mine" | "all";
+                sort?: "order_date" | "order_id" | "total";
+                order?: "asc" | "desc";
                 page?: number;
                 /** @description At most 100 */
                 per_page?: number;

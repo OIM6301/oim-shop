@@ -247,3 +247,87 @@ def test_me_is_never_cached(client: TestClient, github: FakeGitHub) -> None:
     sign_in(client, github, STUDENT)
     assert client.get("/api/me").headers["Cache-Control"] == "no-store"
     assert json.loads(client.get("/api/me").text)["account"]["csrf_token"]
+
+
+# --- Codex review of v3 ----------------------------------------------------------------
+
+
+def test_sign_ins_waiting_on_github_are_capped(path: Path, github: FakeGitHub, allowlist: Path) -> None:
+    """Each callback waits on GitHub; past the cap, the next is turned away at once instead of piling up."""
+    import asyncio
+
+    import httpx2
+
+    from oim_shop.github import GitHub
+
+    async def slow(request: httpx2.Request) -> httpx2.Response:
+        await asyncio.sleep(0.3)
+        return github.handle(request)
+
+    settings = sign_in_settings(github, allowlist)
+    settings = type(settings)(
+        github=GitHub("client-id", "client-secret", "https://github.test", "https://api.github.test",
+                      transport=httpx2.MockTransport(slow)),
+        allowlist=allowlist,
+        public_url=settings.public_url,
+    )  # fmt: skip
+    app = create_app(path, now=lambda: NOW, sign_in=settings, sign_ins_at_once=2)
+
+    async def run() -> list[str]:
+        transport = httpx2.ASGITransport(app=app)
+        async with httpx2.AsyncClient(transport=transport, base_url=PUBLIC_URL) as c:
+            login = await c.get("/api/auth/login")
+            authorize = login.headers["location"]
+            state = parse_qs(urlsplit(authorize).query)["state"][0]
+            codes = [github.approve(STUDENT, authorize) for _ in range(5)]
+            answers = await asyncio.gather(
+                *(c.get("/api/auth/callback", params={"code": code, "state": state}) for code in codes)
+            )
+            return [a.headers["location"] for a in answers]
+
+    places = asyncio.run(run())
+    assert places.count("/sign-in?error=busy") == 3
+
+
+@pytest.mark.parametrize("cookie", ["bnVsbA==", "W10=", "WzEsMiwzXQ==", "%%%", ""])
+def test_a_login_cookie_that_is_not_ours_means_expired(client: TestClient, cookie: str) -> None:
+    client.cookies.set("oim_shop_login", cookie, path="/api/auth")
+    done = client.get("/api/auth/callback", params={"code": "x", "state": "x"})
+    assert done.headers["location"] == "/sign-in?error=expired"
+
+
+def test_a_state_that_is_not_ascii_means_expired(client: TestClient) -> None:
+    client.get("/api/auth/login")
+    done = client.get("/api/auth/callback", params={"code": "x", "state": "é"})
+    assert done.headers["location"] == "/sign-in?error=expired"
+
+
+def test_with_sign_in_turned_off_an_old_session_cannot_write(
+    path: Path, client: TestClient, github: FakeGitHub
+) -> None:
+    sign_in(client, github, STUDENT)
+    token = client.cookies["oim_shop_session"]
+    with TestClient(create_app(path, now=lambda: NOW), base_url=PUBLIC_URL) as off:
+        off.cookies.set("oim_shop_session", token)
+        assert me(off)["account"] is None
+        assert off.put("/api/me", json={"display_name": "Ana"}).status_code == 401
+
+
+def test_a_rep_who_appears_publicly_appears_by_number(client: TestClient, github: FakeGitHub) -> None:
+    sign_in(client, github, STUDENT)
+    account = me(client)["account"]
+    client.put("/api/me", json={"display_name": "Ana Rivera"}, headers=csrf(client))
+    body = {
+        "customer_id": "ALFKI", "shipper_id": 1, "required_date": "2026-11-01",
+        "lines": [{"product_id": 1, "quantity": 1, "discount_pct": 0}],
+    }  # fmt: skip
+    order_id = client.post("/api/orders", json=body, headers=csrf(client)).json()["order_id"]
+    client.cookies.clear()
+    pages = [
+        "/api/employees", f"/api/employees/{account['employee_id']}", "/api/orders", f"/api/orders/{order_id}",
+        "/api/dashboard?from=2026-10-22&to=2026-10-22",
+    ]  # fmt: skip
+    for page in pages:
+        text = client.get(page).text
+        assert "Ana Rivera" not in text, page
+        assert f"Sales rep {account['employee_id']}" in text or f'"last_name":"{account["employee_id"]}"' in text, page

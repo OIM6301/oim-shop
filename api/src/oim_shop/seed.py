@@ -91,15 +91,11 @@ def reset(conn: sqlite3.Connection) -> int:
 
     Seeded orders and every employee, reps included, stay. Returns the number of orders taken out.
     """
-    try:
+    with db.transaction(conn):
         # Their lines go with them (ON DELETE CASCADE).
         removed = conn.execute("DELETE FROM orders WHERE source = 'entered'").rowcount
         conn.execute("UPDATE products SET units_in_stock = seed_units_in_stock")
         db.changed(conn)
-        conn.commit()
-    except BaseException:
-        conn.rollback()
-        raise
     return removed
 
 
@@ -109,7 +105,7 @@ def forget_accounts(conn: sqlite3.Connection) -> int:
     Their sessions, accounts and employee records go, and with them every order entered
     here, whose stock goes back as in a reset. Returns the number of accounts removed.
     """
-    try:
+    with db.transaction(conn):
         conn.execute("DELETE FROM orders WHERE source = 'entered'")
         conn.execute("UPDATE products SET units_in_stock = seed_units_in_stock")
         employees = [(row[0],) for row in conn.execute("SELECT employee_id FROM accounts")]
@@ -117,10 +113,6 @@ def forget_accounts(conn: sqlite3.Connection) -> int:
         removed = conn.execute("DELETE FROM accounts").rowcount
         conn.executemany("DELETE FROM employees WHERE employee_id = ?", employees)
         db.changed(conn)
-        conn.commit()
-    except BaseException:
-        conn.rollback()
-        raise
     return removed
 
 

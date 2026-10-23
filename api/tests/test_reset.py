@@ -264,3 +264,19 @@ def test_the_forget_command(path: Path, monkeypatch: pytest.MonkeyPatch, capsys:
     monkeypatch.setenv("OIM_SHOP_DB", str(path))
     assert main(["forget-accounts"]) == 0
     assert "Removed 2 accounts" in capsys.readouterr().out
+
+
+def test_reset_waits_for_another_writer_instead_of_failing(path: Path) -> None:
+    """A connection that has read something holds an old snapshot; a write on it must start afresh."""
+    conn = connect(path)
+    conn.execute("SELECT COUNT(*) FROM orders").fetchone()  # a read, as open_database does
+    other = connect(path)
+    enter_order(other, NOW - timedelta(minutes=1))  # another connection commits meanwhile
+    other.close()
+    assert seed.reset(conn) == 1
+    conn.execute("SELECT COUNT(*) FROM accounts").fetchone()
+    other = connect(path)
+    enter_order(other, NOW - timedelta(minutes=1))
+    other.close()
+    assert seed.forget_accounts(conn) == 0
+    conn.close()

@@ -15,9 +15,9 @@ from fastapi import APIRouter, HTTPException, Query, Response
 
 from oim_shop import db
 from oim_shop.accounts import Session, SignedIn, Writer
-from oim_shop.deps import Conn, Now, PageNumber, PathId, PerPage, page_of, rows
+from oim_shop.deps import Conn, Now, PageNumber, PathId, PerPage, SortOrder, page_of, rows
 from oim_shop.models import LineInput, MyOrder, MyOrderPage, OrderDetail, OrderInput, Shipper
-from oim_shop.routes.orders import ORDER_COLUMNS, ORDER_FROM, order_detail
+from oim_shop.routes.orders import ORDER_COLUMNS, ORDER_FROM, SORT, order_detail
 from oim_shop.seed import update_totals
 
 router = APIRouter(tags=["order entry"])
@@ -165,20 +165,27 @@ def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> Order
     """Enter an order as the signed-in rep. The prices are the products' current ones."""
     with db.transaction(conn):
         customer, products = check(conn, body, now)
+        # The next number after the largest ever given, so a deleted order's number is never reused (migration 004).
         order_id: int = conn.execute(
+            "UPDATE meta SET last_order_id = MAX(last_order_id, (SELECT MAX(order_id) FROM orders)) + 1 "
+            "RETURNING last_order_id"
+        ).fetchone()[0]
+        conn.execute(
             """
-            INSERT INTO orders (customer_id, employee_id, order_date, required_date, shipper_id,
+            INSERT INTO orders (order_id, customer_id, employee_id, order_date, required_date, shipper_id,
                                 freight_cents, ship_city, ship_country, source)
-            VALUES (?, ?, ?, ?, ?, 0, ?, ?, 'entered') RETURNING order_id
+            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 'entered')
             """,
             (
+                order_id,
                 customer["customer_id"], writer.employee_id, now.isoformat(timespec="seconds"),
                 f"{body.required_date.isoformat()}T00:00:00", body.shipper_id, customer["city"], customer["country"],
             ),
-        ).fetchone()[0]  # fmt: skip
+        )  # fmt: skip
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
-    return order_detail(conn, order_id)
+        # Read back inside the transaction, so a reset that commits next cannot change the answer.
+        return order_detail(conn, order_id)
 
 
 @router.put("/orders/{order_id}", responses={404: {"description": "No such order"}, **REFUSED})
@@ -205,7 +212,7 @@ def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer:
         )  # fmt: skip
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
-    return order_detail(conn, order_id)
+        return order_detail(conn, order_id)
 
 
 @router.delete("/orders/{order_id}", status_code=204, responses={404: {"description": "No such order"}, **REFUSED})
@@ -228,7 +235,7 @@ def ship_order(order_id: PathId, conn: Conn, now: Now, writer: Writer) -> OrderD
             "UPDATE orders SET shipped_date = ? WHERE order_id = ?", (now.isoformat(timespec="seconds"), order_id)
         )
         db.changed(conn)
-    return order_detail(conn, order_id)
+        return order_detail(conn, order_id)
 
 
 @router.get("/me/orders", responses={401: {"description": "Not signed in"}, 403: {"description": "Not a manager"}})
@@ -236,10 +243,15 @@ def my_orders(
     conn: Conn,
     viewer: SignedIn,
     scope: Annotated[Literal["mine", "all"], Query(description="all: every rep's orders, for managers")] = "mine",
+    sort: Annotated[Literal["order_date", "order_id", "total"], Query()] = "order_date",
+    order: SortOrder = "desc",
     page: PageNumber = 1,
     per_page: PerPage = 20,
 ) -> MyOrderPage:
-    """The orders you entered, newest first, with the name you chose. A manager may ask for every rep's."""
+    """The orders you entered, with the name you chose, newest first unless sorted.
+
+    A manager may ask for every rep's.
+    """
     if scope == "all" and viewer.role != "manager":
         raise HTTPException(status_code=403, detail="Only a manager sees every rep's orders")
     where: list[str] = ["o.source = 'entered'"]
@@ -256,7 +268,7 @@ def my_orders(
         count="SELECT COUNT(*) FROM visible_orders o",
         where=where,
         params=params,
-        order_by="o.order_date DESC, o.order_id DESC",
+        order_by=f"{SORT[sort]} {order}, o.order_id {order}",
         page=page,
         per_page=per_page,
     )

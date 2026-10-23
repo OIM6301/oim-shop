@@ -11,7 +11,9 @@ from urllib.parse import quote
 import anyio.to_thread
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 from fastapi.responses import RedirectResponse
+from pydantic import ConfigDict, TypeAdapter
 
+from oim_shop import db
 from oim_shop.accounts import (
     SESSION_COOKIE,
     SESSION_LENGTH,
@@ -34,6 +36,7 @@ log = logging.getLogger(__name__)
 # Holds the state, the PKCE verifier and where to go afterwards, from /login until /callback.
 LOGIN_COOKIE = "oim_shop_login"
 LOGIN_SECONDS = 600
+STARTED = TypeAdapter(tuple[str, str, str], config=ConfigDict(strict=True))
 
 
 def settings(request: Request) -> SignIn:
@@ -67,11 +70,12 @@ def login(request: Request, next_path: Annotated[str, Query(alias="next", max_le
 
 
 def read_started(request: Request) -> tuple[str, str, str] | None:
+    """The state, verifier and next path the login cookie holds, or None for anything else in it."""
     try:
-        state, verifier, next_path = json.loads(base64.urlsafe_b64decode(request.cookies.get(LOGIN_COOKIE, "")))
-    except ValueError:
-        return None
-    if not all(isinstance(part, str) for part in (state, verifier, next_path)):
+        state, verifier, next_path = STARTED.validate_json(
+            base64.urlsafe_b64decode(request.cookies.get(LOGIN_COOKIE, ""))
+        )
+    except ValueError:  # not base64, not JSON, or not three strings (pydantic's ValidationError is a ValueError)
         return None
     return state, verifier, within_app(next_path)
 
@@ -91,14 +95,25 @@ async def callback(
     if error is not None:
         return go("/sign-in?error=denied" if error == "access_denied" else "/sign-in?error=github")
     started = read_started(request)
-    if started is None or state is None or code is None or not secrets.compare_digest(state, started[0]):
+    # Compared as bytes: compare_digest refuses text that is not ASCII.
+    if started is None or state is None or code is None:
+        return go("/sign-in?error=expired")
+    if not secrets.compare_digest(state.encode(), started[0].encode()):
         return go("/sign-in?error=expired")
     _, verifier, next_path = started
+    # Each sign-in waits on GitHub for up to ten seconds. Past a few at once, the next is told
+    # to try again, instead of holding a connection and its memory for as long as GitHub takes.
+    app = request.app.state
+    if app.sign_ins_waiting >= app.sign_ins_at_once:
+        return go("/sign-in?error=busy")
+    app.sign_ins_waiting += 1
     try:
         user = await sign_in.github.user_for_code(code, sign_in.redirect_uri, verifier)
     except GitHubError as failure:
         log.warning("Signing in failed at GitHub: %s", failure)
         return go("/sign-in?error=github")
+    finally:
+        app.sign_ins_waiting -= 1
     try:
         role = read_allowlist(sign_in.allowlist).get(user.login.lower())
     except (OSError, AllowlistError) as failure:
@@ -149,7 +164,9 @@ def me(request: Request, viewer: Viewer, now: Now) -> Me:
 @router.put("/me", responses={401: {}, 403: {}})
 def choose_name(change: NameChange, conn: Conn, writer: Writer, now: Now) -> Me:
     """Choose the name you see for yourself. Everyone but you and the managers sees 'Sales rep <your number>'."""
-    conn.execute("UPDATE accounts SET display_name = ? WHERE github_id = ?", (change.display_name, writer.github_id))
-    conn.commit()
+    with db.transaction(conn):
+        conn.execute(
+            "UPDATE accounts SET display_name = ? WHERE github_id = ?", (change.display_name, writer.github_id)
+        )
     account = account_of(replace(writer, display_name=change.display_name))
     return Me(sign_in_available=True, account=account, today=now.date())

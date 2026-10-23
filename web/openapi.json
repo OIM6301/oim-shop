@@ -910,7 +910,7 @@
           "order entry"
         ],
         "summary": "My Orders",
-        "description": "The orders you entered, newest first, with the name you chose. A manager may ask for every rep's.",
+        "description": "The orders you entered, with the name you chose, newest first unless sorted.\n\nA manager may ask for every rep's.",
         "operationId": "my_orders_api_me_orders_get",
         "parameters": [
           {
@@ -928,6 +928,35 @@
               "title": "Scope"
             },
             "description": "all: every rep's orders, for managers"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "order_date",
+                "order_id",
+                "total"
+              ],
+              "type": "string",
+              "default": "order_date",
+              "title": "Sort"
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "asc",
+                "desc"
+              ],
+              "type": "string",
+              "default": "desc",
+              "title": "Order"
+            }
           },
           {
             "name": "page",

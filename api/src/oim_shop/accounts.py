@@ -85,47 +85,47 @@ def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tupl
     stamp = now.isoformat(timespec="seconds")
     conn = db.connect(path)
     try:
-        row = conn.execute(
-            "SELECT employee_id, display_name FROM accounts WHERE github_id = ?", (github_id,)
-        ).fetchone()
-        if row is None:
-            employee_id: int = conn.execute(
-                """
-                INSERT INTO employees (first_name, last_name, title, reports_to, hire_date)
-                VALUES ('Sales rep', '', ?, ?, ?) RETURNING employee_id
-                """,
-                (TITLES[role], SALES_MANAGER, stamp),
-            ).fetchone()[0]
-            # Public pages call the rep by their employee number, never by a name they typed.
-            conn.execute("UPDATE employees SET last_name = ? WHERE employee_id = ?", (str(employee_id), employee_id))
+        # One write transaction from the first read, so a sign-in finishing at the same moment waits its turn.
+        with db.transaction(conn):
+            row = conn.execute(
+                "SELECT employee_id, display_name FROM accounts WHERE github_id = ?", (github_id,)
+            ).fetchone()
+            if row is None:
+                employee_id: int = conn.execute(
+                    """
+                    INSERT INTO employees (first_name, last_name, title, reports_to, hire_date)
+                    VALUES ('Sales rep', '', ?, ?, ?) RETURNING employee_id
+                    """,
+                    (TITLES[role], SALES_MANAGER, stamp),
+                ).fetchone()[0]
+                # Public pages call the rep by their employee number, never by a name they typed.
+                conn.execute(
+                    "UPDATE employees SET last_name = ? WHERE employee_id = ?", (str(employee_id), employee_id)
+                )
+                conn.execute(
+                    "INSERT INTO accounts (github_id, employee_id, role, created_at) VALUES (?, ?, ?, ?)",
+                    (github_id, employee_id, role, stamp),
+                )
+                named = False
+            else:
+                employee_id, named = row["employee_id"], row["display_name"] is not None
+                # The allowlist decides the role, so a change there takes effect at the next sign-in.
+                conn.execute("UPDATE accounts SET role = ? WHERE github_id = ?", (role, github_id))
+                conn.execute("UPDATE employees SET title = ? WHERE employee_id = ?", (TITLES[role], employee_id))
+            conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (stamp,))
+            token = secrets.token_urlsafe(32)
             conn.execute(
-                "INSERT INTO accounts (github_id, employee_id, role, created_at) VALUES (?, ?, ?, ?)",
-                (github_id, employee_id, role, stamp),
+                "INSERT INTO sessions (token_hash, github_id, csrf_token, expires_at) VALUES (?, ?, ?, ?)",
+                (hash_token(token), github_id, secrets.token_urlsafe(32), (now + SESSION_LENGTH).isoformat()),
             )
-            named = False
-        else:
-            employee_id, named = row["employee_id"], row["display_name"] is not None
-            # The allowlist decides the role, so a change there takes effect at the next sign-in.
-            conn.execute("UPDATE accounts SET role = ? WHERE github_id = ?", (role, github_id))
-            conn.execute("UPDATE employees SET title = ? WHERE employee_id = ?", (TITLES[role], employee_id))
-        conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (stamp,))
-        token = secrets.token_urlsafe(32)
-        conn.execute(
-            "INSERT INTO sessions (token_hash, github_id, csrf_token, expires_at) VALUES (?, ?, ?, ?)",
-            (hash_token(token), github_id, secrets.token_urlsafe(32), (now + SESSION_LENGTH).isoformat()),
-        )
-        conn.commit()
-    except BaseException:
-        conn.rollback()
-        raise
     finally:
         conn.close()
     return token, named
 
 
 def end_session(conn: sqlite3.Connection, token: str) -> None:
-    conn.execute("DELETE FROM sessions WHERE token_hash = ?", (hash_token(token),))
-    conn.commit()
+    with db.transaction(conn):
+        conn.execute("DELETE FROM sessions WHERE token_hash = ?", (hash_token(token),))
 
 
 @dataclass(frozen=True)
@@ -141,7 +141,8 @@ class Session:
 
 def current_session(request: Request, conn: Conn, now: Now) -> Session | None:
     token = request.cookies.get(SESSION_COOKIE)
-    if not token:
+    # With signing in turned off, the app is read-only, even for a browser that signed in before.
+    if not token or request.app.state.sign_in is None:
         return None
     row = conn.execute(
         """
@@ -164,11 +165,11 @@ def signed_in_write(request: Request, session: Annotated[Session | None, Depends
     """
     if session is None:
         raise HTTPException(status_code=401, detail="Sign in first")
-    sign_in: SignIn | None = request.app.state.sign_in
-    sent = request.headers.get("X-CSRF-Token", "")
+    sign_in: SignIn = request.app.state.sign_in  # current_session finds no session without it
+    sent = request.headers.get("X-CSRF-Token", "").encode()
     origin = request.headers.get("Origin")
-    if not secrets.compare_digest(sent, session.csrf_token) or (
-        origin is not None and (sign_in is None or origin != sign_in.origin)
+    if not secrets.compare_digest(sent, session.csrf_token.encode()) or (
+        origin is not None and origin != sign_in.origin
     ):
         raise HTTPException(status_code=403, detail="This request did not come from the app's own pages")
     if not request.app.state.write_limit.allow(session.github_id):

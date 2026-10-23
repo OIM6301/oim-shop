@@ -14,7 +14,7 @@ from collections.abc import Awaitable, Callable
 from fastapi import Request, Response
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 UNLIMITED = ("/api/health",)
 
@@ -62,6 +62,51 @@ class RateLimit(BaseHTTPMiddleware):
                 headers={"Retry-After": str(retry), "Cache-Control": "no-store"},
             )
         return await call_next(request)
+
+
+class BodyLimit:
+    """Refuse a request body larger than `max_bytes` (413) before the app sees it.
+
+    FastAPI reads and decodes a whole body before checking a single field, so without this
+    one request with a large body could use more memory than the server gives the app. This
+    reads the body first, at most `max_bytes` of it, whether it was declared with a
+    Content-Length or sent in chunks, and passes the app the body it read.
+    """
+
+    def __init__(self, app: ASGIApp, max_bytes: int) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        too_large = JSONResponse({"detail": "The request is too large"}, status_code=413)
+        declared = dict(scope["headers"]).get(b"content-length")
+        if declared is not None and (not declared.isdigit() or int(declared) > self.max_bytes):
+            await too_large(scope, receive, send)
+            return
+        body = b""
+        while True:
+            message = await receive()
+            if message["type"] != "http.request":
+                return  # the client went away
+            body += message.get("body", b"")
+            if len(body) > self.max_bytes:
+                await too_large(scope, receive, send)
+                return
+            if not message.get("more_body", False):
+                break
+        replayed = False
+
+        async def replay() -> Message:
+            nonlocal replayed
+            if not replayed:
+                replayed = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return await receive()
+
+        await self.app(scope, replay, send)
 
 
 class WriteLimit:
