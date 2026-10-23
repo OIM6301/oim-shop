@@ -19,13 +19,6 @@ from .conftest import NOW, SEED_DIR, enter_order
 TODAY = "/api/dashboard?from=2026-10-22&to=2026-10-22"
 
 
-@pytest.fixture
-def path(seeded_path: Path, tmp_path: Path) -> Path:
-    copy = tmp_path / "shop.db"
-    shutil.copy(seeded_path, copy)
-    return copy
-
-
 def connect(path: Path) -> sqlite3.Connection:
     conn = db.connect(path)
     db.as_of(conn, NOW)

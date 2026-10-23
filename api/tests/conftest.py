@@ -5,8 +5,12 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 
 from oim_shop import db, seed
+from oim_shop.app import create_app
+
+from .fake_github import PUBLIC_URL, FakeGitHub, sign_in_settings
 
 SEED_DIR = Path(__file__).resolve().parents[2] / "data" / "seed"
 
@@ -59,3 +63,32 @@ def enter_order(conn: sqlite3.Connection, order_date: datetime, product_id: int 
     db.changed(conn)
     conn.commit()
     return order_id
+
+
+# --- for tests that sign in ---------------------------------------------------------
+
+
+@pytest.fixture
+def github() -> FakeGitHub:
+    return FakeGitHub()
+
+
+@pytest.fixture
+def allowlist(tmp_path: Path) -> Path:
+    path = tmp_path / "allowed-users"
+    path.write_text("# who may sign in\nocto-student\nocto-other\n\nOcto-Teacher manager\n")
+    return path
+
+
+@pytest.fixture
+def path(seeded_path: Path, tmp_path: Path) -> Path:
+    copy = tmp_path / "shop.db"
+    shutil.copy(seeded_path, copy)
+    return copy
+
+
+@pytest.fixture
+def client(path: Path, github: FakeGitHub, allowlist: Path) -> Iterator[TestClient]:
+    app = create_app(path, now=lambda: NOW, sign_in=sign_in_settings(github, allowlist))
+    with TestClient(app, base_url=PUBLIC_URL, follow_redirects=False) as c:
+        yield c
