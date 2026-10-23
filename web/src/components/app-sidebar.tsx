@@ -1,4 +1,4 @@
-import { Link } from '@tanstack/react-router'
+import { Link, useMatchRoute } from '@tanstack/react-router'
 import { Building2, ClipboardList, LayoutDashboard, Package, Plus, ReceiptText, Users } from 'lucide-react'
 
 import {
@@ -32,6 +32,8 @@ const yours = [
 export function AppSidebar() {
   const { isMobile, setOpenMobile } = useSidebar()
   const signedIn = Boolean(useMe()?.account)
+  // /orders/new is under /orders, but it has its own entry, so Orders is not lit there too.
+  const onNewOrder = Boolean(useMatchRoute()({ to: '/orders/new' }))
   return (
     <Sidebar>
       <SidebarHeader>
@@ -50,7 +52,7 @@ export function AppSidebar() {
                     <Link
                       to={page.to}
                       activeOptions={{ exact: page.exact, includeSearch: false }}
-                      activeProps={{ 'data-active': true, 'aria-current': 'page' }}
+                      activeProps={page.to === '/orders' && onNewOrder ? {} : { 'data-active': true, 'aria-current': 'page' }}
                       onClick={() => isMobile && setOpenMobile(false)}
                     >
                       <page.icon />
