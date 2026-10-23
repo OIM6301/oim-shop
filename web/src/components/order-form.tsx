@@ -1,5 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
+import { useBlocker } from '@tanstack/react-router'
 import { AlertCircle, CalendarDays, Plus, Trash2 } from 'lucide-react'
 import { type Ref, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
@@ -9,6 +10,16 @@ import { allProductsQuery, customersQuery, shippersQuery } from '@/api/queries'
 import { Combobox, type Option } from '@/components/combobox'
 import { LookupRetry } from '@/components/states'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -102,13 +113,26 @@ export function OrderForm({
       await submit(values)
     } catch (error) {
       const placed = error instanceof ApiError ? error.fields.filter((p) => fieldOf(p) !== null) : []
-      for (const problem of placed) {
+      placed.forEach((problem, i) => {
         // The API names each field by the same path the form uses ("lines.0.quantity"), checked by fieldOf.
-        form.setError(fieldOf(problem) as Parameters<typeof form.setError>[0], { type: 'server', message: problem.msg })
-      }
-      if (placed.length === 0) form.setError('root.server', { type: 'server', message: explain(error) })
+        // Focus goes to the first, which also scrolls it into view: on a phone it can be a screen away.
+        const name = fieldOf(problem) as Parameters<typeof form.setError>[0]
+        form.setError(name, { type: 'server', message: problem.msg }, { shouldFocus: i === 0 })
+      })
+      // Beside the button too, where the person who pressed it is looking.
+      const summary = placed.length === 1 ? 'One problem is marked above.' : `${placed.length} problems are marked above.`
+      form.setError('root.server', { type: 'server', message: placed.length > 0 ? summary : explain(error) })
     }
   }
+
+  // Leaving with changes not sent asks first: a link, Back, or closing the tab. Sending the order
+  // navigates while it is submitting, which is not blocked.
+  const { isDirty, isSubmitting } = form.formState
+  const leaving = useBlocker({
+    shouldBlockFn: () => isDirty && !isSubmitting,
+    enableBeforeUnload: () => isDirty && !isSubmitting,
+    withResolver: true,
+  })
 
   const rootError = form.formState.errors.root?.server?.message
   const linesError = form.formState.errors.lines?.root?.message ?? form.formState.errors.lines?.message
@@ -335,10 +359,24 @@ export function OrderForm({
         </Alert>
       )}
       <div>
-        <Button type="submit" disabled={form.formState.isSubmitting || lookupsFailed}>
-          {form.formState.isSubmitting ? 'Saving…' : submitLabel}
+        <Button type="submit" disabled={isSubmitting || lookupsFailed}>
+          {isSubmitting ? 'Saving…' : submitLabel}
         </Button>
       </div>
+      <AlertDialog open={leaving.status === 'blocked'} onOpenChange={(open) => !open && leaving.reset?.()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Leave this order?</AlertDialogTitle>
+            <AlertDialogDescription>What you have filled in has not been saved, and will be lost.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Stay</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => leaving.proceed?.()}>
+              Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   )
 }

@@ -101,7 +101,26 @@ test('an order beyond the stock is refused beside the quantity', async ({ page }
   await enterOrder(page, 'Chang', '18')
   await expect(page.getByText('Only 17 of Chang in stock')).toBeVisible()
   await expect(page.getByLabel('Quantity')).toHaveAttribute('aria-invalid', 'true')
+  // Focus goes to the field the server named, and a summary sits beside the button.
+  await expect(page.getByLabel('Quantity')).toBeFocused()
+  await expect(page.getByText('One problem is marked above.')).toBeVisible()
   await expect(page).toHaveURL(/\/orders\/new$/)
+})
+
+test('leaving an order not yet sent asks first', async ({ page }) => {
+  await signIn(page, 'e2e-rep', '/orders/new')
+  await nameAs(page, 'Ana')
+  await page.goto('/orders/new')
+  await choose(page, 'Customer', /^Alfreds Futterkiste/)
+  await page.getByRole('link', { name: 'Products' }).first().click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toContainText('Leave this order?')
+  await dialog.getByRole('button', { name: 'Stay' }).click()
+  await expect(page).toHaveURL(/\/orders\/new$/)
+  await expect(page.getByRole('combobox', { name: 'Customer' })).toContainText('Alfreds Futterkiste')
+  await page.getByRole('link', { name: 'Products' }).first().click()
+  await dialog.getByRole('button', { name: 'Leave' }).click()
+  await expect(page).toHaveURL(/\/products$/)
 })
 
 test('a rep cannot change another rep’s order; a manager can', async ({ browser }) => {
