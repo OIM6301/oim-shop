@@ -158,6 +158,8 @@
   </section>
 
   <section id="detail-view" hidden></section>
+  <!-- Screen readers announce what is written here, such as "Loading product". -->
+  <p id="status" class="sr-only" role="status"></p>
 </main>
 
 <script>
@@ -175,6 +177,7 @@
   const pager = document.querySelector("#pager");
   const categorySelect = document.querySelector("#category");
   const searchInput = document.querySelector("#search");
+  const status = document.querySelector("#status");
 
   let categoriesLoaded = false;
   let lastListHash = "#";   // where "Back to products" returns
@@ -223,7 +226,11 @@
       throw failure("NetworkError", "The API could not be reached. Check your connection.");
     }
     if (!response.ok) {
-      const body = await response.json().catch(() => ({}));
+      const body = await response.json().catch((error) => {
+        // A cancelled or timed-out read is reported as such; a body that is not JSON just has no detail.
+        if (error.name === "AbortError" || error.name === "TimeoutError") throw error;
+        return {};
+      });
       const detail = typeof body.detail === "string" ? body.detail : `The API answered with status ${response.status}.`;
       throw failure("ApiError", detail);
     }
@@ -232,9 +239,11 @@
 
   async function render() {
     clearTimeout(typing);   // a search still waiting would undo this navigation
+    typing = null;
     inFlight?.abort();
     const controller = new AbortController();
     inFlight = controller;
+    status.textContent = "";
     const state = readState();
     try {
       if (state.product) {
@@ -245,6 +254,7 @@
     } catch (error) {
       // A newer navigation replaced this one, so its answer, or its error, no longer matters.
       if (controller.signal.aborted) return;
+      status.textContent = "";
       showError(state.product ? "Could not load this product" : "Could not load products", error);
     }
   }
@@ -271,8 +281,9 @@
     const option = [...categorySelect.options].find(
       (o) => o.value === state.category || o.text.toLowerCase() === state.category.toLowerCase());
     categorySelect.value = option ? option.value : "";
-    // Show the address's search, unless the box already says the same (perhaps with a space still being typed).
-    if (searchInput.value.trim() !== state.name) searchInput.value = state.name;
+    // Show the address's search, unless someone is typing a new one or the box already says the same
+    // (perhaps with a space still being typed).
+    if (typing === null && searchInput.value.trim() !== state.name) searchInput.value = state.name;
 
     // The API does the searching, filtering and paging; the page only asks.
     const query = new URLSearchParams({ page: state.page, per_page: PER_PAGE });
@@ -346,14 +357,15 @@
     detailView.hidden = false;
     detailView.innerHTML = `
       ${backLink()}
-      <div class="card detail" aria-busy="true">
-        <span class="sr-only" role="status">Loading product</span>
+      <div class="card detail" aria-hidden="true">
         <span class="skeleton" style="width: 40%; height: 22px"></span>
         <span class="skeleton" style="width: 20%; margin: 12px 0 24px"></span>
         <span class="skeleton" style="width: 60%"></span>
       </div>`;
+    status.textContent = "Loading product";
 
     const p = await getJSON("/products/" + encodeURIComponent(id), signal);
+    status.textContent = "";
     detailView.innerHTML = `
       ${backLink()}
       <article class="card detail">
@@ -413,6 +425,7 @@
   searchInput.addEventListener("input", () => {
     clearTimeout(typing);
     typing = setTimeout(() => {
+      typing = null;
       location.hash = listHash({ name: searchInput.value.trim(), category: categorySelect.value, page: 1 });
     }, 300);
   });
