@@ -218,17 +218,28 @@
   }
 
   async function getJSON(path, signal) {
+    const timeout = AbortSignal.timeout(TIMEOUT_MS);
+    try {
+      return await request(path, AbortSignal.any([signal, timeout]));
+    } catch (error) {
+      // Browsers differ in how they report a read cut short by the timeout, so ask the timeout itself.
+      if (timeout.aborted && !signal.aborted) throw failure("TimeoutError", "The API took too long to answer.");
+      throw error;
+    }
+  }
+
+  async function request(path, signal) {
     let response;
     try {
-      response = await fetch(API + path, { signal: AbortSignal.any([signal, AbortSignal.timeout(TIMEOUT_MS)]) });
+      response = await fetch(API + path, { signal });
     } catch (error) {
-      if (error.name === "AbortError" || error.name === "TimeoutError") throw error;
+      if (signal.aborted) throw error;
       throw failure("NetworkError", "The API could not be reached. Check your connection.");
     }
     if (!response.ok) {
       const body = await response.json().catch((error) => {
-        // A cancelled or timed-out read is reported as such; a body that is not JSON just has no detail.
-        if (error.name === "AbortError" || error.name === "TimeoutError") throw error;
+        // A cancelled read is reported as such; a body that is not JSON just has no detail.
+        if (signal.aborted) throw error;
         return {};
       });
       const detail = typeof body.detail === "string" ? body.detail : `The API answered with status ${response.status}.`;
