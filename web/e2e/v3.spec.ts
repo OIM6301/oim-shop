@@ -123,6 +123,30 @@ test('leaving an order not yet sent asks first', async ({ page }) => {
   await expect(page).toHaveURL(/\/products$/)
 })
 
+test('leaving while the order is being sent asks too, and staying shows the result', async ({ page }) => {
+  await signIn(page, 'e2e-rep', '/orders/new')
+  await nameAs(page, 'Ana')
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/api/orders', async (route) => {
+    if (route.request().method() === 'POST') await held
+    await route.fallback()
+  })
+  await page.goto('/orders/new')
+  await choose(page, 'Customer', /^Alfreds Futterkiste/)
+  await page.getByRole('combobox', { name: 'Shipper' }).click()
+  await page.getByRole('option', { name: 'Speedy Express' }).click()
+  await choose(page, 'Product', /^Chai/)
+  await page.getByRole('button', { name: 'Enter the order' }).click()
+  await expect(page.getByRole('button', { name: 'Saving…' })).toBeVisible()
+  await page.getByRole('link', { name: 'Products' }).first().click()
+  const dialog = page.getByRole('alertdialog')
+  await expect(dialog).toContainText('still being sent')
+  await dialog.getByRole('button', { name: 'Stay' }).click()
+  release()
+  await expect(page).toHaveURL(/\/orders\/\d+$/)
+})
+
 test('a rep cannot change another rep’s order; a manager can', async ({ browser }) => {
   const rep = await browser.newPage()
   await signIn(rep, 'e2e-rep')
@@ -144,10 +168,13 @@ test('a rep cannot change another rep’s order; a manager can', async ({ browse
   await signIn(manager, 'e2e-manager')
   await nameAs(manager, 'Ms. Manager')
   await manager.goto('/my-orders?scope=all')
-  await expect(manager.getByRole('row', { name: /Ana/ })).toBeVisible()
+  await expect(manager.getByRole('row', { name: /Ana/ }).first()).toBeVisible()
   await manager.goto(url)
-  // The manager sees the name the rep chose here too, as in the list.
+  // The manager sees the name the rep chose here too, as in the list, and on Employees.
   await expect(manager.getByRole('link', { name: 'Ana' })).toBeVisible()
+  await manager.goto('/employees')
+  await expect(manager.getByRole('link', { name: 'Ana' }).first()).toBeVisible()
+  await manager.goto(url)
   await manager.getByRole('button', { name: 'Mark shipped' }).click()
   await manager.getByRole('alertdialog').getByRole('button', { name: 'Mark shipped' }).click()
   await expect(manager.getByRole('heading', { level: 1 })).toContainText('Shipped')

@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
 import { useEnterOrder } from '@/api/writes'
@@ -14,7 +14,6 @@ export const Route = createFileRoute('/orders/new')({
 function NewOrder() {
   const me = useMeQuery()
   const enter = useEnterOrder()
-  const navigate = useNavigate()
 
   return (
     <>
@@ -27,7 +26,7 @@ function NewOrder() {
             submit={async (values) => {
               const order = await enter.mutateAsync(values)
               toast.success(`Order #${order.order_id} entered`)
-              await navigate({ to: '/orders/$orderId', params: { orderId: String(order.order_id) } })
+              return order.order_id
             }}
           />
         )}

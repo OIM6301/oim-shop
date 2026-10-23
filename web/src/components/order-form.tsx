@@ -1,8 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
-import { useBlocker } from '@tanstack/react-router'
+import { useBlocker, useNavigate } from '@tanstack/react-router'
 import { AlertCircle, CalendarDays, Plus, Trash2 } from 'lucide-react'
-import { type Ref, useState } from 'react'
+import { type Ref, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm, useWatch } from 'react-hook-form'
 
 import { ApiError } from '@/api/client'
@@ -57,8 +57,9 @@ function isoDay(date: Date): string {
 }
 
 /**
- * The form for a new order and for editing one. `submit` sends it; if the API refuses it,
- * each problem it names is shown beside its field, and anything else above the button.
+ * The form for a new order and for editing one. `submit` sends it and returns the order's
+ * number, and the form then opens that order; if the API refuses it, each problem it names is
+ * shown beside its field, and a summary beside the button.
  */
 export function OrderForm({
   initial,
@@ -70,8 +71,12 @@ export function OrderForm({
   /** Today on the shop's clock (from /api/me): the required date is counted from it. */
   today: string
   submitLabel: string
-  submit: (values: OrderValues) => Promise<unknown>
+  submit: (values: OrderValues) => Promise<number>
 }) {
+  const navigate = useNavigate()
+  // Saved: leaving is no loss. Left: the person chose to leave while it was being sent.
+  const saved = useRef(false)
+  const left = useRef(false)
   const form = useForm<OrderValues>({
     resolver: zodResolver(orderSchema),
     defaultValues: initial ?? { customer_id: '', shipper_id: 0, required_date: addDays(today, 14), lines: [NEW_LINE] },
@@ -109,8 +114,9 @@ export function OrderForm({
   }, 0)
 
   const onSubmit = async (values: OrderValues) => {
+    let orderId: number
     try {
-      await submit(values)
+      orderId = await submit(values)
     } catch (error) {
       const placed = error instanceof ApiError ? error.fields.filter((p) => fieldOf(p) !== null) : []
       placed.forEach((problem, i) => {
@@ -122,15 +128,18 @@ export function OrderForm({
       // Beside the button too, where the person who pressed it is looking.
       const summary = placed.length === 1 ? 'One problem is marked above.' : `${placed.length} problems are marked above.`
       form.setError('root.server', { type: 'server', message: placed.length > 0 ? summary : explain(error) })
+      return
     }
+    saved.current = true
+    if (!left.current) await navigate({ to: '/orders/$orderId', params: { orderId: String(orderId) } })
   }
 
-  // Leaving with changes not sent asks first: a link, Back, or closing the tab. Sending the order
-  // navigates while it is submitting, which is not blocked.
+  // Leaving with changes not saved asks first: a link, Back, or closing the tab, and also while
+  // the order is still being sent, when it is not yet known whether it will be saved.
   const { isDirty, isSubmitting } = form.formState
   const leaving = useBlocker({
-    shouldBlockFn: () => isDirty && !isSubmitting,
-    enableBeforeUnload: () => isDirty && !isSubmitting,
+    shouldBlockFn: () => isDirty && !saved.current,
+    enableBeforeUnload: () => isDirty && !saved.current,
     withResolver: true,
   })
 
@@ -139,7 +148,7 @@ export function OrderForm({
   const lookupsFailed = customers.isError || shippers.isError || products.isError
 
   return (
-    <form onSubmit={form.handleSubmit(onSubmit)} noValidate className="grid gap-4">
+    <form onSubmit={(event) => void form.handleSubmit(onSubmit)(event)} noValidate className="grid gap-4">
       <Card>
         <CardHeader>
           <CardTitle>Order</CardTitle>
@@ -367,11 +376,21 @@ export function OrderForm({
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Leave this order?</AlertDialogTitle>
-            <AlertDialogDescription>What you have filled in has not been saved, and will be lost.</AlertDialogDescription>
+            <AlertDialogDescription>
+              {isSubmitting
+                ? 'The order is still being sent. If you leave, it may still be saved, but you will not see whether it was.'
+                : 'What you have filled in has not been saved, and will be lost.'}
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Stay</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => leaving.proceed?.()}>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                left.current = true
+                leaving.proceed?.()
+              }}
+            >
               Leave
             </AlertDialogAction>
           </AlertDialogFooter>

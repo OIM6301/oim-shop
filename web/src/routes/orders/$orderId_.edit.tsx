@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { toast } from 'sonner'
 
 import { orderQuery } from '@/api/queries'
@@ -24,7 +24,6 @@ function EditOrder() {
   const me = useMeQuery()
   const canChange = useCanChange()
   const edit = useEditOrder()
-  const navigate = useNavigate()
   const { data, error, isPending, refetch } = useQuery({ ...orderQuery(orderId ?? 0), enabled: orderId !== null })
   const back = <BackLink to="/my-orders">My orders</BackLink>
 
@@ -59,7 +58,7 @@ function EditOrder() {
               submit={async (values) => {
                 await edit.mutateAsync({ orderId, body: values })
                 toast.success(`Order #${orderId} saved`)
-                await navigate({ to: '/orders/$orderId', params: { orderId: String(orderId) } })
+                return orderId
               }}
             />
           ) : (
