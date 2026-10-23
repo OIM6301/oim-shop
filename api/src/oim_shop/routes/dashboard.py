@@ -6,15 +6,14 @@ from pathlib import Path
 
 import anyio
 import anyio.to_thread
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from oim_shop import db
 from oim_shop.deps import FromDay, Now, ToDay, rows
-from oim_shop.limits import shared_cache
 from oim_shop.models import CountryRevenue, Dashboard, EmployeeRevenue, MonthRevenue, ProductRevenue
 from oim_shop.routes.orders import date_range
 
-router = APIRouter(tags=["dashboard"], dependencies=[Depends(shared_cache)])
+router = APIRouter(tags=["dashboard"])
 
 
 def months_between(first: date, last: date) -> list[str]:

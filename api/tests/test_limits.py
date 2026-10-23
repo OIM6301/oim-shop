@@ -50,14 +50,19 @@ def test_health_is_never_limited(client: TestClient) -> None:
         assert client.get("/api/health").status_code == 200
 
 
-def test_get_responses_can_be_cached(client: TestClient) -> None:
-    assert client.get("/api/categories").headers["Cache-Control"] == "public, max-age=60"
-    assert client.get("/api/health").headers["Cache-Control"] == "no-store"
-    assert client.get("/api/products/999").headers["Cache-Control"] == "no-store"
+# Every list and total can change the moment a rep enters an order, so no API response may be
+# kept by a browser or by Cloudflare, not even for a minute.
+@pytest.mark.parametrize(
+    "url",
+    ["/api/categories", "/api/products", "/api/products/1", "/api/customers", "/api/orders",
+     "/api/employees", "/api/dashboard", "/api/health", "/api/products/999"],
+)  # fmt: skip
+def test_no_api_response_is_cached(seeded_path: Path, url: str) -> None:
+    with TestClient(create_app(seeded_path, now=lambda: NOW)) as c:
+        assert c.get(url).headers["Cache-Control"] == "no-store"
 
 
-def test_only_routes_that_opt_in_may_be_cached(seeded_path: Path) -> None:
-    """A new route is private unless it declares otherwise, so one visitor's data never reaches another."""
+def test_a_route_added_later_is_not_cached_either(seeded_path: Path) -> None:
     app = create_app(seeded_path, now=lambda: NOW)
 
     @app.get("/api/me")

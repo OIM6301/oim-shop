@@ -1,13 +1,12 @@
 from datetime import date, timedelta
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from oim_shop.deps import Conn, FromDay, PageNumber, PathId, PerPage, QueryId, SortOrder, ToDay, page_of, rows
-from oim_shop.limits import shared_cache
 from oim_shop.models import Order, OrderDetail, OrderLine, OrderPage
 
-router = APIRouter(tags=["orders"], dependencies=[Depends(shared_cache)])
+router = APIRouter(tags=["orders"])
 
 ORDER = """
     SELECT o.order_id, o.customer_id, c.company_name AS customer_name,

@@ -30,7 +30,7 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **The address comes from Cloudflare.** The server accepts connections only from Cloudflare, so the `CF-Connecting-IP` header, which Cloudflare sets, is the visitor's real address.
 
-**Responses are private unless a route says otherwise.** A route whose answer is the same for every visitor opts in to being cached for a minute (`shared_cache` in [limits.py](../api/src/oim_shop/limits.py)). Every other response, including any route added later, is `no-store`, so a page that depends on who is signed in can never be cached and shown to someone else.
+**No response is cached.** In v2, a route whose answer was the same for every visitor let browsers keep it for a minute. Since v3, a rep can enter an order at any moment, and a list kept for a minute would leave it out, so every API response is `no-store` ([limits.py](../api/src/oim_shop/limits.py)). Cloudflare never cached these responses anyway; the dashboard's own cache, above, is what keeps the server's work in bounds.
 
 ## The web app
 

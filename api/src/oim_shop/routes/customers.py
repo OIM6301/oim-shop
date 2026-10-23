@@ -1,12 +1,11 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query
 
 from oim_shop.deps import Conn, Name, PageNumber, PerPage, SortOrder, page_of, rows
-from oim_shop.limits import shared_cache
 from oim_shop.models import Customer, CustomerPage
 
-router = APIRouter(tags=["customers"], dependencies=[Depends(shared_cache)])
+router = APIRouter(tags=["customers"])
 
 # Each customer with the orders it has placed so far.
 CUSTOMER = """
