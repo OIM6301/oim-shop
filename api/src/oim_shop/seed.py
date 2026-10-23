@@ -103,6 +103,27 @@ def reset(conn: sqlite3.Connection) -> int:
     return removed
 
 
+def forget_accounts(conn: sqlite3.Connection) -> int:
+    """Remove everyone who has signed in, at the end of a term, in one transaction.
+
+    Their sessions, accounts and employee records go, and with them every order entered
+    here, whose stock goes back as in a reset. Returns the number of accounts removed.
+    """
+    try:
+        conn.execute("DELETE FROM orders WHERE source = 'entered'")
+        conn.execute("UPDATE products SET units_in_stock = seed_units_in_stock")
+        employees = [(row[0],) for row in conn.execute("SELECT employee_id FROM accounts")]
+        conn.execute("DELETE FROM sessions")
+        removed = conn.execute("DELETE FROM accounts").rowcount
+        conn.executemany("DELETE FROM employees WHERE employee_id = ?", employees)
+        db.changed(conn)
+        conn.commit()
+    except BaseException:
+        conn.rollback()
+        raise
+    return removed
+
+
 def update_totals(conn: sqlite3.Connection, order_ids: list[int] | None = None) -> None:
     """Set total_cents and line_count from line_totals, for some orders or for all."""
     where = ""

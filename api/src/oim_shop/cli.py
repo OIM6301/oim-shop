@@ -2,6 +2,7 @@
 
     oim-shop serve    run the app (migrates and loads the seed into an empty database first)
     oim-shop reset    take out every order entered here and restore the seed's stock (run nightly)
+    oim-shop forget-accounts  remove everyone who has signed in, and their orders (end of term)
     oim-shop openapi  print the API's OpenAPI schema, which web/ generates its types from
 
 Settings come from the environment:
@@ -93,6 +94,7 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     commands.add_parser("reset", help="take out the orders entered here and restore the stock")
+    commands.add_parser("forget-accounts", help="remove everyone who has signed in, and their orders")
     commands.add_parser("openapi", help="print the OpenAPI schema")
     args = parser.parse_args(argv)
 
@@ -104,6 +106,13 @@ def main(argv: list[str] | None = None) -> int:
     db_path = Path(os.environ.get("OIM_SHOP_DB", "oim-shop.db"))
     seed_dir = Path(os.environ.get("OIM_SHOP_SEED", REPO_SEED))
     conn = open_database(db_path, seed_dir)
+    if args.command == "forget-accounts":
+        removed = seed.forget_accounts(conn)
+        conn.close()
+        print(
+            f"Removed {removed:,} account{'' if removed == 1 else 's'}, with their orders; stock is back to the seed's."
+        )
+        return 0
     if args.command == "reset":
         removed = seed.reset(conn)
         conn.close()

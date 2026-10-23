@@ -15,6 +15,15 @@ Signing in needs two files on the server, neither of them in git:
 
 The unit reads both ([oim-shop.container](oim-shop.container)). Signing in needs every setting or none: with only some of them, the app stops at start and says which is missing.
 
+## End of term
+
+Empty the allowlist but for the manager, then remove everyone who signed in, with their chosen names and their orders:
+
+```bash
+printf '%s manager\n' "$MANAGER" > ~/.config/oim-shop/allowed-users   # MANAGER: your GitHub username
+podman exec oim-shop oim-shop forget-accounts
+```
+
 ## Nightly reset
 
 [oim-shop-reset.timer](oim-shop-reset.timer) runs [oim-shop-reset.service](oim-shop-reset.service) at 3:00 Boston time, which runs `oim-shop reset` inside the container.

@@ -232,3 +232,35 @@ def test_ten_or_fewer_employees_are_all_shown(path: Path) -> None:
         rows = get(c, "/api/dashboard?from=2026-10-01&to=2026-10-22")["by_employee"]
     assert len(rows) == 9
     assert all(r["employee_id"] is not None for r in rows)
+
+
+# --- forgetting every account (end of term) --------------------------------------------
+
+
+def test_forget_removes_every_account_and_what_it_entered(path: Path) -> None:
+    conn = connect(path)
+    rep = add_reps(conn, 1)[0]
+    conn.execute(
+        "INSERT INTO sessions (token_hash, github_id, csrf_token, expires_at) VALUES ('h', ?, 'c', ?)",
+        (100_000 + rep, NOW.isoformat()),
+    )
+    enter_as(conn, rep, 5)
+    assert stock(conn, 1) == (34, 39)
+
+    assert seed.forget_accounts(conn) == 1
+    for table in ("accounts", "sessions"):
+        assert conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0  # noqa: S608
+    assert conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0] == 9
+    assert conn.execute("SELECT COUNT(*) FROM orders WHERE source = 'entered'").fetchone()[0] == 0
+    assert stock(conn, 1) == (39, 39)
+    assert conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 16_282
+    conn.close()
+
+
+def test_the_forget_command(path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    conn = connect(path)
+    add_reps(conn, 2)
+    conn.close()
+    monkeypatch.setenv("OIM_SHOP_DB", str(path))
+    assert main(["forget-accounts"]) == 0
+    assert "Removed 2 accounts" in capsys.readouterr().out
