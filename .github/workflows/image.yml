@@ -6,7 +6,8 @@ name: Image
 
 on:
   push:
-    branches: [main]
+    # v2-dev is what the server runs until v2 is merged into main; then this branch leaves the list.
+    branches: [main, v2-dev]
     tags: ['v*']
   workflow_dispatch:
 
@@ -47,7 +48,7 @@ jobs:
           tags: |
             type=sha
             type=ref,event=tag
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/v2-dev' }}
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
