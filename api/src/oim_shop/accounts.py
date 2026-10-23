@@ -176,5 +176,12 @@ def signed_in_write(request: Request, session: Annotated[Session | None, Depends
     return session
 
 
+def signed_in(session: Annotated[Session | None, Depends(current_session)]) -> Session:
+    if session is None:
+        raise HTTPException(status_code=401, detail="Sign in first")
+    return session
+
+
 Viewer = Annotated[Session | None, Depends(current_session)]
+SignedIn = Annotated[Session, Depends(signed_in)]
 Writer = Annotated[Session, Depends(signed_in_write)]

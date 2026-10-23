@@ -376,3 +376,36 @@ def test_shippers(client: TestClient) -> None:
         {"shipper_id": 2, "company_name": "United Package"},
         {"shipper_id": 3, "company_name": "Federal Shipping"},
     ]
+
+
+# --- my orders -----------------------------------------------------------------------------------
+
+
+def test_my_orders_are_the_ones_i_entered(rep: TestClient, other: TestClient) -> None:
+    rep.put("/api/me", json={"display_name": "Ana"}, headers=csrf(rep))
+    mine = [post(rep, order())["order_id"] for _ in range(3)]
+    post(other, order())
+    page = rep.get("/api/me/orders?per_page=2").json()
+    assert page["pagination"]["total"] == 3
+    assert [o["order_id"] for o in page["items"]] == sorted(mine, reverse=True)[:2]
+    assert {o["rep_name"] for o in page["items"]} == {"Ana"}
+
+
+def test_a_rep_without_a_name_is_listed_by_number(other: TestClient) -> None:
+    placed = post(other, order())
+    assert other.get("/api/me/orders").json()["items"][0]["rep_name"] == placed["employee_name"]
+
+
+def test_my_orders_need_a_sign_in(client: TestClient) -> None:
+    assert client.get("/api/me/orders").status_code == 401
+
+
+def test_only_a_manager_sees_every_reps_orders(rep: TestClient, other: TestClient, manager: TestClient) -> None:
+    rep.put("/api/me", json={"display_name": "Ana"}, headers=csrf(rep))
+    other.put("/api/me", json={"display_name": "Ben"}, headers=csrf(other))
+    post(rep, order())
+    post(other, order())
+    assert rep.get("/api/me/orders?scope=all").status_code == 403
+    everyone = manager.get("/api/me/orders?scope=all").json()
+    assert sorted(o["rep_name"] for o in everyone["items"]) == ["Ana", "Ben"]
+    assert manager.get("/api/me/orders").json()["pagination"]["total"] == 0

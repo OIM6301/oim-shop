@@ -904,6 +904,88 @@
         }
       }
     },
+    "/api/me/orders": {
+      "get": {
+        "tags": [
+          "order entry"
+        ],
+        "summary": "My Orders",
+        "description": "The orders you entered, newest first, with the name you chose. A manager may ask for every rep's.",
+        "operationId": "my_orders_api_me_orders_get",
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "mine",
+                "all"
+              ],
+              "type": "string",
+              "description": "all: every rep's orders, for managers",
+              "default": "mine",
+              "title": "Scope"
+            },
+            "description": "all: every rep's orders, for managers"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 10000,
+              "minimum": 1,
+              "default": 1,
+              "title": "Page"
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 100,
+              "minimum": 1,
+              "description": "At most 100",
+              "default": 20,
+              "title": "Per Page"
+            },
+            "description": "At most 100"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyOrderPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "403": {
+            "description": "Not a manager"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/employees": {
       "get": {
         "tags": [
@@ -1815,6 +1897,157 @@
           "revenue_cents"
         ],
         "title": "MonthRevenue"
+      },
+      "MyOrder": {
+        "properties": {
+          "order_id": {
+            "type": "integer",
+            "title": "Order Id"
+          },
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "customer_name": {
+            "type": "string",
+            "title": "Customer Name"
+          },
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "employee_name": {
+            "type": "string",
+            "title": "Employee Name"
+          },
+          "order_date": {
+            "type": "string",
+            "title": "Order Date"
+          },
+          "required_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Required Date"
+          },
+          "shipped_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipped Date",
+            "description": "Null until the order has shipped"
+          },
+          "shipper": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper"
+          },
+          "ship_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship City"
+          },
+          "ship_country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship Country"
+          },
+          "freight_cents": {
+            "type": "integer",
+            "title": "Freight Cents"
+          },
+          "line_count": {
+            "type": "integer",
+            "title": "Line Count"
+          },
+          "total_cents": {
+            "type": "integer",
+            "title": "Total Cents",
+            "description": "The lines after discount, without freight"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "seed",
+              "entered"
+            ],
+            "title": "Source",
+            "description": "From Northwind's history, or entered in this app"
+          },
+          "rep_name": {
+            "type": "string",
+            "title": "Rep Name",
+            "description": "The name the rep chose, or 'Sales rep <number>' until they choose one"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order_id",
+          "customer_id",
+          "customer_name",
+          "employee_id",
+          "employee_name",
+          "order_date",
+          "required_date",
+          "shipped_date",
+          "shipper",
+          "ship_city",
+          "ship_country",
+          "freight_cents",
+          "line_count",
+          "total_cents",
+          "source",
+          "rep_name"
+        ],
+        "title": "MyOrder"
+      },
+      "MyOrderPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/MyOrder"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "pagination"
+        ],
+        "title": "MyOrderPage"
       },
       "NameChange": {
         "properties": {

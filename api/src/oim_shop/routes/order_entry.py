@@ -9,15 +9,15 @@ now (the stock, or an order that has shipped).
 
 import sqlite3
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from oim_shop import db
-from oim_shop.accounts import Session, Writer
-from oim_shop.deps import Conn, Now, PathId, rows
-from oim_shop.models import LineInput, OrderDetail, OrderInput, Shipper
-from oim_shop.routes.orders import order_detail
+from oim_shop.accounts import Session, SignedIn, Writer
+from oim_shop.deps import Conn, Now, PageNumber, PathId, PerPage, page_of, rows
+from oim_shop.models import LineInput, MyOrder, MyOrderPage, OrderDetail, OrderInput, Shipper
+from oim_shop.routes.orders import ORDER_COLUMNS, ORDER_FROM, order_detail
 from oim_shop.seed import update_totals
 
 router = APIRouter(tags=["order entry"])
@@ -229,3 +229,35 @@ def ship_order(order_id: PathId, conn: Conn, now: Now, writer: Writer) -> OrderD
         )
         db.changed(conn)
     return order_detail(conn, order_id)
+
+
+@router.get("/me/orders", responses={401: {"description": "Not signed in"}, 403: {"description": "Not a manager"}})
+def my_orders(
+    conn: Conn,
+    viewer: SignedIn,
+    scope: Annotated[Literal["mine", "all"], Query(description="all: every rep's orders, for managers")] = "mine",
+    page: PageNumber = 1,
+    per_page: PerPage = 20,
+) -> MyOrderPage:
+    """The orders you entered, newest first, with the name you chose. A manager may ask for every rep's."""
+    if scope == "all" and viewer.role != "manager":
+        raise HTTPException(status_code=403, detail="Only a manager sees every rep's orders")
+    where: list[str] = ["o.source = 'entered'"]
+    params: list[object] = []
+    if scope == "mine":
+        where.append("o.employee_id = ?")
+        params.append(viewer.employee_id)
+    items, pagination = page_of(
+        conn,
+        select=f"""
+            SELECT {ORDER_COLUMNS}, COALESCE(a.display_name, e.first_name || ' ' || e.last_name) AS rep_name
+            {ORDER_FROM} LEFT JOIN accounts a ON a.employee_id = o.employee_id
+        """,
+        count="SELECT COUNT(*) FROM visible_orders o",
+        where=where,
+        params=params,
+        order_by="o.order_date DESC, o.order_id DESC",
+        page=page,
+        per_page=per_page,
+    )
+    return MyOrderPage(items=[MyOrder(**r) for r in items], pagination=pagination)

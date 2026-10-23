@@ -8,16 +8,19 @@ from oim_shop.models import Order, OrderDetail, OrderLine, OrderPage
 
 router = APIRouter(tags=["orders"])
 
-ORDER = """
-    SELECT o.order_id, o.customer_id, c.company_name AS customer_name,
-           o.employee_id, e.first_name || ' ' || e.last_name AS employee_name,
-           o.order_date, o.required_date, o.shipped_date, s.company_name AS shipper,
-           o.ship_city, o.ship_country, o.freight_cents, o.line_count, o.total_cents, o.source
+ORDER_COLUMNS = """
+    o.order_id, o.customer_id, c.company_name AS customer_name,
+    o.employee_id, e.first_name || ' ' || e.last_name AS employee_name,
+    o.order_date, o.required_date, o.shipped_date, s.company_name AS shipper,
+    o.ship_city, o.ship_country, o.freight_cents, o.line_count, o.total_cents, o.source
+"""
+ORDER_FROM = """
     FROM visible_orders o
     JOIN customers c ON c.customer_id = o.customer_id
     JOIN employees e ON e.employee_id = o.employee_id
     LEFT JOIN shippers s ON s.shipper_id = o.shipper_id
 """
+ORDER = f"SELECT {ORDER_COLUMNS} {ORDER_FROM}"
 SORT = {"order_date": "o.order_date", "order_id": "o.order_id", "total": "o.total_cents"}
 
 

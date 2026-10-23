@@ -196,3 +196,12 @@ class OrderInput(BaseModel):
     shipper_id: int = Field(ge=1, le=MAX_ID)
     required_date: date = Field(description="Today to 60 days ahead")
     lines: list[LineInput] = Field(min_length=1, max_length=20, description="Each product at most once")
+
+
+class MyOrder(Order):
+    rep_name: str = Field(description="The name the rep chose, or 'Sales rep <number>' until they choose one")
+
+
+class MyOrderPage(BaseModel):
+    items: list[MyOrder]
+    pagination: Pagination

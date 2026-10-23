@@ -212,6 +212,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/me/orders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Orders
+         * @description The orders you entered, newest first, with the name you chose. A manager may ask for every rep's.
+         */
+        get: operations["my_orders_api_me_orders_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/employees": {
         parameters: {
             query?: never;
@@ -562,6 +582,60 @@ export interface components {
             order_count: number;
             /** Revenue Cents */
             revenue_cents: number;
+        };
+        /** MyOrder */
+        MyOrder: {
+            /** Order Id */
+            order_id: number;
+            /** Customer Id */
+            customer_id: string;
+            /** Customer Name */
+            customer_name: string;
+            /** Employee Id */
+            employee_id: number;
+            /** Employee Name */
+            employee_name: string;
+            /** Order Date */
+            order_date: string;
+            /** Required Date */
+            required_date: string | null;
+            /**
+             * Shipped Date
+             * @description Null until the order has shipped
+             */
+            shipped_date: string | null;
+            /** Shipper */
+            shipper: string | null;
+            /** Ship City */
+            ship_city: string | null;
+            /** Ship Country */
+            ship_country: string | null;
+            /** Freight Cents */
+            freight_cents: number;
+            /** Line Count */
+            line_count: number;
+            /**
+             * Total Cents
+             * @description The lines after discount, without freight
+             */
+            total_cents: number;
+            /**
+             * Source
+             * @description From Northwind's history, or entered in this app
+             * @enum {string}
+             */
+            source: "seed" | "entered";
+            /**
+             * Rep Name
+             * @description The name the rep chose, or 'Sales rep <number>' until they choose one
+             */
+            rep_name: string;
+        };
+        /** MyOrderPage */
+        MyOrderPage: {
+            /** Items */
+            items: components["schemas"]["MyOrder"][];
+            pagination: components["schemas"]["Pagination"];
         };
         /** NameChange */
         NameChange: {
@@ -1360,6 +1434,55 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    my_orders_api_me_orders_get: {
+        parameters: {
+            query?: {
+                /** @description all: every rep's orders, for managers */
+                scope?: "mine" | "all";
+                page?: number;
+                /** @description At most 100 */
+                per_page?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyOrderPage"];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not a manager */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };
