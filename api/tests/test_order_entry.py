@@ -439,14 +439,17 @@ def test_my_orders_sort(rep: TestClient) -> None:
     assert [o["order_id"] for o in by_number] == [small, large]
 
 
-def test_a_manager_sees_every_reps_chosen_name(
+def test_who_sees_which_chosen_names(
     client: TestClient, rep: TestClient, other: TestClient, manager: TestClient
 ) -> None:
-    """So a manager's pages agree with My orders, which already names every rep."""
+    """A manager sees every chosen name, so their pages agree with My orders; a rep sees the managers'."""
     rep.put("/api/me", json={"display_name": "Ana"}, headers=csrf(rep))
+    manager.put("/api/me", json={"display_name": "Octo Teacher"}, headers=csrf(manager))
     other.get("/api/me")  # signed in, no name chosen yet
     ana = rep.get("/api/me").json()["account"]["employee_id"]
-    assert manager.get("/api/me/reps").json() == [{"employee_id": ana, "display_name": "Ana"}]
-    assert rep.get("/api/me/reps").status_code == 403
+    boss = manager.get("/api/me").json()["account"]["employee_id"]
+    names = {n["employee_id"]: n["display_name"] for n in manager.get("/api/me/names").json()}
+    assert names == {ana: "Ana", boss: "Octo Teacher"}
+    assert rep.get("/api/me/names").json() == [{"employee_id": boss, "display_name": "Octo Teacher"}]
     rep.post("/api/auth/logout", headers=csrf(rep))
-    assert client.get("/api/me/reps").status_code == 401
+    assert client.get("/api/me/names").status_code == 401

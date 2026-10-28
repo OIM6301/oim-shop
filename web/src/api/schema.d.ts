@@ -370,7 +370,7 @@ export interface paths {
         get: operations["me_api_me_get"];
         /**
          * Choose Name
-         * @description Choose your name. A rep's is seen only by them and the managers; everyone sees a manager's.
+         * @description Choose your name. A rep's is seen only by them and the managers; a manager's by everyone signed in.
          */
         put: operations["choose_name_api_me_put"];
         post?: never;
@@ -380,7 +380,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/me/reps": {
+    "/api/me/names": {
         parameters: {
             query?: never;
             header?: never;
@@ -388,12 +388,13 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Rep Names
-         * @description For a manager: every rep's chosen name, so each page can show it in place of 'Sales rep <number>'.
+         * Chosen Names
+         * @description The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.
          *
-         *     One row for each rep who has chosen a name; there are as many as the allowlist has people.
+         *     A manager sees everyone's; a rep sees the managers'. One row for each person who has chosen
+         *     a name; there are as many as the allowlist has people.
          */
-        get: operations["rep_names_api_me_reps_get"];
+        get: operations["chosen_names_api_me_names_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -417,7 +418,7 @@ export interface components {
             display_name: string | null;
             /**
              * Public Name
-             * @description What everyone else sees, such as 'Sales rep 12'
+             * @description What public pages show, such as 'Sales rep 12' or 'Sales manager 10'
              */
             public_name: string;
             /**
@@ -439,6 +440,13 @@ export interface components {
             name: string;
             /** Description */
             description: string;
+        };
+        /** ChosenName */
+        ChosenName: {
+            /** Employee Id */
+            employee_id: number;
+            /** Display Name */
+            display_name: string;
         };
         /** CountryRevenue */
         CountryRevenue: {
@@ -880,13 +888,6 @@ export interface components {
             quantity: number;
             /** Revenue Cents */
             revenue_cents: number;
-        };
-        /** RepName */
-        RepName: {
-            /** Employee Id */
-            employee_id: number;
-            /** Display Name */
-            display_name: string;
         };
         /** Shipper */
         Shipper: {
@@ -1813,7 +1814,7 @@ export interface operations {
             };
         };
     };
-    rep_names_api_me_reps_get: {
+    chosen_names_api_me_names_get: {
         parameters: {
             query?: never;
             header?: never;
@@ -1828,18 +1829,11 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RepName"][];
+                    "application/json": components["schemas"]["ChosenName"][];
                 };
             };
             /** @description Not signed in */
             401: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content?: never;
-            };
-            /** @description Not a manager */
-            403: {
                 headers: {
                     [name: string]: unknown;
                 };

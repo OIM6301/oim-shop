@@ -2,7 +2,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { createRootRouteWithContext, Link, Outlet, useRouter } from '@tanstack/react-router'
 import { useEffect } from 'react'
 
-import { AccountMenu, RepNamesProblem } from '@/components/account-menu'
+import { AccountMenu, NamesProblem } from '@/components/account-menu'
 import { AppSidebar } from '@/components/app-sidebar'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -54,7 +54,7 @@ function Layout() {
           </div>
         </header>
         <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none md:px-6">
-          <RepNamesProblem />
+          <NamesProblem />
           <Outlet />
         </main>
       </SidebarInset>

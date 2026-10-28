@@ -109,7 +109,7 @@ function NameForm({
               />
               <FieldDescription id="display_name-about">
                 {account.role === 'manager'
-                  ? 'Everyone sees this name: managers appear on every page under the name they choose.'
+                  ? `Everyone signed in sees this name. Visitors who are not signed in see you as ${account.public_name}.`
                   : `Only you and the managers see this name. Everyone else sees you as ${account.public_name}, so you can use a nickname.`}
               </FieldDescription>
               <FieldError id="display_name-error" errors={[error]} />

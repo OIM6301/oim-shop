@@ -287,14 +287,24 @@ test('while an order is being cancelled, nothing else can be done to it', async 
   await expect(page.getByRole('heading', { level: 1, name: 'My orders' })).toBeFocused()
 })
 
-test('a manager appears to everyone under the chosen name', async ({ browser }) => {
+test('a manager’s chosen name is shown to people signed in, and a number to visitors', async ({ browser }) => {
   const manager = await browser.newPage()
   await signIn(manager, 'e2e-manager')
   await manager.goto('/welcome')
-  await expect(manager.getByText('Everyone sees this name')).toBeVisible()
+  await expect(manager.getByText('Everyone signed in sees this name')).toBeVisible()
   await nameAs(manager, 'Ms. Manager')
+
+  const rep = await browser.newPage()
+  await signIn(rep, 'e2e-rep')
+  await rep.goto('/employees')
+  await expect(rep.getByRole('link', { name: 'Ms. Manager' }).first()).toBeVisible()
+  // On the rep's own page too, where the manager is the one they report to.
+  const own = (await rep.request.get('/api/me').then((r) => r.json())) as { account: { employee_id: number } }
+  await rep.goto(`/employees/${own.account.employee_id}`)
+  await expect(rep.getByRole('link', { name: 'Ms. Manager' })).toBeVisible()
 
   const visitor = await browser.newPage()
   await visitor.goto('/employees')
-  await expect(visitor.getByRole('link', { name: 'Ms. Manager' }).first()).toBeVisible()
+  await expect(visitor.getByRole('link', { name: /^Sales manager \d+$/ }).first()).toBeVisible()
+  await expect(visitor.getByText('Ms. Manager')).toHaveCount(0)
 })

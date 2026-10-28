@@ -26,11 +26,12 @@ export const Route = createFileRoute('/employees/$employeeId')({
 
 /** "No one" only when the data says so; while the manager's name is loading, or could not be, say that instead. */
 function ReportsTo({ reportsTo, manager, failed }: { reportsTo: number | null; manager: Schemas['Employee'] | undefined; failed: boolean }) {
+  const nameOf = useNameOf()
   if (reportsTo === null) return 'No one'
   if (manager) {
     return (
       <Link to="/employees/$employeeId" params={{ employeeId: String(manager.employee_id) }} className="hover:underline">
-        {manager.first_name} {manager.last_name}
+        {nameOf(manager.employee_id, `${manager.first_name} ${manager.last_name}`)}
       </Link>
     )
   }

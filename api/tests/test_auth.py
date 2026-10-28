@@ -386,15 +386,18 @@ def test_reps_who_signed_in_before_the_manager_move_to_them(client: TestClient, 
     assert employee_of(client, rep)["reports_to"] == manager
 
 
-def test_a_manager_appears_on_public_pages_under_the_chosen_name(client: TestClient, github: FakeGitHub) -> None:
+def test_a_manager_appears_by_number_on_public_pages(client: TestClient, github: FakeGitHub) -> None:
+    """Signed in, people see the manager's chosen name through /api/me/names; visitors see a number."""
     sign_in(client, github, TEACHER)
     client.put("/api/me", json={"display_name": "Octo Q. Teacher"}, headers=csrf(client))
     account = me(client)["account"]
-    assert account["public_name"] == "Octo Q. Teacher"
+    assert account["public_name"] == f"Sales manager {account['employee_id']}"
     client.cookies.clear()
     employee = employee_of(client, account["employee_id"])
-    assert (employee["first_name"], employee["last_name"]) == ("Octo Q.", "Teacher")
-    assert "Teacher" in client.get("/api/employees").text
+    assert (employee["first_name"], employee["last_name"]) == ("Sales manager", str(account["employee_id"]))
+    employees = client.get("/api/employees").text
+    assert "Octo Q. Teacher" not in employees
+    assert "Sales manager" in employees
 
 
 def test_a_manager_made_a_rep_appears_by_number_again(client: TestClient, github: FakeGitHub, allowlist: Path) -> None:
@@ -432,6 +435,6 @@ def test_opening_the_database_moves_reps_to_the_manager(path: Path) -> None:
     query = "SELECT employee_id, first_name, last_name, reports_to FROM employees"
     found = {r[0]: tuple(r)[1:] for r in conn.execute(query)}
     assert found[rep] == ("Sales rep", str(rep), manager)
-    assert found[manager] == ("Octo", "Teacher", 2)
+    assert found[manager] == ("Sales manager", str(manager), 2)
     assert db.generation(conn) > generation  # the dashboard's employee names change with it
     conn.close()

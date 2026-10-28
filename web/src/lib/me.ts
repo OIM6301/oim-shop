@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { meQuery, repNamesQuery } from '@/api/queries'
+import { meQuery, namesQuery } from '@/api/queries'
 
 /** Who is signed in, with the query's loading and error states, for a page that depends on it. */
 export function useMeQuery() {
@@ -12,17 +12,16 @@ export function useMe() {
 }
 
 /**
- * The name to show for an employee. Public pages call every rep "Sales rep 12"; on your own
- * orders and your own page you see the name you chose, and a manager sees every rep's. The
- * names come from /api/me and /api/me/reps, never from a public endpoint.
+ * The name to show for an employee. Public pages call reps and managers "Sales rep 12" and
+ * "Sales manager 10"; you see the name you chose, everyone signed in sees the managers', and a
+ * manager sees every rep's. The names come from /api/me and /api/me/names, never from a public endpoint.
  */
 export function useNameOf(): (employeeId: number, publicName: string) => string {
   const account = useMe()?.account
-  const manager = account?.role === 'manager'
-  const reps = useQuery({ ...repNamesQuery, enabled: manager }).data
+  const names = useQuery({ ...namesQuery, enabled: Boolean(account) }).data
   return (employeeId, publicName) => {
     if (account && account.employee_id === employeeId && account.display_name) return account.display_name
-    return (manager && reps?.get(employeeId)) || publicName
+    return (account && names?.get(employeeId)) || publicName
   }
 }
 

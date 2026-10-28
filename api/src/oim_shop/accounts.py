@@ -122,29 +122,24 @@ def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tupl
     return token, named
 
 
-def public_name(employee_id: int, role: Role, display_name: str | None) -> tuple[str, str]:
-    """The first and last name everyone sees: a manager's chosen name, or 'Sales rep' and the number."""
-    if role == "manager" and display_name:
-        first, _, last = display_name.rpartition(" ")
-        return (first, last) if first else (last, "")
-    return "Sales rep", str(employee_id)
+def public_name(employee_id: int, role: Role) -> tuple[str, str]:
+    """The first and last name public pages show: 'Sales rep 12' or 'Sales manager 10', never a chosen name."""
+    return ("Sales manager" if role == "manager" else "Sales rep"), str(employee_id)
 
 
 def arrange(conn: sqlite3.Connection) -> None:
     """Put every account's employee record in its place. Call it inside a write transaction.
 
     Reps report to the first manager who signed in here, or to Steven Buchanan until one has, and
-    managers to Andrew Fuller. Managers appear under the name they chose, reps by their number.
-    It runs at every sign-in, every change of name and every start, so a change in the allowlist
-    or a database from before this rule is put right without a step of its own.
+    managers to Andrew Fuller. Public pages show each by role and number; who sees a chosen name
+    is decided by /api/me/names. It runs at every sign-in and every start, so a change in the
+    allowlist, or a database from before this rule, is put right without a step of its own.
     """
     lead = conn.execute("SELECT MIN(employee_id) FROM accounts WHERE role = 'manager'").fetchone()[0]
     before = conn.total_changes
-    for employee_id, role, display_name in conn.execute(
-        "SELECT employee_id, role, display_name FROM accounts"
-    ).fetchall():
+    for employee_id, role in conn.execute("SELECT employee_id, role FROM accounts").fetchall():
         boss = VICE_PRESIDENT if role == "manager" else lead or SALES_MANAGER
-        first, last = public_name(employee_id, role, display_name)
+        first, last = public_name(employee_id, role)
         conn.execute(
             """
             UPDATE employees SET first_name = ?, last_name = ?, reports_to = ?
@@ -153,7 +148,7 @@ def arrange(conn: sqlite3.Connection) -> None:
             (first, last, boss, employee_id, first, last, boss),
         )
     if conn.total_changes > before:
-        # The dashboard's sales by employee carry names, so its cache must see the change.
+        # The dashboard's sales by employee carry names and titles, so its cache must see the change.
         db.changed(conn)
 
 

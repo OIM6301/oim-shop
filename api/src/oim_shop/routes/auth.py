@@ -23,7 +23,6 @@ from oim_shop.accounts import (
     SignIn,
     Viewer,
     Writer,
-    arrange,
     end_session,
     public_name,
     read_allowlist,
@@ -31,7 +30,7 @@ from oim_shop.accounts import (
 )
 from oim_shop.deps import Conn, Now
 from oim_shop.github import GitHubError
-from oim_shop.models import Account, Me, NameChange, RepName
+from oim_shop.models import Account, ChosenName, Me, NameChange
 
 router = APIRouter(tags=["account"])
 log = logging.getLogger(__name__)
@@ -152,7 +151,7 @@ def account_of(viewer: Session | None) -> Account | None:
     return Account(
         employee_id=viewer.employee_id,
         display_name=viewer.display_name,
-        public_name=" ".join(filter(None, public_name(viewer.employee_id, viewer.role, viewer.display_name))),
+        public_name=" ".join(public_name(viewer.employee_id, viewer.role)),
         role=viewer.role,
         csrf_token=viewer.csrf_token,
     )
@@ -166,27 +165,27 @@ def me(request: Request, viewer: Viewer, now: Now) -> Me:
 
 @router.put("/me", responses={401: {}, 403: {}})
 def choose_name(change: NameChange, conn: Conn, writer: Writer, now: Now) -> Me:
-    """Choose your name. A rep's is seen only by them and the managers; everyone sees a manager's."""
+    """Choose your name. A rep's is seen only by them and the managers; a manager's by everyone signed in."""
     with db.transaction(conn):
         conn.execute(
             "UPDATE accounts SET display_name = ? WHERE github_id = ?", (change.display_name, writer.github_id)
         )
-        arrange(conn)
     account = account_of(replace(writer, display_name=change.display_name))
     return Me(sign_in_available=True, account=account, today=now.date())
 
 
-@router.get("/me/reps", responses={401: {"description": "Not signed in"}, 403: {"description": "Not a manager"}})
-def rep_names(conn: Conn, viewer: SignedIn) -> list[RepName]:
-    """For a manager: every rep's chosen name, so each page can show it in place of 'Sales rep <number>'.
+@router.get("/me/names", responses={401: {"description": "Not signed in"}})
+def chosen_names(conn: Conn, viewer: SignedIn) -> list[ChosenName]:
+    """The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.
 
-    One row for each rep who has chosen a name; there are as many as the allowlist has people.
+    A manager sees everyone's; a rep sees the managers'. One row for each person who has chosen
+    a name; there are as many as the allowlist has people.
     """
-    if viewer.role != "manager":
-        raise HTTPException(status_code=403, detail="Only a manager sees the names reps chose")
+    only_managers = "" if viewer.role == "manager" else "AND role = 'manager'"
     return [
-        RepName(**r)
+        ChosenName(**r)
         for r in conn.execute(
-            "SELECT employee_id, display_name FROM accounts WHERE display_name IS NOT NULL ORDER BY employee_id"
+            f"SELECT employee_id, display_name FROM accounts WHERE display_name IS NOT NULL {only_managers} "  # noqa: S608
+            "ORDER BY employee_id"
         )
     ]

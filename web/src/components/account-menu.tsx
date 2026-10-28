@@ -4,7 +4,7 @@ import { useRef } from 'react'
 import { AlertCircle, ClipboardList, LogIn, LogOut, PenLine, Plus, RefreshCw, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { repNamesQuery } from '@/api/queries'
+import { namesQuery } from '@/api/queries'
 import { useSignOut } from '@/api/writes'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -73,7 +73,7 @@ export function AccountMenu() {
         <DropdownMenuLabel>
           <div className="truncate">{name}</div>
           <div className="text-xs font-normal text-muted-foreground">
-            {account.role === 'manager' ? 'Manager' : 'Sales rep'} · shown to others as {account.public_name}
+            {account.role === 'manager' ? 'Manager' : 'Sales rep'} · shown publicly as {account.public_name}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -118,20 +118,20 @@ export function AccountMenu() {
 }
 
 /**
- * For a manager whose list of the reps' chosen names did not load: every page then shows reps
- * as "Sales rep" and a number, which is not the same as no rep having chosen a name.
+ * For someone signed in whose list of chosen names did not load: every page then shows people
+ * as "Sales rep" or "Sales manager" and a number, which is not the same as no one having chosen a name.
  */
-export function RepNamesProblem() {
-  const manager = useMeQuery().data?.account?.role === 'manager'
-  const reps = useQuery({ ...repNamesQuery, enabled: manager })
-  if (!manager || !reps.isError) return null
+export function NamesProblem() {
+  const signedIn = Boolean(useMeQuery().data?.account)
+  const names = useQuery({ ...namesQuery, enabled: signedIn })
+  if (!signedIn || !names.isError) return null
   return (
     <Alert className="mb-4">
       <AlertCircle />
-      <AlertTitle>Could not load the names reps chose</AlertTitle>
+      <AlertTitle>Could not load the names people chose</AlertTitle>
       <AlertDescription>
-        <p>Until they load, every rep shows as “Sales rep” and a number. {explain(reps.error)}</p>
-        <Button variant="outline" size="sm" className="mt-2" disabled={reps.isFetching} onClick={() => void reps.refetch()}>
+        <p>Until they load, people show as “Sales rep” or “Sales manager” and a number. {explain(names.error)}</p>
+        <Button variant="outline" size="sm" className="mt-2" disabled={names.isFetching} onClick={() => void names.refetch()}>
           Try again
         </Button>
       </AlertDescription>

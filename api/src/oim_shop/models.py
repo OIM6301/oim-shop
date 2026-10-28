@@ -163,7 +163,7 @@ class Dashboard(BaseModel):
 class Account(BaseModel):
     employee_id: int
     display_name: str | None = Field(description="The name this person chose; null until they choose one")
-    public_name: str = Field(description="What everyone else sees, such as 'Sales rep 12'")
+    public_name: str = Field(description="What public pages show, such as 'Sales rep 12' or 'Sales manager 10'")
     role: Literal["rep", "manager"]
     csrf_token: str = Field(description="Send it back as the X-CSRF-Token header with every write")
 
@@ -174,7 +174,7 @@ class Me(BaseModel):
     today: date = Field(description="Today on the shop's clock, which a required date is counted from")
 
 
-class RepName(BaseModel):
+class ChosenName(BaseModel):
     employee_id: int
     display_name: str
 

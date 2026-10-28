@@ -1329,7 +1329,7 @@
           "account"
         ],
         "summary": "Choose Name",
-        "description": "Choose your name. A rep's is seen only by them and the managers; everyone sees a manager's.",
+        "description": "Choose your name. A rep's is seen only by them and the managers; a manager's by everyone signed in.",
         "operationId": "choose_name_api_me_put",
         "requestBody": {
           "content": {
@@ -1371,14 +1371,14 @@
         }
       }
     },
-    "/api/me/reps": {
+    "/api/me/names": {
       "get": {
         "tags": [
           "account"
         ],
-        "summary": "Rep Names",
-        "description": "For a manager: every rep's chosen name, so each page can show it in place of 'Sales rep <number>'.\n\nOne row for each rep who has chosen a name; there are as many as the allowlist has people.",
-        "operationId": "rep_names_api_me_reps_get",
+        "summary": "Chosen Names",
+        "description": "The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.\n\nA manager sees everyone's; a rep sees the managers'. One row for each person who has chosen\na name; there are as many as the allowlist has people.",
+        "operationId": "chosen_names_api_me_names_get",
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1386,19 +1386,16 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/RepName"
+                    "$ref": "#/components/schemas/ChosenName"
                   },
                   "type": "array",
-                  "title": "Response Rep Names Api Me Reps Get"
+                  "title": "Response Chosen Names Api Me Names Get"
                 }
               }
             }
           },
           "401": {
             "description": "Not signed in"
-          },
-          "403": {
-            "description": "Not a manager"
           }
         }
       }
@@ -1427,7 +1424,7 @@
           "public_name": {
             "type": "string",
             "title": "Public Name",
-            "description": "What everyone else sees, such as 'Sales rep 12'"
+            "description": "What public pages show, such as 'Sales rep 12' or 'Sales manager 10'"
           },
           "role": {
             "type": "string",
@@ -1475,6 +1472,24 @@
           "description"
         ],
         "title": "Category"
+      },
+      "ChosenName": {
+        "properties": {
+          "employee_id": {
+            "type": "integer",
+            "title": "Employee Id"
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          }
+        },
+        "type": "object",
+        "required": [
+          "employee_id",
+          "display_name"
+        ],
+        "title": "ChosenName"
       },
       "CountryRevenue": {
         "properties": {
@@ -2686,24 +2701,6 @@
           "revenue_cents"
         ],
         "title": "ProductRevenue"
-      },
-      "RepName": {
-        "properties": {
-          "employee_id": {
-            "type": "integer",
-            "title": "Employee Id"
-          },
-          "display_name": {
-            "type": "string",
-            "title": "Display Name"
-          }
-        },
-        "type": "object",
-        "required": [
-          "employee_id",
-          "display_name"
-        ],
-        "title": "RepName"
       },
       "Shipper": {
         "properties": {
