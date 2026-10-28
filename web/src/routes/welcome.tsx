@@ -65,7 +65,7 @@ function NameForm({
   account,
   next,
 }: {
-  account: { display_name: string | null; public_name: string }
+  account: { display_name: string | null; public_name: string; role: 'rep' | 'manager' }
   next: string | undefined
 }) {
   const navigate = useNavigate()
@@ -108,8 +108,9 @@ function NameForm({
                 {...form.register('display_name')}
               />
               <FieldDescription id="display_name-about">
-                Only you and the managers see this name. Everyone else sees you as {account.public_name}, so you can use
-                a nickname.
+                {account.role === 'manager'
+                  ? 'Everyone sees this name: managers appear on every page under the name they choose.'
+                  : `Only you and the managers see this name. Everyone else sees you as ${account.public_name}, so you can use a nickname.`}
               </FieldDescription>
               <FieldError id="display_name-error" errors={[error]} />
             </Field>

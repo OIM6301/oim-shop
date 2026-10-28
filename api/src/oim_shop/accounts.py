@@ -22,8 +22,10 @@ from oim_shop.github import GitHub
 
 Role = Literal["rep", "manager"]
 TITLES: dict[Role, str] = {"rep": "Sales Representative", "manager": "Sales Manager"}
-# Steven Buchanan, Northwind's Sales Manager. Every rep who signs in reports to him.
+# Steven Buchanan, Northwind's Sales Manager. Reps report to him until a manager has signed in here.
 SALES_MANAGER = 5
+# Andrew Fuller, Vice President, Sales. A manager who signs in here reports to him.
+VICE_PRESIDENT = 2
 SESSION_COOKIE = "oim_shop_session"
 SESSION_LENGTH = timedelta(days=7)
 # GitHub's own rule: letters, digits and single hyphens, not at either end, at most 39 characters.
@@ -98,10 +100,6 @@ def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tupl
                     """,
                     (TITLES[role], SALES_MANAGER, stamp),
                 ).fetchone()[0]
-                # Public pages call the rep by their employee number, never by a name they typed.
-                conn.execute(
-                    "UPDATE employees SET last_name = ? WHERE employee_id = ?", (str(employee_id), employee_id)
-                )
                 conn.execute(
                     "INSERT INTO accounts (github_id, employee_id, role, created_at) VALUES (?, ?, ?, ?)",
                     (github_id, employee_id, role, stamp),
@@ -112,6 +110,7 @@ def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tupl
                 # The allowlist decides the role, so a change there takes effect at the next sign-in.
                 conn.execute("UPDATE accounts SET role = ? WHERE github_id = ?", (role, github_id))
                 conn.execute("UPDATE employees SET title = ? WHERE employee_id = ?", (TITLES[role], employee_id))
+            arrange(conn)
             conn.execute("DELETE FROM sessions WHERE expires_at <= ?", (stamp,))
             token = secrets.token_urlsafe(32)
             conn.execute(
@@ -121,6 +120,41 @@ def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tupl
     finally:
         conn.close()
     return token, named
+
+
+def public_name(employee_id: int, role: Role, display_name: str | None) -> tuple[str, str]:
+    """The first and last name everyone sees: a manager's chosen name, or 'Sales rep' and the number."""
+    if role == "manager" and display_name:
+        first, _, last = display_name.rpartition(" ")
+        return (first, last) if first else (last, "")
+    return "Sales rep", str(employee_id)
+
+
+def arrange(conn: sqlite3.Connection) -> None:
+    """Put every account's employee record in its place. Call it inside a write transaction.
+
+    Reps report to the first manager who signed in here, or to Steven Buchanan until one has, and
+    managers to Andrew Fuller. Managers appear under the name they chose, reps by their number.
+    It runs at every sign-in, every change of name and every start, so a change in the allowlist
+    or a database from before this rule is put right without a step of its own.
+    """
+    lead = conn.execute("SELECT MIN(employee_id) FROM accounts WHERE role = 'manager'").fetchone()[0]
+    before = conn.total_changes
+    for employee_id, role, display_name in conn.execute(
+        "SELECT employee_id, role, display_name FROM accounts"
+    ).fetchall():
+        boss = VICE_PRESIDENT if role == "manager" else lead or SALES_MANAGER
+        first, last = public_name(employee_id, role, display_name)
+        conn.execute(
+            """
+            UPDATE employees SET first_name = ?, last_name = ?, reports_to = ?
+            WHERE employee_id = ? AND (first_name, last_name, reports_to) IS NOT (?, ?, ?)
+            """,
+            (first, last, boss, employee_id, first, last, boss),
+        )
+    if conn.total_changes > before:
+        # The dashboard's sales by employee carry names, so its cache must see the change.
+        db.changed(conn)
 
 
 def end_session(conn: sqlite3.Connection, token: str) -> None:

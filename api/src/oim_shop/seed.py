@@ -100,17 +100,18 @@ def reset(conn: sqlite3.Connection) -> int:
 
 
 def forget_accounts(conn: sqlite3.Connection) -> int:
-    """Remove everyone who has signed in, at the end of a term, in one transaction.
+    """Remove every rep who has signed in, at the end of a term, in one transaction.
 
     Their sessions, accounts and employee records go, and with them every order entered
-    here, whose stock goes back as in a reset. Returns the number of accounts removed.
+    here, whose stock goes back as in a reset. The managers stay, with their names and
+    sessions. Returns the number of accounts removed.
     """
     with db.transaction(conn):
         conn.execute("DELETE FROM orders WHERE source = 'entered'")
         conn.execute("UPDATE products SET units_in_stock = seed_units_in_stock")
-        employees = [(row[0],) for row in conn.execute("SELECT employee_id FROM accounts")]
-        conn.execute("DELETE FROM sessions")
-        removed = conn.execute("DELETE FROM accounts").rowcount
+        employees = [(row[0],) for row in conn.execute("SELECT employee_id FROM accounts WHERE role = 'rep'")]
+        conn.execute("DELETE FROM sessions WHERE github_id IN (SELECT github_id FROM accounts WHERE role = 'rep')")
+        removed = conn.execute("DELETE FROM accounts WHERE role = 'rep'").rowcount
         conn.executemany("DELETE FROM employees WHERE employee_id = ?", employees)
         db.changed(conn)
     return removed

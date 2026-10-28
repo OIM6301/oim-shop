@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from oim_shop import db
 from oim_shop.accounts import AllowlistError, read_allowlist
 from oim_shop.app import create_app
+from oim_shop.cli import REPO_SEED, open_database
 
 from .conftest import NOW
 from .fake_github import PUBLIC_URL, STRANGER, STUDENT, TEACHER, FakeGitHub, csrf, me, sign_in, sign_in_settings
@@ -354,3 +355,83 @@ def test_a_rep_who_appears_publicly_appears_by_number(client: TestClient, github
         text = client.get(page).text
         assert "Ana Rivera" not in text, page
         assert f"Sales rep {account['employee_id']}" in text or f'"last_name":"{account["employee_id"]}"' in text, page
+
+
+# --- reps report to the manager, who appears by name -----------------------------------------
+
+
+def employee_of(client: TestClient, employee_id: int) -> dict[str, object]:
+    return client.get(f"/api/employees/{employee_id}").json()
+
+
+def test_reps_report_to_the_manager_and_the_manager_to_the_vice_president(
+    client: TestClient, github: FakeGitHub
+) -> None:
+    sign_in(client, github, TEACHER)
+    manager = me(client)["account"]["employee_id"]
+    client.cookies.clear()
+    sign_in(client, github, STUDENT)
+    rep = me(client)["account"]["employee_id"]
+    assert employee_of(client, rep)["reports_to"] == manager
+    assert employee_of(client, manager)["reports_to"] == 2  # Andrew Fuller
+
+
+def test_reps_who_signed_in_before_the_manager_move_to_them(client: TestClient, github: FakeGitHub) -> None:
+    sign_in(client, github, STUDENT)
+    rep = me(client)["account"]["employee_id"]
+    assert employee_of(client, rep)["reports_to"] == 5  # Steven Buchanan, until a manager signs in
+    client.cookies.clear()
+    sign_in(client, github, TEACHER)
+    manager = me(client)["account"]["employee_id"]
+    assert employee_of(client, rep)["reports_to"] == manager
+
+
+def test_a_manager_appears_on_public_pages_under_the_chosen_name(client: TestClient, github: FakeGitHub) -> None:
+    sign_in(client, github, TEACHER)
+    client.put("/api/me", json={"display_name": "Octo Q. Teacher"}, headers=csrf(client))
+    account = me(client)["account"]
+    assert account["public_name"] == "Octo Q. Teacher"
+    client.cookies.clear()
+    employee = employee_of(client, account["employee_id"])
+    assert (employee["first_name"], employee["last_name"]) == ("Octo Q.", "Teacher")
+    assert "Teacher" in client.get("/api/employees").text
+
+
+def test_a_manager_made_a_rep_appears_by_number_again(client: TestClient, github: FakeGitHub, allowlist: Path) -> None:
+    sign_in(client, github, TEACHER)
+    client.put("/api/me", json={"display_name": "Octo Teacher"}, headers=csrf(client))
+    employee_id = me(client)["account"]["employee_id"]
+    allowlist.write_text("octo-teacher\n")
+    client.cookies.clear()
+    sign_in(client, github, TEACHER)
+    assert me(client)["account"]["public_name"] == f"Sales rep {employee_id}"
+    employee = employee_of(client, employee_id)
+    assert (employee["first_name"], employee["last_name"]) == ("Sales rep", str(employee_id))
+    assert employee["reports_to"] == 5
+    assert "Octo Teacher" not in client.get("/api/employees").text
+
+
+def test_opening_the_database_moves_reps_to_the_manager(path: Path) -> None:
+    """A database from before this rule, like the live one, is put right when the app starts."""
+    conn = db.connect(path)
+    with db.transaction(conn):
+        ids = [
+            conn.execute(
+                "INSERT INTO employees (first_name, last_name, title, reports_to, hire_date) "
+                "VALUES ('Sales rep', '', 'Sales Representative', 5, '2026-10-22T10:00:00') RETURNING employee_id"
+            ).fetchone()[0]
+            for _ in range(2)
+        ]
+        rep, manager = ids
+        conn.execute("INSERT INTO accounts VALUES (1, ?, 'Ana', 'rep', '2026-10-22T10:00:00')", (rep,))
+        conn.execute("INSERT INTO accounts VALUES (2, ?, 'Octo Teacher', 'manager', '2026-10-22T10:00:00')", (manager,))
+    generation = db.generation(conn)
+    conn.close()
+
+    conn = open_database(path, REPO_SEED)
+    query = "SELECT employee_id, first_name, last_name, reports_to FROM employees"
+    found = {r[0]: tuple(r)[1:] for r in conn.execute(query)}
+    assert found[rep] == ("Sales rep", str(rep), manager)
+    assert found[manager] == ("Octo", "Teacher", 2)
+    assert db.generation(conn) > generation  # the dashboard's employee names change with it
+    conn.close()

@@ -34,9 +34,10 @@ function Privacy() {
             GitHub for no permissions.
           </p>
           <p>
-            You become a sales rep with an employee number. Everyone who is not you or a manager sees you as “Sales rep”
-            and that number. The name you choose is shown only to you and to the managers. Your browser keeps a cookie
-            that holds you signed in for a week, or until you sign out.
+            You become a sales rep with an employee number, reporting to the manager. Everyone who is not you or a
+            manager sees you as “Sales rep” and that number. The name you choose is shown only to you and to the
+            managers. A manager is the exception: everyone sees a manager under the name they choose. Your browser
+            keeps a cookie that holds you signed in for a week, or until you sign out.
           </p>
           <h2 className="pt-2 text-base font-semibold">What you enter</h2>
           <p>

@@ -23,7 +23,9 @@ from oim_shop.accounts import (
     SignIn,
     Viewer,
     Writer,
+    arrange,
     end_session,
+    public_name,
     read_allowlist,
     start_session,
 )
@@ -150,7 +152,7 @@ def account_of(viewer: Session | None) -> Account | None:
     return Account(
         employee_id=viewer.employee_id,
         display_name=viewer.display_name,
-        public_name=f"Sales rep {viewer.employee_id}",
+        public_name=" ".join(filter(None, public_name(viewer.employee_id, viewer.role, viewer.display_name))),
         role=viewer.role,
         csrf_token=viewer.csrf_token,
     )
@@ -164,11 +166,12 @@ def me(request: Request, viewer: Viewer, now: Now) -> Me:
 
 @router.put("/me", responses={401: {}, 403: {}})
 def choose_name(change: NameChange, conn: Conn, writer: Writer, now: Now) -> Me:
-    """Choose the name you see for yourself. Everyone but you and the managers sees 'Sales rep <your number>'."""
+    """Choose your name. A rep's is seen only by them and the managers; everyone sees a manager's."""
     with db.transaction(conn):
         conn.execute(
             "UPDATE accounts SET display_name = ? WHERE github_id = ?", (change.display_name, writer.github_id)
         )
+        arrange(conn)
     account = account_of(replace(writer, display_name=change.display_name))
     return Me(sign_in_available=True, account=account, today=now.date())
 

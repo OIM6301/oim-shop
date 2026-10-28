@@ -243,10 +243,10 @@ export interface paths {
         };
         /**
          * Employees
-         * @description Northwind's nine employees, and the reps who signed in here while they have orders.
+         * @description Northwind's nine employees, the managers who signed in here, and the reps while they have orders.
          *
          *     Every student who signs in becomes a rep, and accounts outlast the nightly reset, so
-         *     listing them all would bury the nine under rows of reps with nothing to show. A rep's
+         *     listing them all would bury the others under rows of reps with nothing to show. A rep's
          *     own page is there either way. The list is short enough not to be paged.
          */
         get: operations["employees_api_employees_get"];
@@ -370,7 +370,7 @@ export interface paths {
         get: operations["me_api_me_get"];
         /**
          * Choose Name
-         * @description Choose the name you see for yourself. Everyone but you and the managers sees 'Sales rep <your number>'.
+         * @description Choose your name. A rep's is seen only by them and the managers; everyone sees a manager's.
          */
         put: operations["choose_name_api_me_put"];
         post?: never;

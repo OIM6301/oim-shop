@@ -2,7 +2,7 @@
 
     oim-shop serve    run the app (migrates and loads the seed into an empty database first)
     oim-shop reset    take out every order entered here and restore the seed's stock (run nightly)
-    oim-shop forget-accounts  remove everyone who has signed in, and their orders (end of term)
+    oim-shop forget-accounts  remove every rep who has signed in, and the orders entered here (end of term)
     oim-shop openapi  print the API's OpenAPI schema, which web/ generates its types from
 
 Settings come from the environment:
@@ -32,7 +32,7 @@ from typing import Any
 import uvicorn
 import uvicorn.config
 
-from oim_shop import clock, db, seed
+from oim_shop import accounts, clock, db, seed
 from oim_shop.accounts import SignIn
 from oim_shop.app import create_app
 from oim_shop.deps import FIRST_DAY, LAST_DAY
@@ -50,6 +50,8 @@ def open_database(path: Path, seed_dir: Path) -> sqlite3.Connection:
     if not conn.execute("SELECT EXISTS (SELECT 1 FROM orders)").fetchone()[0]:
         loaded = seed.load(conn, seed_dir)
         print(f"Loaded the seed into {path}: {loaded:,} orders.")
+    with db.transaction(conn):
+        accounts.arrange(conn)
     return conn
 
 
@@ -103,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     commands.add_parser("reset", help="take out the orders entered here and restore the stock")
-    commands.add_parser("forget-accounts", help="remove everyone who has signed in, and their orders")
+    commands.add_parser("forget-accounts", help="remove every rep who has signed in, and the orders entered here")
     commands.add_parser("openapi", help="print the OpenAPI schema")
     args = parser.parse_args(argv)
 
@@ -118,9 +120,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "forget-accounts":
         removed = seed.forget_accounts(conn)
         conn.close()
-        print(
-            f"Removed {removed:,} account{'' if removed == 1 else 's'}, with their orders; stock is back to the seed's."
-        )
+        print(f"Removed {removed:,} rep{'' if removed == 1 else 's'} and every order entered here; stock is as seeded.")
         return 0
     if args.command == "reset":
         removed = seed.reset(conn)

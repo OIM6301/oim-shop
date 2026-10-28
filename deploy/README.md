@@ -19,7 +19,7 @@ The app reads the allowlist at every sign-in, so a change to it needs no restart
 
 ## End of term
 
-Empty the allowlist but for the manager, then remove everyone who signed in, with their chosen names and their orders:
+Empty the allowlist but for the manager, then remove every rep who signed in, with their chosen names, and every order entered here. The manager's account, name and employee record stay, so next term's reps report to the same manager:
 
 ```bash
 printf '%s manager\n' "$MANAGER" > ~/.config/oim-shop/allowed-users   # MANAGER: your GitHub username

@@ -17,10 +17,10 @@ EMPLOYEE = """
 
 @router.get("/employees")
 def employees(conn: Conn) -> list[Employee]:
-    """Northwind's nine employees, and the reps who signed in here while they have orders.
+    """Northwind's nine employees, the managers who signed in here, and the reps while they have orders.
 
     Every student who signs in becomes a rep, and accounts outlast the nightly reset, so
-    listing them all would bury the nine under rows of reps with nothing to show. A rep's
+    listing them all would bury the others under rows of reps with nothing to show. A rep's
     own page is there either way. The list is short enough not to be paged.
     """
     found = rows(
@@ -28,7 +28,7 @@ def employees(conn: Conn) -> list[Employee]:
         f"""
         {EMPLOYEE}
         GROUP BY e.employee_id
-        HAVING e.employee_id NOT IN (SELECT employee_id FROM accounts) OR COUNT(o.order_id) > 0
+        HAVING e.employee_id NOT IN (SELECT employee_id FROM accounts WHERE role = 'rep') OR COUNT(o.order_id) > 0
         ORDER BY e.employee_id
         """,  # noqa: S608 (fragments written here)
     )

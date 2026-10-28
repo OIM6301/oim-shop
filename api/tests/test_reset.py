@@ -257,13 +257,36 @@ def test_forget_removes_every_account_and_what_it_entered(path: Path) -> None:
     conn.close()
 
 
+def test_forget_keeps_the_managers(path: Path) -> None:
+    conn = connect(path)
+    rep, manager = add_reps(conn, 2)
+    conn.execute(
+        "UPDATE accounts SET role = 'manager', display_name = 'Octo Teacher' WHERE employee_id = ?", (manager,)
+    )
+    conn.execute(
+        "INSERT INTO sessions (token_hash, github_id, csrf_token, expires_at) VALUES ('h', ?, 'c', ?)",
+        (100_000 + manager, NOW.isoformat()),
+    )
+    conn.commit()
+
+    assert seed.forget_accounts(conn) == 1
+    assert [tuple(r) for r in conn.execute("SELECT employee_id, display_name FROM accounts")] == [
+        (manager, "Octo Teacher")
+    ]
+    assert conn.execute("SELECT COUNT(*) FROM sessions").fetchone()[0] == 1
+    employees = {r[0] for r in conn.execute("SELECT employee_id FROM employees")}
+    assert manager in employees
+    assert rep not in employees
+    conn.close()
+
+
 def test_the_forget_command(path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     conn = connect(path)
     add_reps(conn, 2)
     conn.close()
     monkeypatch.setenv("OIM_SHOP_DB", str(path))
     assert main(["forget-accounts"]) == 0
-    assert "Removed 2 accounts" in capsys.readouterr().out
+    assert "Removed 2 reps" in capsys.readouterr().out
 
 
 def test_reset_waits_for_another_writer_instead_of_failing(path: Path) -> None:

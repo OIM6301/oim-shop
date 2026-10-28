@@ -286,3 +286,15 @@ test('while an order is being cancelled, nothing else can be done to it', async 
   await expect(page).toHaveURL(/\/my-orders$/)
   await expect(page.getByRole('heading', { level: 1, name: 'My orders' })).toBeFocused()
 })
+
+test('a manager appears to everyone under the chosen name', async ({ browser }) => {
+  const manager = await browser.newPage()
+  await signIn(manager, 'e2e-manager')
+  await manager.goto('/welcome')
+  await expect(manager.getByText('Everyone sees this name')).toBeVisible()
+  await nameAs(manager, 'Ms. Manager')
+
+  const visitor = await browser.newPage()
+  await visitor.goto('/employees')
+  await expect(visitor.getByRole('link', { name: 'Ms. Manager' }).first()).toBeVisible()
+})
