@@ -1,3 +1,4 @@
+import shutil
 import sqlite3
 from datetime import timedelta
 from pathlib import Path
@@ -5,6 +6,8 @@ from pathlib import Path
 import pytest
 
 from oim_shop import db, seed
+from oim_shop.cli import open_database
+from oim_shop.clock import shift
 
 from .conftest import NOW, SEED_DIR
 
@@ -129,3 +132,88 @@ def test_loading_streams_the_lines(tmp_path: Path) -> None:
     _, peak = tracemalloc.get_traced_memory()
     tracemalloc.stop()
     assert peak < 40 * 1024 * 1024, f"peak {peak / 1024 / 1024:.0f} MB"
+
+
+# --- every column of Northwind ----------------------------------------------------------
+
+JPEG = b"\xff\xd8\xff"
+
+
+def test_loads_every_column(conn: sqlite3.Connection) -> None:
+    customer = "SELECT contact_title, address, region, postal_code, phone, fax FROM customers WHERE customer_id = ?"
+    assert one(conn, customer, "ALFKI") == (
+        "Sales Representative", "Obere Str. 57", "Western Europe", "12209", "030-0074321", "030-0076545"
+    )  # fmt: skip
+    assert one(conn, "SELECT contact_name, phone, home_page FROM suppliers WHERE supplier_id = 1") == (
+        "Charlotte Cooper", "(171) 555-2222", None
+    )  # fmt: skip
+    assert one(conn, "SELECT COUNT(home_page) FROM suppliers WHERE home_page LIKE 'http://%'") == (3,)
+    assert one(conn, "SELECT phone FROM shippers WHERE shipper_id = 1") == ("(503) 555-9831",)
+    assert one(conn, "SELECT SUM(units_on_order) FROM products") == (780,)
+    employee = "SELECT title_of_courtesy, birth_date, extension, home_phone FROM employees WHERE employee_id = 1"
+    assert one(conn, employee) == (
+        "Ms.", shift("1968-12-08T00:00:00"), "5467", "(206) 555-9857"
+    )  # fmt: skip
+    ship_to = "SELECT ship_name, ship_address, ship_region, ship_postal_code FROM orders WHERE order_id = 10248"
+    assert one(conn, ship_to) == (
+        "Vins et alcools Chevalier", "59 rue de l-Abbaye", "Western Europe", "51100"
+    )  # fmt: skip
+    assert one(conn, "SELECT COUNT(*) FROM regions") == (4,)
+    assert one(conn, "SELECT name, region_id FROM territories WHERE territory_id = '01581'") == ("Westboro", 1)
+    assert one(conn, "SELECT COUNT(*) FROM employee_territories") == (49,)
+
+
+def test_loads_every_picture(conn: sqlite3.Connection) -> None:
+    pictures = [r[0] for r in conn.execute("SELECT picture FROM categories ORDER BY category_id")]
+    photos = [r[0] for r in conn.execute("SELECT photo FROM employees ORDER BY employee_id")]
+    assert len(pictures) == 8 and all(p.startswith(JPEG) for p in pictures)
+    assert len(photos) == 9 and all(p.startswith(JPEG) for p in photos)
+
+
+ADDED_TABLES = ["employee_territories", "territories", "regions"]
+ADDED_COLUMNS = {
+    "customers": ["contact_title", "address", "region", "postal_code", "phone", "fax"],
+    "suppliers": ["contact_name", "contact_title", "address", "region", "postal_code", "phone", "fax", "home_page"],
+    "categories": ["picture"],
+    "products": ["units_on_order"],
+    "employees": [
+        "title_of_courtesy", "birth_date", "address", "region", "postal_code", "home_phone", "extension", "notes",
+        "photo",
+    ],
+    "shippers": ["phone"],
+    "orders": ["ship_name", "ship_address", "ship_region", "ship_postal_code"],
+}  # fmt: skip
+
+
+def details(conn: sqlite3.Connection) -> dict[str, list[tuple[object, ...]]]:
+    found = {
+        table: [tuple(r) for r in conn.execute(f"SELECT {', '.join(columns)} FROM {table} ORDER BY 1")]  # noqa: S608
+        for table, columns in ADDED_COLUMNS.items()
+    }
+    for table in ADDED_TABLES:
+        found[table] = [tuple(r) for r in conn.execute(f"SELECT * FROM {table} ORDER BY 1, 2")]  # noqa: S608
+    return found
+
+
+def test_a_database_from_before_every_column_is_filled_from_the_seed(seeded_path: Path, tmp_path: Path) -> None:
+    """The live database was loaded at schema version 4. Opening it with this code fills what it lacks."""
+    path = tmp_path / "old.db"
+    shutil.copy(seeded_path, path)
+    conn = db.connect(path)
+    expected = details(conn)
+    # Back to version 4: what migration 005 added goes.
+    conn.autocommit = True
+    for table in ADDED_TABLES:
+        conn.execute(f"DROP TABLE {table}")
+    for table, columns in ADDED_COLUMNS.items():
+        for column in columns:
+            conn.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+    conn.execute("PRAGMA user_version = 4")
+    conn.close()
+
+    conn = open_database(path, SEED_DIR)
+    assert details(conn) == expected
+    conn.close()
+    conn = open_database(path, SEED_DIR)  # a second start changes nothing
+    assert details(conn) == expected
+    conn.close()

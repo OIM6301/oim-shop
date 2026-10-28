@@ -56,7 +56,11 @@ def test_a_v2_database_keeps_its_stock_as_the_seed_stock(tmp_path: Path) -> None
     db.migrate(conn, v2)
     conn.execute("PRAGMA defer_foreign_keys = ON")  # employees report to employees
     for table in seed.CATALOG:
-        seed.insert(conn, table, seed.columns_of(SEED_DIR, table), seed.read(SEED_DIR, table))
+        # Only what v2's schema has: later migrations add columns and tables.
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        columns = [c for c in seed.columns_of(SEED_DIR, table) if c in have]
+        if columns:
+            seed.insert(conn, table, columns, seed.read(SEED_DIR, table))
     conn.commit()
 
     db.migrate(conn)

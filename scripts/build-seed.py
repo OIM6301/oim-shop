@@ -6,16 +6,23 @@
 """Rebuild data/seed/ from the upstream Northwind SQLite file.
 
 Downloads dist/northwind.db from jpwhite3/northwind-SQLite3 at a pinned commit,
-keeps the tables and columns oim-shop reads, and writes one gzipped CSV per table.
+writes one gzipped CSV per table, and writes the pictures in it as JPEG files
+under images/.
+
+Every table and column is kept, except:
+- CustomerDemographics and CustomerCustomerDemo, which are empty, and the stored
+  queries (views), which only combine the tables.
+- Employees' PhotoPath, an address on a network that no longer exists; the photo
+  itself is kept.
 
 Changes on the way:
 - Dates become ISO 8601 (2016-07-04T00:00:00). They stay on the published
   clock; the app shifts them when it loads the seed.
 - Money becomes integer cents and discounts integer percents. Every value in the
   data is a whole cent and a whole percent, and the script stops if one is not.
-- Employees keep only name, title, reports-to, hire date, city and country.
-  Birth dates, addresses, phones, photos and notes are dropped, even though the
-  people are fictional.
+- A supplier's home page is stored by Access as "text#address#"; only an address
+  that starts with http is kept.
+- Names become snake_case (ContactTitle becomes contact_title).
 
 The script checks its output against the figures recorded for the copy that
 oim-api serves, so a different upstream build fails here instead of changing
@@ -69,6 +76,28 @@ def iso(value: object) -> str | None:
     raise ValueError(f"unexpected date {text!r}")
 
 
+def home_page(value: object) -> str | None:
+    """Access's hyperlink 'Plutzer (on the World Wide Web)#http://...#' to its address, if it is a web address."""
+    if value is None:
+        return None
+    parts = str(value).split("#")
+    address = parts[1] if len(parts) > 1 else ""
+    return address if address.startswith(("http://", "https://")) else None
+
+
+def write_images(prefix: str, rows: Iterable[Row]) -> int:
+    """Write each (id, JPEG bytes) row to images/<prefix>-<id>.jpg."""
+    folder = OUT / "images"
+    folder.mkdir(exist_ok=True)
+    count = 0
+    for key, data in rows:
+        if not isinstance(data, bytes) or not data.startswith(b"\xff\xd8\xff"):
+            raise SystemExit(f"{prefix} {key}: not a JPEG")
+        (folder / f"{prefix}-{key}.jpg").write_bytes(data)
+        count += 1
+    return count
+
+
 def write(name: str, header: Sequence[str], rows: Iterable[Row]) -> int:
     buffer = io.StringIO()
     writer = csv.writer(buffer, lineterminator="\n")
@@ -110,8 +139,27 @@ def build(db: sqlite3.Connection) -> None:
         ),
         "suppliers": write(
             "suppliers",
-            ["supplier_id", "company_name", "city", "country"],
-            q("SELECT SupplierID, CompanyName, City, Country FROM Suppliers ORDER BY 1"),
+            [
+                "supplier_id",
+                "company_name",
+                "contact_name",
+                "contact_title",
+                "address",
+                "city",
+                "region",
+                "postal_code",
+                "country",
+                "phone",
+                "fax",
+                "home_page",
+            ],
+            (
+                (*r[:11], home_page(r[11]))
+                for r in q(
+                    "SELECT SupplierID, CompanyName, ContactName, ContactTitle, Address, City, Region, "
+                    "PostalCode, Country, Phone, Fax, HomePage FROM Suppliers ORDER BY 1"
+                )
+            ),
         ),
         "products": write(
             "products",
@@ -123,37 +171,85 @@ def build(db: sqlite3.Connection) -> None:
                 "quantity_per_unit",
                 "unit_price_cents",
                 "units_in_stock",
+                "units_on_order",
                 "reorder_level",
                 "discontinued",
             ],
             (
-                (r[0], r[1], r[2], r[3], r[4], cents(r[5]), r[6], r[7], int(r[8]))
+                (r[0], r[1], r[2], r[3], r[4], cents(r[5]), r[6], r[7], r[8], int(r[9]))
                 for r in q(
                     "SELECT ProductID, ProductName, SupplierID, CategoryID, QuantityPerUnit, "
-                    "UnitPrice, UnitsInStock, ReorderLevel, Discontinued FROM Products ORDER BY 1"
+                    "UnitPrice, UnitsInStock, UnitsOnOrder, ReorderLevel, Discontinued FROM Products ORDER BY 1"
                 )
             ),
         ),
         "customers": write(
             "customers",
-            ["customer_id", "company_name", "contact_name", "city", "country"],
-            q("SELECT CustomerID, CompanyName, ContactName, City, Country FROM Customers ORDER BY 1"),
+            [
+                "customer_id",
+                "company_name",
+                "contact_name",
+                "contact_title",
+                "address",
+                "city",
+                "region",
+                "postal_code",
+                "country",
+                "phone",
+                "fax",
+            ],
+            q(
+                "SELECT CustomerID, CompanyName, ContactName, ContactTitle, Address, City, Region, PostalCode, "
+                "Country, Phone, Fax FROM Customers ORDER BY 1"
+            ),
         ),
         "employees": write(
             "employees",
-            ["employee_id", "first_name", "last_name", "title", "reports_to", "hire_date", "city", "country"],
+            [
+                "employee_id",
+                "first_name",
+                "last_name",
+                "title",
+                "title_of_courtesy",
+                "reports_to",
+                "birth_date",
+                "hire_date",
+                "address",
+                "city",
+                "region",
+                "postal_code",
+                "country",
+                "home_phone",
+                "extension",
+                "notes",
+            ],
             (
-                (r[0], r[1], r[2], r[3], r[4], iso(r[5]), r[6], r[7])
+                (*r[:6], iso(r[6]), iso(r[7]), *r[8:])
                 for r in q(
-                    "SELECT EmployeeID, FirstName, LastName, Title, ReportsTo, HireDate, City, Country "
-                    "FROM Employees ORDER BY 1"
+                    "SELECT EmployeeID, FirstName, LastName, Title, TitleOfCourtesy, ReportsTo, BirthDate, HireDate, "
+                    "Address, City, Region, PostalCode, Country, HomePhone, Extension, Notes FROM Employees ORDER BY 1"
                 )
             ),
         ),
         "shippers": write(
             "shippers",
-            ["shipper_id", "company_name"],
-            q("SELECT ShipperID, CompanyName FROM Shippers ORDER BY 1"),
+            ["shipper_id", "company_name", "phone"],
+            q("SELECT ShipperID, CompanyName, Phone FROM Shippers ORDER BY 1"),
+        ),
+        "regions": write(
+            "regions",
+            ["region_id", "name"],
+            q("SELECT RegionID, RegionDescription FROM Regions ORDER BY 1"),
+        ),
+        "territories": write(
+            "territories",
+            ["territory_id", "name", "region_id"],
+            q("SELECT TerritoryID, TerritoryDescription, RegionID FROM Territories ORDER BY 1"),
+        ),
+        "employee_territories": write(
+            "employee_territories",
+            ["employee_id", "territory_id"],
+            q("SELECT EmployeeID, TerritoryID FROM EmployeeTerritories ORDER BY 1, 2"),
         ),
         "orders": write(
             "orders",
@@ -166,14 +262,18 @@ def build(db: sqlite3.Connection) -> None:
                 "shipped_date",
                 "shipper_id",
                 "freight_cents",
+                "ship_name",
+                "ship_address",
                 "ship_city",
+                "ship_region",
+                "ship_postal_code",
                 "ship_country",
             ],
             (
-                (r[0], r[1], r[2], iso(r[3]), iso(r[4]), iso(r[5]), r[6], cents(r[7]), r[8], r[9])
+                (r[0], r[1], r[2], iso(r[3]), iso(r[4]), iso(r[5]), r[6], cents(r[7]), *r[8:])
                 for r in q(
-                    "SELECT OrderID, CustomerID, EmployeeID, OrderDate, RequiredDate, ShippedDate, "
-                    "ShipVia, Freight, ShipCity, ShipCountry FROM Orders ORDER BY 1"
+                    "SELECT OrderID, CustomerID, EmployeeID, OrderDate, RequiredDate, ShippedDate, ShipVia, Freight, "
+                    "ShipName, ShipAddress, ShipCity, ShipRegion, ShipPostalCode, ShipCountry FROM Orders ORDER BY 1"
                 )
             ),
         ),
@@ -189,6 +289,9 @@ def build(db: sqlite3.Connection) -> None:
         ),
     }
 
+    counts["category pictures"] = write_images("category", q("SELECT CategoryID, Picture FROM Categories ORDER BY 1"))
+    counts["employee photos"] = write_images("employee", q("SELECT EmployeeID, Photo FROM Employees ORDER BY 1"))
+
     # The figures recorded for the parquet copy that oim-api serves.
     check("categories", counts["categories"], 8)
     check("suppliers", counts["suppliers"], 29)
@@ -196,6 +299,11 @@ def build(db: sqlite3.Connection) -> None:
     check("customers", counts["customers"], 93)
     check("employees", counts["employees"], 9)
     check("shippers", counts["shippers"], 3)
+    check("regions", counts["regions"], 4)
+    check("territories", counts["territories"], 53)
+    check("employee territories", counts["employee_territories"], 49)
+    check("category pictures", counts["category pictures"], 8)
+    check("employee photos", counts["employee photos"], 9)
     check("orders", counts["orders"], 16_282)
     check("order lines", counts["order_lines"], 609_283)
     check("order ids", q("SELECT MIN(OrderID), MAX(OrderID) FROM Orders").fetchone(), (10248, 26529))

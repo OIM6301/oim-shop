@@ -50,6 +50,8 @@ def open_database(path: Path, seed_dir: Path) -> sqlite3.Connection:
     if not conn.execute("SELECT EXISTS (SELECT 1 FROM orders)").fetchone()[0]:
         loaded = seed.load(conn, seed_dir)
         print(f"Loaded the seed into {path}: {loaded:,} orders.")
+    elif seed.fill_details(conn, seed_dir):
+        print(f"Filled the columns migration 005 added to {path} from the seed.")
     with db.transaction(conn):
         accounts.arrange(conn)
     return conn
