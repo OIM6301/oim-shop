@@ -103,6 +103,9 @@ export function AppSidebar() {
             <Link className="underline underline-offset-2" to="/privacy" onClick={closeOnPhone}>
               Privacy
             </Link>
+            <a className="underline underline-offset-2" href="https://oim7510.github.io/oim-shop/v1/">
+              v1
+            </a>
           </p>
         </div>
       </SidebarFooter>

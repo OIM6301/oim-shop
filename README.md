@@ -4,13 +4,13 @@ Northwind Traders' sales system, built as a ladder of versions. Each version is 
 
 ## Start at your level
 
-| Version | What it adds | Code |
-|---|---|---|
-| v1 | One HTML file that calls a public API | [tree/v1](../../tree/v1) |
-| v2 | Its own server, database and API; a professional web interface; tests, CI, deployment | [tree/v2](../../tree/v2), [what changed since v1](../../compare/v1...v2) |
-| v3 | Sign-in, and orders you enter, edit, ship and cancel | [tree/v3](../../tree/v3), [what changed since v2](../../compare/v2...v3) |
+| Version | What it adds | Try it | Code |
+|---|---|---|---|
+| v1 | One HTML file that calls a public API | [oim7510.github.io/oim-shop/v1](https://oim7510.github.io/oim-shop/v1/) | [tree/v1](../../tree/v1) |
+| v2 | Its own server, database and API; a professional web interface; tests, CI, deployment | [oim-shop.zhili.dev](https://oim-shop.zhili.dev), without signing in | [tree/v2](../../tree/v2), [what changed since v1](../../compare/v1...v2) |
+| v3 | Sign-in, and orders you enter, edit, ship and cancel | [oim-shop.zhili.dev](https://oim-shop.zhili.dev), signed in | [tree/v3](../../tree/v3), [what changed since v2](../../compare/v2...v3) |
 
-The live site is at <https://oim-shop.zhili.dev>.
+The live site runs the latest version. Signed out, it shows what v2 built; to run v2 itself, check out its tag (`git checkout v2`) and follow [Run it](#run-it) below.
 
 ## v1: product lookup
 

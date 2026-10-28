@@ -200,3 +200,11 @@ test('no results are announced too', async ({ page }) => {
   await page.getByRole('searchbox', { name: 'Search products by name' }).fill('zzz')
   await expect(page.getByRole('status').filter({ hasText: 'No products' })).toBeAttached()
 })
+
+test('the sidebar links to v1', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'v1', exact: true })).toHaveAttribute(
+    'href',
+    'https://oim7510.github.io/oim-shop/v1/',
+  )
+})
