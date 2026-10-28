@@ -120,8 +120,28 @@ function OrderPage() {
                   },
                   { label: 'Required by', value: data && formatDate(data.required_date) },
                   { label: 'Shipped', value: data && (data.shipped_date ? formatDate(data.shipped_date) : 'Not yet') },
-                  { label: 'Shipper', value: data && (data.shipper ?? '—') },
-                  { label: 'Ship to', value: data && [data.ship_city, data.ship_country].filter(Boolean).join(', ') },
+                  {
+                    label: 'Shipper',
+                    value: data && (data.shipper ? [data.shipper, data.shipper_phone].filter(Boolean).join(' · ') : '—'),
+                  },
+                  {
+                    label: 'Ship to',
+                    value:
+                      data &&
+                      [
+                        data.ship_name,
+                        data.ship_address,
+                        [data.ship_postal_code, data.ship_city].filter(Boolean).join(' '),
+                        data.ship_region,
+                        data.ship_country,
+                      ]
+                        .filter(Boolean)
+                        .map((line) => (
+                          <span key={line} className="block">
+                            {line}
+                          </span>
+                        )),
+                  },
                 ]}
               />
             </CardContent>

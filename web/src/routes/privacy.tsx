@@ -44,7 +44,10 @@ function Privacy() {
             Orders you enter are visible to everyone, under your employee number. Every night, orders entered on the site
             are deleted and stock goes back to what it was. Your account and your name are kept.
           </p>
-          <p>The companies, products and Northwind’s own orders and employees are fictional.</p>
+          <p>
+            The companies, products and Northwind’s own orders and employees are fictional. Even so, the employees’
+            personal details, such as birth dates and home addresses, are shown only to people signed in.
+          </p>
         </CardContent>
       </Card>
     </div>

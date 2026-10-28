@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/page-header'
 import { StatCard } from '@/components/stat-card'
 import { NotFound, QueryError } from '@/components/states'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatMoney, formatMonth, formatNumber } from '@/lib/format'
 import { compact, isOneOf, order, page, positiveInt, sortOf } from '@/lib/search'
@@ -36,6 +36,50 @@ function ReportsTo({ reportsTo, manager, failed }: { reportsTo: number | null; m
     )
   }
   return failed ? <span className="text-muted-foreground">Employee {reportsTo} (name not loaded)</span> : <Skeleton className="h-5 w-32" />
+}
+
+/** Territories by region: "Wilton, Neward (Eastern)". */
+function territoriesText(territories: Schemas['Territory'][]): string {
+  if (territories.length === 0) return '—'
+  const regions = [...new Set(territories.map((t) => t.region))]
+  return regions
+    .map((region) => `${territories.filter((t) => t.region === region).map((t) => t.name).join(', ')} (${region})`)
+    .join('; ')
+}
+
+/** What only someone signed in sees: the API sends it to them alone. */
+function PersonalDetails({ employeeId, name, personal }: { employeeId: number; name: string; personal: Schemas['EmployeePersonal'] }) {
+  const home = [personal.address, personal.postal_code, personal.region].filter(Boolean)
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Personal details</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-6 sm:flex-row">
+        {personal.has_photo && (
+          <img src={`/api/employees/${employeeId}/photo`} alt={`Photo of ${name}`} className="size-32 shrink-0 rounded-md border object-cover" />
+        )}
+        <Facts
+          items={[
+            { label: 'Born', value: formatDate(personal.birth_date) },
+            {
+              label: 'Home address',
+              value: home.length
+                ? home.map((line) => (
+                    <span key={line} className="block">
+                      {line}
+                    </span>
+                  ))
+                : '—',
+            },
+            { label: 'Home phone', value: personal.home_phone ?? '—' },
+            { label: 'Extension', value: personal.extension ?? '—' },
+            { label: 'Notes', value: personal.notes ?? '—' },
+          ]}
+        />
+      </CardContent>
+    </Card>
+  )
 }
 
 function EmployeePage() {
@@ -92,9 +136,11 @@ function EmployeePage() {
                   loading={isPending}
                   items={[
                     { label: 'Reports to', value: data && <ReportsTo reportsTo={data.reports_to} manager={manager} failed={everyone.isError} /> },
+                    { label: 'Title of courtesy', value: data && (data.title_of_courtesy ?? '—') },
                     { label: 'Hired', value: data && formatDate(data.hire_date) },
                     // A rep who signed in here has no city or country.
                     { label: 'Location', value: data && ([data.city, data.country].filter(Boolean).join(', ') || '—') },
+                    { label: 'Territories', value: data && territoriesText(data.territories) },
                   ]}
                 />
               </CardContent>
@@ -102,6 +148,14 @@ function EmployeePage() {
             <StatCard label="Orders" value={data && formatNumber(data.order_count)} />
             <StatCard label="Revenue" value={data && formatMoney(data.revenue_cents)} />
           </div>
+          {/* A rep who signed in here has none of these, so the card would be empty. */}
+          {data?.personal && Object.values(data.personal).some(Boolean) && (
+            <PersonalDetails
+              employeeId={data.employee_id}
+              name={nameOf(data.employee_id, `${data.first_name} ${data.last_name}`)}
+              personal={data.personal}
+            />
+          )}
           <ChartCard title="Revenue by month" description="Every order this employee has entered" rows={months} isPending={isPending} keyHeader="Month">
             {(rows) => <ColumnChart rows={rows} />}
           </ChartCard>

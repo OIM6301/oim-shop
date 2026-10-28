@@ -3,7 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import { customerQuery } from '@/api/queries'
-import { BackLink } from '@/components/detail'
+import { BackLink, ContactFacts } from '@/components/detail'
 import { isNotFound } from '@/lib/errors'
 import { OrdersTable } from '@/components/orders-table'
 import { ORDER_SORTS } from '@/lib/table'
@@ -11,6 +11,7 @@ import { PageHeader } from '@/components/page-header'
 import { StatCard } from '@/components/stat-card'
 import { NotFound, QueryError } from '@/components/states'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
 import { compact, isOneOf, order, page, sortOf } from '@/lib/search'
@@ -24,7 +25,7 @@ function CustomerPage() {
   const { customerId } = Route.useParams()
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const { data, error, refetch } = useQuery(customerQuery(customerId))
+  const { data, error, isPending, refetch } = useQuery(customerQuery(customerId))
   const back = <BackLink to="/customers">Customers</BackLink>
 
   if (isNotFound(error)) {
@@ -68,6 +69,11 @@ function CustomerPage() {
             <StatCard label="Revenue" value={data && formatMoney(data.revenue_cents)} />
             <StatCard label="Last order" value={data && formatDate(data.last_order_date)} />
           </div>
+          <Card>
+            <CardContent>
+              <ContactFacts contact={data} loading={isPending} />
+            </CardContent>
+          </Card>
           <section aria-labelledby="history">
             <h2 id="history" className="mb-3 text-lg font-semibold">
               Order history

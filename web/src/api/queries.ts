@@ -33,6 +33,17 @@ export const productQuery = (productId: number) =>
     queryFn: () => unwrap(api.GET('/api/products/{product_id}', { params: { path: { product_id: productId } } })),
   })
 
+export const suppliersQuery = queryOptions({
+  queryKey: ['suppliers'],
+  queryFn: () => unwrap(api.GET('/api/suppliers')),
+})
+
+export const supplierQuery = (supplierId: number) =>
+  queryOptions({
+    queryKey: ['supplier', supplierId],
+    queryFn: () => unwrap(api.GET('/api/suppliers/{supplier_id}', { params: { path: { supplier_id: supplierId } } })),
+  })
+
 export const customersQuery = (query: CustomerQuery) =>
   queryOptions({
     queryKey: ['customers', query],

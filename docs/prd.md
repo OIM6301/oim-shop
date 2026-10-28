@@ -32,8 +32,8 @@ The product is the company's internal sales system: the tool a sales rep uses to
 
 | Role | Who | Can |
 |---|---|---|
-| Visitor | Anyone, not signed in | Read every v1 and v2 page |
-| Sales rep | A person on the allowlist, signed in with GitHub (v3) | Everything a visitor can, plus enter orders and manage their own |
+| Visitor | Anyone, not signed in | Read every v1 and v2 page, except Northwind employees' personal details |
+| Sales rep | A person on the allowlist, signed in with GitHub (v3) | Everything a visitor can, plus enter orders and manage their own, and see Northwind employees' personal details and the managers' names |
 | Manager | A person the allowlist marks as a manager (v3) | Everything a rep can, plus change any rep's orders and see every rep's chosen name |
 | Historical employees | The nine employees in the Northwind data | Appear in data and reports; cannot sign in |
 
@@ -68,12 +68,24 @@ Acceptance: every page meets §9; dashboard figures match an independent SQL que
 ### v3: Order entry
 
 - Sign in with GitHub, for the people on the allowlist (section 4).
-- **New order**: choose a customer, add up to 20 product lines, choose a shipper and a required date (today to 60 days ahead); submit writes the order and its lines in one transaction and reduces stock. The price comes from the product; freight is 0, and the order ships to the customer's city and country.
+- **New order**: choose a customer, add up to 20 product lines, choose a shipper and a required date (today to 60 days ahead); submit writes the order and its lines in one transaction and reduces stock. The price comes from the product; freight is 0, and the order ships to the customer's name and address.
 - **My orders**: list; edit an order that has not shipped, or cancel it, which deletes it and returns its stock; mark an order shipped. A manager can do the same to any rep's order, and sees every rep's orders with their chosen names. Seeded orders are Northwind's history and cannot be changed.
 - New orders appear immediately in the v2 dashboard and in the rep's own sales.
 - A privacy page: what is stored, and that order data resets nightly.
 
 Acceptance: every business rule in §6 has a test that fails without it; a failed write leaves no partial order; a rep cannot change another rep's orders through the API.
+
+### After v3: every column, at its level
+
+Added on `main` after the `v3` tag. Every table and column of the Northwind data appears on the site (§7), at one of three levels:
+
+| Who sees it | What |
+|---|---|
+| Everyone | Customers' and suppliers' contacts, addresses, phones and faxes, and suppliers' home pages; a **Suppliers** list and page with each supplier's products; shippers' phones; category pictures; products' units on order; orders' full ship-to; regions, territories and each employee's territories; employees' titles of courtesy |
+| Signed in | Northwind employees' birth dates, home addresses, home phones, extensions, notes and photos; the managers' chosen names |
+| Managers | Every rep's chosen name |
+
+The people are fictional, but a real sales system would keep personal details from the public in the same way, so the API sends them only with a session.
 
 ## 6. Business rules (v3)
 
@@ -90,7 +102,7 @@ Each comes from a field already in the Northwind data.
 - **Source**: Northwind Traders, the expanded build at [jpwhite3/northwind-SQLite3](https://github.com/jpwhite3/northwind-SQLite3) (MIT, copyright JP White) of Microsoft's Northwind sample in [microsoft/sql-server-samples](https://github.com/microsoft/sql-server-samples) (MIT, copyright Microsoft Corporation). The repository ships seed data from it with both copyright notices, so it runs without `oim-api`.
 - **oim-api** (`https://oim.zhili.dev/shop`) serves the same data on a shifted clock: dates are moved forward so that orders keep "arriving" until 2027-06-30, and only orders placed by now are listed. `/shop/products` and `/shop/customers` take `name`, part of the name in any case. `per_page` is capped at 100. v1 reads it; v2 does not.
 - **Loading**: on first start, the database loads every order from the seed, through 2027-06-30, with its dates moved forward by the same number of days as `oim-api`'s clock. After that the seeded data never changes: which orders exist, and which have shipped, is decided at the moment they are read.
-- **Employees**: only name, title, reports-to, hire date, city and country are kept, the same columns `oim-api` serves; birth date, home address, phone, photo and notes are left out, even though the people are fictional.
+- **Every column**: every table and column of the source is kept, except two empty tables, the stored queries, and each photo's address on a network that no longer exists. `oim-api` serves the same columns, except employees' personal details, which it has no sign-in to protect.
 - **Simplifications, stated on the site**: seeded orders do not reduce stock, only orders entered here do; seeded orders carry the shifted clock's dates, entered orders the real date.
 - **Nightly reset**: orders entered here, and stock, return to their seeded state. Accounts are kept.
 

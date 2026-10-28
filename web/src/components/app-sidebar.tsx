@@ -1,5 +1,5 @@
 import { Link, useMatchRoute } from '@tanstack/react-router'
-import { Building2, ClipboardList, LayoutDashboard, Package, Plus, ReceiptText, Users } from 'lucide-react'
+import { Building2, ClipboardList, Factory, LayoutDashboard, Package, Plus, ReceiptText, Users } from 'lucide-react'
 
 import {
   Sidebar,
@@ -21,6 +21,7 @@ const pages = [
   { to: '/orders', label: 'Orders', icon: ReceiptText, exact: false },
   { to: '/customers', label: 'Customers', icon: Building2, exact: false },
   { to: '/products', label: 'Products', icon: Package, exact: false },
+  { to: '/suppliers', label: 'Suppliers', icon: Factory, exact: false },
   { to: '/employees', label: 'Employees', icon: Users, exact: false },
 ] as const
 

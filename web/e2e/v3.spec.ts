@@ -308,3 +308,13 @@ test('a manager’s chosen name is shown to people signed in, and a number to vi
   await expect(visitor.getByRole('link', { name: /^Sales manager \d+$/ }).first()).toBeVisible()
   await expect(visitor.getByText('Ms. Manager')).toHaveCount(0)
 })
+
+test('signed in, an employee’s personal details and photo show', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await page.goto('/employees/1')
+  await expect(page.getByRole('heading', { name: 'Personal details' })).toBeVisible()
+  await expect(page.getByText('(206) 555-9857')).toBeVisible()
+  const photo = page.getByRole('img', { name: 'Photo of Nancy Davolio' })
+  await expect(photo).toBeVisible()
+  expect(await photo.evaluate((img) => (img as unknown as { naturalWidth: number }).naturalWidth)).toBeGreaterThan(0)
+})

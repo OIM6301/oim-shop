@@ -76,11 +76,26 @@ function ProductPage() {
                     </span>
                   ),
                 },
+                { label: 'Units on order', value: data && formatNumber(data.units_on_order) },
                 { label: 'Reorder level', value: data && formatNumber(data.reorder_level) },
-                { label: 'Supplier', value: data?.supplier },
+                {
+                  label: 'Supplier',
+                  value: data && (
+                    <Link to="/suppliers/$supplierId" params={{ supplierId: String(data.supplier_id) }} className="hover:underline">
+                      {data.supplier}
+                    </Link>
+                  ),
+                },
                 { label: 'Category', value: data?.category },
               ]}
             />
+            {data && (
+              <img
+                src={`/api/categories/${data.category_id}/picture`}
+                alt={`Northwind's picture for ${data.category}`}
+                className="mt-6 max-h-48 rounded-md border"
+              />
+            )}
           </CardContent>
         </Card>
       )}

@@ -208,3 +208,44 @@ test('the sidebar links to v1', async ({ page }) => {
     'https://oim7510.github.io/oim-shop/v1/',
   )
 })
+
+test('a supplier, with its contact and its products', async ({ page }) => {
+  await page.goto('/suppliers')
+  await page.getByRole('link', { name: 'Exotic Liquids' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Exotic Liquids')
+  await expect(page.getByText('Charlotte Cooper, Purchasing Manager')).toBeVisible()
+  await expect(page.getByText('(171) 555-2222')).toBeVisible()
+  await page.getByRole('link', { name: 'Chang' }).click()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chang')
+})
+
+test('a product shows units on order, its category picture and a link to its supplier', async ({ page }) => {
+  await page.goto('/products/2')
+  await expect(page.getByText('Units on order')).toBeVisible()
+  const picture = page.getByRole('img', { name: "Northwind's picture for Beverages" })
+  await expect(picture).toBeVisible()
+  // Loaded, not only placed: a broken image has no natural width.
+  expect(await picture.evaluate((img) => (img as unknown as { naturalWidth: number }).naturalWidth)).toBeGreaterThan(0)
+  await page.getByRole('link', { name: 'Exotic Liquids' }).click()
+  await expect(page).toHaveURL(/\/suppliers\/1$/)
+})
+
+test('a customer shows its contact details', async ({ page }) => {
+  await page.goto('/customers/ALFKI')
+  await expect(page.getByText('Maria Anders, Sales Representative')).toBeVisible()
+  await expect(page.getByText('Obere Str. 57')).toBeVisible()
+  await expect(page.getByText('030-0074321')).toBeVisible()
+})
+
+test('an order shows its full ship-to and the shipper’s phone', async ({ page }) => {
+  await page.goto('/orders/10248')
+  await expect(page.getByText('59 rue de l-Abbaye')).toBeVisible()
+  await expect(page.getByText(/· \(503\) 555-\d{4}/)).toBeVisible()
+})
+
+test('an employee shows territories, and a visitor sees no personal details', async ({ page }) => {
+  await page.goto('/employees/1')
+  await expect(page.getByText('Wilton, Neward (Eastern)')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Nancy Davolio')
+  await expect(page.getByRole('heading', { name: 'Personal details' })).toHaveCount(0)
+})

@@ -23,6 +23,8 @@ import { Route as OrdersOrderIdRouteImport } from './routes/orders/$orderId'
 import { Route as OrdersNewRouteImport } from './routes/orders/new'
 import { Route as ProductsIndexRouteImport } from './routes/products/index'
 import { Route as ProductsProductIdRouteImport } from './routes/products/$productId'
+import { Route as SuppliersIndexRouteImport } from './routes/suppliers/index'
+import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers/$supplierId'
 import { Route as OrdersOrderIdEditRouteImport } from './routes/orders/$orderId_.edit'
 
 const IndexRoute = IndexRouteImport.update({
@@ -95,6 +97,16 @@ const ProductsProductIdRoute = ProductsProductIdRouteImport.update({
   path: '/products/$productId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SuppliersIndexRoute = SuppliersIndexRouteImport.update({
+  id: '/suppliers/',
+  path: '/suppliers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuppliersSupplierIdRoute = SuppliersSupplierIdRouteImport.update({
+  id: '/suppliers/$supplierId',
+  path: '/suppliers/$supplierId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OrdersOrderIdEditRoute = OrdersOrderIdEditRouteImport.update({
   id: '/orders/$orderId_/edit',
   path: '/orders/$orderId/edit',
@@ -112,10 +124,12 @@ export interface FileRoutesByFullPath {
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/new': typeof OrdersNewRoute
   '/products/$productId': typeof ProductsProductIdRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/customers/': typeof CustomersIndexRoute
   '/employees/': typeof EmployeesIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/products/': typeof ProductsIndexRoute
+  '/suppliers/': typeof SuppliersIndexRoute
   '/orders/$orderId/edit': typeof OrdersOrderIdEditRoute
 }
 export interface FileRoutesByTo {
@@ -129,10 +143,12 @@ export interface FileRoutesByTo {
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/new': typeof OrdersNewRoute
   '/products/$productId': typeof ProductsProductIdRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/customers': typeof CustomersIndexRoute
   '/employees': typeof EmployeesIndexRoute
   '/orders': typeof OrdersIndexRoute
   '/products': typeof ProductsIndexRoute
+  '/suppliers': typeof SuppliersIndexRoute
   '/orders/$orderId/edit': typeof OrdersOrderIdEditRoute
 }
 export interface FileRoutesById {
@@ -147,10 +163,12 @@ export interface FileRoutesById {
   '/orders/$orderId': typeof OrdersOrderIdRoute
   '/orders/new': typeof OrdersNewRoute
   '/products/$productId': typeof ProductsProductIdRoute
+  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/customers/': typeof CustomersIndexRoute
   '/employees/': typeof EmployeesIndexRoute
   '/orders/': typeof OrdersIndexRoute
   '/products/': typeof ProductsIndexRoute
+  '/suppliers/': typeof SuppliersIndexRoute
   '/orders/$orderId_/edit': typeof OrdersOrderIdEditRoute
 }
 export interface FileRouteTypes {
@@ -166,10 +184,12 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/orders/new'
     | '/products/$productId'
+    | '/suppliers/$supplierId'
     | '/customers/'
     | '/employees/'
     | '/orders/'
     | '/products/'
+    | '/suppliers/'
     | '/orders/$orderId/edit'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -183,10 +203,12 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/orders/new'
     | '/products/$productId'
+    | '/suppliers/$supplierId'
     | '/customers'
     | '/employees'
     | '/orders'
     | '/products'
+    | '/suppliers'
     | '/orders/$orderId/edit'
   id:
     | '__root__'
@@ -200,10 +222,12 @@ export interface FileRouteTypes {
     | '/orders/$orderId'
     | '/orders/new'
     | '/products/$productId'
+    | '/suppliers/$supplierId'
     | '/customers/'
     | '/employees/'
     | '/orders/'
     | '/products/'
+    | '/suppliers/'
     | '/orders/$orderId_/edit'
   fileRoutesById: FileRoutesById
 }
@@ -218,10 +242,12 @@ export interface RootRouteChildren {
   OrdersOrderIdRoute: typeof OrdersOrderIdRoute
   OrdersNewRoute: typeof OrdersNewRoute
   ProductsProductIdRoute: typeof ProductsProductIdRoute
+  SuppliersSupplierIdRoute: typeof SuppliersSupplierIdRoute
   CustomersIndexRoute: typeof CustomersIndexRoute
   EmployeesIndexRoute: typeof EmployeesIndexRoute
   OrdersIndexRoute: typeof OrdersIndexRoute
   ProductsIndexRoute: typeof ProductsIndexRoute
+  SuppliersIndexRoute: typeof SuppliersIndexRoute
   OrdersOrderIdEditRoute: typeof OrdersOrderIdEditRoute
 }
 
@@ -325,6 +351,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProductsProductIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/suppliers/': {
+      id: '/suppliers/'
+      path: '/suppliers'
+      fullPath: '/suppliers/'
+      preLoaderRoute: typeof SuppliersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/suppliers/$supplierId': {
+      id: '/suppliers/$supplierId'
+      path: '/suppliers/$supplierId'
+      fullPath: '/suppliers/$supplierId'
+      preLoaderRoute: typeof SuppliersSupplierIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/orders/$orderId_/edit': {
       id: '/orders/$orderId_/edit'
       path: '/orders/$orderId/edit'
@@ -346,10 +386,12 @@ const rootRouteChildren: RootRouteChildren = {
   OrdersOrderIdRoute: OrdersOrderIdRoute,
   OrdersNewRoute: OrdersNewRoute,
   ProductsProductIdRoute: ProductsProductIdRoute,
+  SuppliersSupplierIdRoute: SuppliersSupplierIdRoute,
   CustomersIndexRoute: CustomersIndexRoute,
   EmployeesIndexRoute: EmployeesIndexRoute,
   OrdersIndexRoute: OrdersIndexRoute,
   ProductsIndexRoute: ProductsIndexRoute,
+  SuppliersIndexRoute: SuppliersIndexRoute,
   OrdersOrderIdEditRoute: OrdersOrderIdEditRoute,
 }
 export const routeTree = rootRouteImport

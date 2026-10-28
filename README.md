@@ -80,11 +80,12 @@ Without the steps below, v3 runs as v2 did and every page is read-only. To sign 
 - **All or nothing.** An order and its lines are written, and stock taken, in one transaction that holds the database's write lock from its first statement, so two reps cannot both take the last unit, and a failure halfway leaves nothing behind.
 - **The rules, as tests.** Each rule in [the requirements](docs/prd.md), section 6, has a test in [api/tests/test_order_entry.py](api/tests/test_order_entry.py) that fails without it. The browser tests in [web/e2e/v3.spec.ts](web/e2e/v3.spec.ts) sign in against a fake GitHub ([fake-github.ts](web/e2e/fake-github.ts)).
 - **A form that explains itself.** When the server refuses an order, each problem it names appears beside its field ([web/src/components/order-form.tsx](web/src/components/order-form.tsx)).
+- **What a visitor sees, and what you see signed in.** Every column of Northwind is on the site, but an employee's birth date, home address, home phone and photo go only to someone signed in: [routes/employees.py](api/src/oim_shop/routes/employees.py) fills `personal` only when the request has a session. Hiding them in the browser would not be enough, because anyone can call the API.
 
 ### Simplifications
 
 - Orders from Northwind's history never took stock; only orders entered here do.
-- Freight is free, and an order ships to its customer's own city and country.
+- Freight is free, and an order ships to its customer's own name and address.
 - Every night, orders entered here are deleted and stock goes back to the seed. Accounts stay.
 
 ## Data
