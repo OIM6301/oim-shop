@@ -52,6 +52,49 @@
         }
       }
     },
+    "/api/categories/{category_id}/picture": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Category Picture",
+        "operationId": "category_picture_api_categories__category_id__picture_get",
+        "parameters": [
+          {
+            "name": "category_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Category Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "404": {
+            "description": "No such category"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/products": {
       "get": {
         "tags": [
@@ -225,6 +268,79 @@
         }
       }
     },
+    "/api/suppliers": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Suppliers",
+        "description": "Every supplier, with how many of the products it supplies. There are 29, so the list is not paged.",
+        "operationId": "suppliers_api_suppliers_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Supplier"
+                  },
+                  "type": "array",
+                  "title": "Response Suppliers Api Suppliers Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppliers/{supplier_id}": {
+      "get": {
+        "tags": [
+          "products"
+        ],
+        "summary": "Supplier",
+        "operationId": "supplier_api_suppliers__supplier_id__get",
+        "parameters": [
+          {
+            "name": "supplier_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Supplier Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SupplierDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such supplier"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/customers": {
       "get": {
         "tags": [
@@ -376,7 +492,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Customer"
+                  "$ref": "#/components/schemas/CustomerDetail"
                 }
               }
             }
@@ -1048,6 +1164,7 @@
           "employees"
         ],
         "summary": "Employee",
+        "description": "An employee, with their territories and monthly sales; signed in, also their personal details.",
         "operationId": "employee_api_employees__employee_id__get",
         "parameters": [
           {
@@ -1075,6 +1192,53 @@
           },
           "404": {
             "description": "No such employee"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/employees/{employee_id}/photo": {
+      "get": {
+        "tags": [
+          "employees"
+        ],
+        "summary": "Employee Photo",
+        "description": "An employee's photo, for someone signed in.",
+        "operationId": "employee_photo_api_employees__employee_id__photo_get",
+        "parameters": [
+          {
+            "name": "employee_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "maximum": 9223372036854775807,
+              "minimum": 1,
+              "title": "Employee Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "404": {
+            "description": "No such employee, or no photo"
           },
           "422": {
             "description": "Validation Error",
@@ -1590,6 +1754,154 @@
         ],
         "title": "Customer"
       },
+      "CustomerDetail": {
+        "properties": {
+          "customer_id": {
+            "type": "string",
+            "title": "Customer Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "order_count": {
+            "type": "integer",
+            "title": "Order Count"
+          },
+          "revenue_cents": {
+            "type": "integer",
+            "title": "Revenue Cents"
+          },
+          "last_order_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Order Date"
+          },
+          "contact_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Title"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "fax": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fax"
+          }
+        },
+        "type": "object",
+        "required": [
+          "customer_id",
+          "company_name",
+          "contact_name",
+          "city",
+          "country",
+          "order_count",
+          "revenue_cents",
+          "last_order_date",
+          "contact_title",
+          "address",
+          "region",
+          "postal_code",
+          "phone",
+          "fax"
+        ],
+        "title": "CustomerDetail"
+      },
       "CustomerPage": {
         "properties": {
           "items": {
@@ -1691,6 +2003,17 @@
             "type": "string",
             "title": "Title"
           },
+          "title_of_courtesy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Of Courtesy"
+          },
           "reports_to": {
             "anyOf": [
               {
@@ -1744,6 +2067,7 @@
           "first_name",
           "last_name",
           "title",
+          "title_of_courtesy",
           "reports_to",
           "hire_date",
           "city",
@@ -1771,6 +2095,17 @@
             "type": "string",
             "title": "Title"
           },
+          "title_of_courtesy": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title Of Courtesy"
+          },
           "reports_to": {
             "anyOf": [
               {
@@ -1817,6 +2152,24 @@
             "type": "integer",
             "title": "Revenue Cents"
           },
+          "territories": {
+            "items": {
+              "$ref": "#/components/schemas/Territory"
+            },
+            "type": "array",
+            "title": "Territories"
+          },
+          "personal": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EmployeePersonal"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null unless you are signed in"
+          },
           "revenue_by_month": {
             "items": {
               "$ref": "#/components/schemas/MonthRevenue"
@@ -1831,15 +2184,119 @@
           "first_name",
           "last_name",
           "title",
+          "title_of_courtesy",
           "reports_to",
           "hire_date",
           "city",
           "country",
           "order_count",
           "revenue_cents",
+          "territories",
+          "personal",
           "revenue_by_month"
         ],
         "title": "EmployeeDetail"
+      },
+      "EmployeePersonal": {
+        "properties": {
+          "birth_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Birth Date"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address",
+            "description": "Home address"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "home_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Home Phone"
+          },
+          "extension": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extension",
+            "description": "Office telephone extension"
+          },
+          "notes": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Notes"
+          },
+          "has_photo": {
+            "type": "boolean",
+            "title": "Has Photo",
+            "description": "Whether /api/employees/{employee_id}/photo has a photo"
+          }
+        },
+        "type": "object",
+        "required": [
+          "birth_date",
+          "address",
+          "region",
+          "postal_code",
+          "home_phone",
+          "extension",
+          "notes",
+          "has_photo"
+        ],
+        "title": "EmployeePersonal",
+        "description": "What only someone signed in sees about an employee. A rep who signed in here has none of it."
       },
       "EmployeeRevenue": {
         "properties": {
@@ -2423,6 +2880,61 @@
             "title": "Source",
             "description": "From Northwind's history, or entered in this app"
           },
+          "ship_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship Name"
+          },
+          "ship_address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship Address"
+          },
+          "ship_region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship Region"
+          },
+          "ship_postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ship Postal Code"
+          },
+          "shipper_phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Shipper Phone"
+          },
           "lines": {
             "items": {
               "$ref": "#/components/schemas/OrderLine"
@@ -2449,6 +2961,11 @@
           "line_count",
           "total_cents",
           "source",
+          "ship_name",
+          "ship_address",
+          "ship_region",
+          "ship_postal_code",
+          "shipper_phone",
           "lines"
         ],
         "title": "OrderDetail"
@@ -2608,6 +3125,10 @@
             "type": "string",
             "title": "Category"
           },
+          "supplier_id": {
+            "type": "integer",
+            "title": "Supplier Id"
+          },
           "supplier": {
             "type": "string",
             "title": "Supplier"
@@ -2623,6 +3144,11 @@
           "units_in_stock": {
             "type": "integer",
             "title": "Units In Stock"
+          },
+          "units_on_order": {
+            "type": "integer",
+            "title": "Units On Order",
+            "description": "Units the shop has ordered from the supplier and not yet received"
           },
           "reorder_level": {
             "type": "integer",
@@ -2644,10 +3170,12 @@
           "name",
           "category_id",
           "category",
+          "supplier_id",
           "supplier",
           "quantity_per_unit",
           "unit_price_cents",
           "units_in_stock",
+          "units_on_order",
           "reorder_level",
           "below_reorder_level",
           "discontinued"
@@ -2711,14 +3239,272 @@
           "company_name": {
             "type": "string",
             "title": "Company Name"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
           }
         },
         "type": "object",
         "required": [
           "shipper_id",
-          "company_name"
+          "company_name",
+          "phone"
         ],
         "title": "Shipper"
+      },
+      "Supplier": {
+        "properties": {
+          "supplier_id": {
+            "type": "integer",
+            "title": "Supplier Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "contact_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Title"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "product_count": {
+            "type": "integer",
+            "title": "Product Count"
+          }
+        },
+        "type": "object",
+        "required": [
+          "supplier_id",
+          "company_name",
+          "contact_name",
+          "contact_title",
+          "city",
+          "country",
+          "product_count"
+        ],
+        "title": "Supplier"
+      },
+      "SupplierDetail": {
+        "properties": {
+          "supplier_id": {
+            "type": "integer",
+            "title": "Supplier Id"
+          },
+          "company_name": {
+            "type": "string",
+            "title": "Company Name"
+          },
+          "contact_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Name"
+          },
+          "contact_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Contact Title"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "country": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country"
+          },
+          "product_count": {
+            "type": "integer",
+            "title": "Product Count"
+          },
+          "address": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Address"
+          },
+          "region": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Region"
+          },
+          "postal_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Postal Code"
+          },
+          "phone": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone"
+          },
+          "fax": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fax"
+          },
+          "home_page": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Home Page",
+            "description": "A web address, or null"
+          },
+          "products": {
+            "items": {
+              "$ref": "#/components/schemas/Product"
+            },
+            "type": "array",
+            "title": "Products"
+          }
+        },
+        "type": "object",
+        "required": [
+          "supplier_id",
+          "company_name",
+          "contact_name",
+          "contact_title",
+          "city",
+          "country",
+          "product_count",
+          "address",
+          "region",
+          "postal_code",
+          "phone",
+          "fax",
+          "home_page",
+          "products"
+        ],
+        "title": "SupplierDetail"
+      },
+      "Territory": {
+        "properties": {
+          "territory_id": {
+            "type": "string",
+            "title": "Territory Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "region": {
+            "type": "string",
+            "title": "Region"
+          }
+        },
+        "type": "object",
+        "required": [
+          "territory_id",
+          "name",
+          "region"
+        ],
+        "title": "Territory"
       },
       "ValidationError": {
         "properties": {

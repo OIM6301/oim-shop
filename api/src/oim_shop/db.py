@@ -41,7 +41,8 @@ def as_of(conn: sqlite3.Connection, now: datetime) -> None:
         CREATE TEMP VIEW visible_orders AS
         SELECT order_id, customer_id, employee_id, order_date, required_date,
                CASE WHEN source = 'entered' OR shipped_date <= '{moment}' THEN shipped_date END AS shipped_date,
-               shipper_id, freight_cents, ship_city, ship_country, total_cents, line_count, source
+               shipper_id, freight_cents, ship_name, ship_address, ship_city, ship_region, ship_postal_code,
+               ship_country, total_cents, line_count, source
         FROM main.orders
         WHERE order_date <= '{moment}' OR source = 'entered'
         """  # noqa: S608 (moment is datetime.isoformat() of the server's clock)

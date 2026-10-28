@@ -1,6 +1,6 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Response
 
 from oim_shop.deps import Conn, Name, PageNumber, PathId, PerPage, QueryId, SortOrder, page_of, rows
 from oim_shop.models import Category, Product, ProductPage
@@ -8,8 +8,8 @@ from oim_shop.models import Category, Product, ProductPage
 router = APIRouter(tags=["products"])
 
 PRODUCT = """
-    SELECT p.product_id, p.name, p.category_id, c.name AS category, s.company_name AS supplier,
-           p.quantity_per_unit, p.unit_price_cents, p.units_in_stock, p.reorder_level,
+    SELECT p.product_id, p.name, p.category_id, c.name AS category, p.supplier_id, s.company_name AS supplier,
+           p.quantity_per_unit, p.unit_price_cents, p.units_in_stock, p.units_on_order, p.reorder_level,
            p.units_in_stock < p.reorder_level AS below_reorder_level, p.discontinued
     FROM products p
     JOIN categories c ON c.category_id = p.category_id
@@ -21,6 +21,18 @@ SORT = {"product_id": "p.product_id", "name": "p.name", "unit_price": "p.unit_pr
 @router.get("/categories")
 def categories(conn: Conn) -> list[Category]:
     return [Category(**r) for r in rows(conn, "SELECT category_id, name, description FROM categories ORDER BY 1")]
+
+
+@router.get(
+    "/categories/{category_id}/picture",
+    response_class=Response,
+    responses={200: {"content": {"image/jpeg": {}}}, 404: {"description": "No such category"}},
+)
+def category_picture(conn: Conn, category_id: PathId) -> Response:
+    found = conn.execute("SELECT picture FROM categories WHERE category_id = ?", (category_id,)).fetchone()
+    if found is None or found[0] is None:
+        raise HTTPException(status_code=404, detail=f"No picture for category {category_id}")
+    return Response(found[0], media_type="image/jpeg")
 
 
 @router.get("/products")

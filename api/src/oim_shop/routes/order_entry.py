@@ -46,7 +46,24 @@ class Refusal:
 
 @router.get("/shippers")
 def shippers(conn: Conn) -> list[Shipper]:
-    return [Shipper(**r) for r in rows(conn, "SELECT shipper_id, company_name FROM shippers ORDER BY shipper_id")]
+    return [
+        Shipper(**r) for r in rows(conn, "SELECT shipper_id, company_name, phone FROM shippers ORDER BY shipper_id")
+    ]
+
+
+def ship_to(conn: sqlite3.Connection, order_id: int, customer: sqlite3.Row) -> None:
+    """An order entered here ships to its customer's own name and address."""
+    conn.execute(
+        """
+        UPDATE orders SET ship_name = ?, ship_address = ?, ship_city = ?, ship_region = ?, ship_postal_code = ?,
+                          ship_country = ?
+        WHERE order_id = ?
+        """,
+        (
+            customer["company_name"], customer["address"], customer["city"], customer["region"],
+            customer["postal_code"], customer["country"], order_id,
+        ),
+    )  # fmt: skip
 
 
 def check(conn: sqlite3.Connection, body: OrderInput, now: datetime) -> tuple[sqlite3.Row, dict[int, sqlite3.Row]]:
@@ -59,7 +76,8 @@ def check(conn: sqlite3.Connection, body: OrderInput, now: datetime) -> tuple[sq
     refusal = Refusal()
     # One id in the data, "Val2 ", has lower case and a trailing space; it matches as on the read pages.
     customer = conn.execute(
-        "SELECT customer_id, city, country FROM customers WHERE upper(trim(customer_id)) = upper(?)",
+        "SELECT customer_id, company_name, address, city, region, postal_code, country FROM customers "
+        "WHERE upper(trim(customer_id)) = upper(?)",
         (body.customer_id.strip(),),
     ).fetchone()
     if customer is None:
@@ -173,15 +191,16 @@ def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> Order
         conn.execute(
             """
             INSERT INTO orders (order_id, customer_id, employee_id, order_date, required_date, shipper_id,
-                                freight_cents, ship_city, ship_country, source)
-            VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, 'entered')
+                                freight_cents, source)
+            VALUES (?, ?, ?, ?, ?, ?, 0, 'entered')
             """,
             (
                 order_id,
                 customer["customer_id"], writer.employee_id, now.isoformat(timespec="seconds"),
-                f"{body.required_date.isoformat()}T00:00:00", body.shipper_id, customer["city"], customer["country"],
+                f"{body.required_date.isoformat()}T00:00:00", body.shipper_id,
             ),
         )  # fmt: skip
+        ship_to(conn, order_id, customer)
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
         # Read back inside the transaction, so a reset that commits next cannot change the answer.
@@ -202,14 +221,12 @@ def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer:
         customer, products = check(conn, body, now)
         conn.execute(
             """
-            UPDATE orders SET customer_id = ?, required_date = ?, shipper_id = ?, ship_city = ?, ship_country = ?
+            UPDATE orders SET customer_id = ?, required_date = ?, shipper_id = ?
             WHERE order_id = ?
             """,
-            (
-                customer["customer_id"], f"{body.required_date.isoformat()}T00:00:00", body.shipper_id,
-                customer["city"], customer["country"], order_id,
-            ),
+            (customer["customer_id"], f"{body.required_date.isoformat()}T00:00:00", body.shipper_id, order_id),
         )  # fmt: skip
+        ship_to(conn, order_id, customer)
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
         return order_detail(conn, order_id)

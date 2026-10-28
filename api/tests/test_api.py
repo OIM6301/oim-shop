@@ -67,10 +67,12 @@ def test_product_detail(client: TestClient) -> None:
         "name": "Chang",
         "category_id": 1,
         "category": "Beverages",
+        "supplier_id": 1,
         "supplier": "Exotic Liquids",
         "quantity_per_unit": "24 - 12 oz bottles",
         "unit_price_cents": 1900,
         "units_in_stock": 17,
+        "units_on_order": 40,
         "reorder_level": 25,
         "below_reorder_level": True,
         "discontinued": False,
@@ -213,8 +215,8 @@ def test_employees(client: TestClient, conn: sqlite3.Connection) -> None:
         == conn.execute("SELECT SUM(total_cents) FROM visible_orders").fetchone()[0]
     )
     assert set(employees[0]) == {
-        "employee_id", "first_name", "last_name", "title", "reports_to", "hire_date", "city", "country",
-        "order_count", "revenue_cents",
+        "employee_id", "first_name", "last_name", "title", "title_of_courtesy", "reports_to", "hire_date", "city",
+        "country", "order_count", "revenue_cents",
     }  # fmt: skip
 
 

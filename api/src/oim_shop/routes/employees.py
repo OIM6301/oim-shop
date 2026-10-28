@@ -1,13 +1,15 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Response
 
+from oim_shop.accounts import Viewer
 from oim_shop.deps import Conn, PathId, rows
-from oim_shop.models import Employee, EmployeeDetail, MonthRevenue
+from oim_shop.models import Employee, EmployeeDetail, EmployeePersonal, MonthRevenue, Territory
 
 router = APIRouter(tags=["employees"])
 
 # Each employee with every order they have entered.
 EMPLOYEE = """
-    SELECT e.employee_id, e.first_name, e.last_name, e.title, e.reports_to, e.hire_date, e.city, e.country,
+    SELECT e.employee_id, e.first_name, e.last_name, e.title, e.title_of_courtesy, e.reports_to, e.hire_date,
+           e.city, e.country,
            COUNT(o.order_id) AS order_count,
            COALESCE(SUM(o.total_cents), 0) AS revenue_cents
     FROM employees e
@@ -36,10 +38,35 @@ def employees(conn: Conn) -> list[Employee]:
 
 
 @router.get("/employees/{employee_id}", responses={404: {"description": "No such employee"}})
-def employee(conn: Conn, employee_id: PathId) -> EmployeeDetail:
+def employee(conn: Conn, employee_id: PathId, viewer: Viewer) -> EmployeeDetail:
+    """An employee, with their territories and monthly sales; signed in, also their personal details."""
     found = rows(conn, f"{EMPLOYEE} WHERE e.employee_id = ? GROUP BY e.employee_id", [employee_id])
     if not found:
         raise HTTPException(status_code=404, detail=f"No employee {employee_id}")
+    territories = rows(
+        conn,
+        """
+        SELECT t.territory_id, t.name, r.name AS region
+        FROM employee_territories et
+        JOIN territories t ON t.territory_id = et.territory_id
+        JOIN regions r ON r.region_id = t.region_id
+        WHERE et.employee_id = ? ORDER BY t.territory_id
+        """,
+        [employee_id],
+    )
+    personal = None
+    if viewer is not None:
+        personal = EmployeePersonal(
+            **rows(
+                conn,
+                """
+                SELECT birth_date, address, region, postal_code, home_phone, extension, notes,
+                       photo IS NOT NULL AS has_photo
+                FROM employees WHERE employee_id = ?
+                """,
+                [employee_id],
+            )[0]
+        )
     months = rows(
         conn,
         """
@@ -48,4 +75,28 @@ def employee(conn: Conn, employee_id: PathId) -> EmployeeDetail:
         """,
         [employee_id],
     )
-    return EmployeeDetail(**found[0], revenue_by_month=[MonthRevenue(**m) for m in months])
+    return EmployeeDetail(
+        **found[0],
+        territories=[Territory(**t) for t in territories],
+        personal=personal,
+        revenue_by_month=[MonthRevenue(**m) for m in months],
+    )
+
+
+@router.get(
+    "/employees/{employee_id}/photo",
+    response_class=Response,
+    responses={
+        200: {"content": {"image/jpeg": {}}},
+        401: {"description": "Not signed in"},
+        404: {"description": "No such employee, or no photo"},
+    },
+)
+def employee_photo(conn: Conn, employee_id: PathId, viewer: Viewer) -> Response:
+    """An employee's photo, for someone signed in."""
+    if viewer is None:
+        raise HTTPException(status_code=401, detail="Sign in to see employees' photos")
+    found = conn.execute("SELECT photo FROM employees WHERE employee_id = ?", (employee_id,)).fetchone()
+    if found is None or found[0] is None:
+        raise HTTPException(status_code=404, detail=f"No photo of employee {employee_id}")
+    return Response(found[0], media_type="image/jpeg")

@@ -372,9 +372,9 @@ def test_an_order_not_yet_placed_is_not_found(manager: TestClient) -> None:
 
 def test_shippers(client: TestClient) -> None:
     assert client.get("/api/shippers").json() == [
-        {"shipper_id": 1, "company_name": "Speedy Express"},
-        {"shipper_id": 2, "company_name": "United Package"},
-        {"shipper_id": 3, "company_name": "Federal Shipping"},
+        {"shipper_id": 1, "company_name": "Speedy Express", "phone": "(503) 555-9831"},
+        {"shipper_id": 2, "company_name": "United Package", "phone": "(503) 555-3199"},
+        {"shipper_id": 3, "company_name": "Federal Shipping", "phone": "(503) 555-9931"},
     ]
 
 

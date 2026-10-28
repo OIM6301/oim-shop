@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/categories/{category_id}/picture": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Category Picture */
+        get: operations["category_picture_api_categories__category_id__picture_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/products": {
         parameters: {
             query?: never;
@@ -64,6 +81,43 @@ export interface paths {
         };
         /** Product */
         get: operations["product_api_products__product_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/suppliers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Suppliers
+         * @description Every supplier, with how many of the products it supplies. There are 29, so the list is not paged.
+         */
+        get: operations["suppliers_api_suppliers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/suppliers/{supplier_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Supplier */
+        get: operations["supplier_api_suppliers__supplier_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -265,8 +319,31 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** Employee */
+        /**
+         * Employee
+         * @description An employee, with their territories and monthly sales; signed in, also their personal details.
+         */
         get: operations["employee_api_employees__employee_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/employees/{employee_id}/photo": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Employee Photo
+         * @description An employee's photo, for someone signed in.
+         */
+        get: operations["employee_photo_api_employees__employee_id__photo_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -476,6 +553,37 @@ export interface components {
             /** Last Order Date */
             last_order_date: string | null;
         };
+        /** CustomerDetail */
+        CustomerDetail: {
+            /** Customer Id */
+            customer_id: string;
+            /** Company Name */
+            company_name: string;
+            /** Contact Name */
+            contact_name: string | null;
+            /** City */
+            city: string | null;
+            /** Country */
+            country: string | null;
+            /** Order Count */
+            order_count: number;
+            /** Revenue Cents */
+            revenue_cents: number;
+            /** Last Order Date */
+            last_order_date: string | null;
+            /** Contact Title */
+            contact_title: string | null;
+            /** Address */
+            address: string | null;
+            /** Region */
+            region: string | null;
+            /** Postal Code */
+            postal_code: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Fax */
+            fax: string | null;
+        };
         /** CustomerPage */
         CustomerPage: {
             /** Items */
@@ -520,6 +628,8 @@ export interface components {
             last_name: string;
             /** Title */
             title: string;
+            /** Title Of Courtesy */
+            title_of_courtesy: string | null;
             /**
              * Reports To
              * @description The employee_id of this employee's manager
@@ -546,6 +656,8 @@ export interface components {
             last_name: string;
             /** Title */
             title: string;
+            /** Title Of Courtesy */
+            title_of_courtesy: string | null;
             /**
              * Reports To
              * @description The employee_id of this employee's manager
@@ -561,8 +673,43 @@ export interface components {
             order_count: number;
             /** Revenue Cents */
             revenue_cents: number;
+            /** Territories */
+            territories: components["schemas"]["Territory"][];
+            /** @description Null unless you are signed in */
+            personal: components["schemas"]["EmployeePersonal"] | null;
             /** Revenue By Month */
             revenue_by_month: components["schemas"]["MonthRevenue"][];
+        };
+        /**
+         * EmployeePersonal
+         * @description What only someone signed in sees about an employee. A rep who signed in here has none of it.
+         */
+        EmployeePersonal: {
+            /** Birth Date */
+            birth_date: string | null;
+            /**
+             * Address
+             * @description Home address
+             */
+            address: string | null;
+            /** Region */
+            region: string | null;
+            /** Postal Code */
+            postal_code: string | null;
+            /** Home Phone */
+            home_phone: string | null;
+            /**
+             * Extension
+             * @description Office telephone extension
+             */
+            extension: string | null;
+            /** Notes */
+            notes: string | null;
+            /**
+             * Has Photo
+             * @description Whether /api/employees/{employee_id}/photo has a photo
+             */
+            has_photo: boolean;
         };
         /** EmployeeRevenue */
         EmployeeRevenue: {
@@ -784,6 +931,16 @@ export interface components {
              * @enum {string}
              */
             source: "seed" | "entered";
+            /** Ship Name */
+            ship_name: string | null;
+            /** Ship Address */
+            ship_address: string | null;
+            /** Ship Region */
+            ship_region: string | null;
+            /** Ship Postal Code */
+            ship_postal_code: string | null;
+            /** Shipper Phone */
+            shipper_phone: string | null;
             /** Lines */
             lines: components["schemas"]["OrderLine"][];
         };
@@ -854,6 +1011,8 @@ export interface components {
             category_id: number;
             /** Category */
             category: string;
+            /** Supplier Id */
+            supplier_id: number;
             /** Supplier */
             supplier: string;
             /** Quantity Per Unit */
@@ -862,6 +1021,11 @@ export interface components {
             unit_price_cents: number;
             /** Units In Stock */
             units_in_stock: number;
+            /**
+             * Units On Order
+             * @description Units the shop has ordered from the supplier and not yet received
+             */
+            units_on_order: number;
             /** Reorder Level */
             reorder_level: number;
             /**
@@ -895,6 +1059,68 @@ export interface components {
             shipper_id: number;
             /** Company Name */
             company_name: string;
+            /** Phone */
+            phone: string | null;
+        };
+        /** Supplier */
+        Supplier: {
+            /** Supplier Id */
+            supplier_id: number;
+            /** Company Name */
+            company_name: string;
+            /** Contact Name */
+            contact_name: string | null;
+            /** Contact Title */
+            contact_title: string | null;
+            /** City */
+            city: string | null;
+            /** Country */
+            country: string | null;
+            /** Product Count */
+            product_count: number;
+        };
+        /** SupplierDetail */
+        SupplierDetail: {
+            /** Supplier Id */
+            supplier_id: number;
+            /** Company Name */
+            company_name: string;
+            /** Contact Name */
+            contact_name: string | null;
+            /** Contact Title */
+            contact_title: string | null;
+            /** City */
+            city: string | null;
+            /** Country */
+            country: string | null;
+            /** Product Count */
+            product_count: number;
+            /** Address */
+            address: string | null;
+            /** Region */
+            region: string | null;
+            /** Postal Code */
+            postal_code: string | null;
+            /** Phone */
+            phone: string | null;
+            /** Fax */
+            fax: string | null;
+            /**
+             * Home Page
+             * @description A web address, or null
+             */
+            home_page: string | null;
+            /** Products */
+            products: components["schemas"]["Product"][];
+        };
+        /** Territory */
+        Territory: {
+            /** Territory Id */
+            territory_id: string;
+            /** Name */
+            name: string;
+            /** Region */
+            region: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -954,6 +1180,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Category"][];
+                };
+            };
+        };
+    };
+    category_picture_api_categories__category_id__picture_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                category_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                };
+            };
+            /** @description No such category */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1034,6 +1298,64 @@ export interface operations {
             };
         };
     };
+    suppliers_api_suppliers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Supplier"][];
+                };
+            };
+        };
+    };
+    supplier_api_suppliers__supplier_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                supplier_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupplierDetail"];
+                };
+            };
+            /** @description No such supplier */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     customers_api_customers_get: {
         parameters: {
             query?: {
@@ -1089,7 +1411,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Customer"];
+                    "application/json": components["schemas"]["CustomerDetail"];
                 };
             };
             /** @description No such customer */
@@ -1583,6 +1905,51 @@ export interface operations {
                 };
             };
             /** @description No such employee */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    employee_photo_api_employees__employee_id__photo_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                employee_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/jpeg": unknown;
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No such employee, or no photo */
             404: {
                 headers: {
                     [name: string]: unknown;

@@ -39,10 +39,12 @@ class Product(BaseModel):
     name: str
     category_id: int
     category: str
+    supplier_id: int
     supplier: str
     quantity_per_unit: str
     unit_price_cents: int
     units_in_stock: int
+    units_on_order: int = Field(description="Units the shop has ordered from the supplier and not yet received")
     reorder_level: int
     below_reorder_level: bool = Field(description="Stock has fallen below the reorder level")
     discontinued: bool
@@ -62,6 +64,35 @@ class Customer(BaseModel):
     order_count: int
     revenue_cents: int
     last_order_date: str | None
+
+
+class CustomerDetail(Customer):
+    contact_title: str | None
+    address: str | None
+    region: str | None
+    postal_code: str | None
+    phone: str | None
+    fax: str | None
+
+
+class Supplier(BaseModel):
+    supplier_id: int
+    company_name: str
+    contact_name: str | None
+    contact_title: str | None
+    city: str | None
+    country: str | None
+    product_count: int
+
+
+class SupplierDetail(Supplier):
+    address: str | None
+    region: str | None
+    postal_code: str | None
+    phone: str | None
+    fax: str | None
+    home_page: str | None = Field(description="A web address, or null")
+    products: list[Product]
 
 
 class CustomerPage(BaseModel):
@@ -103,6 +134,11 @@ class OrderLine(BaseModel):
 
 
 class OrderDetail(Order):
+    ship_name: str | None
+    ship_address: str | None
+    ship_region: str | None
+    ship_postal_code: str | None
+    shipper_phone: str | None
     lines: list[OrderLine]
 
 
@@ -111,6 +147,7 @@ class Employee(BaseModel):
     first_name: str
     last_name: str
     title: str
+    title_of_courtesy: str | None
     reports_to: int | None = Field(description="The employee_id of this employee's manager")
     hire_date: str
     city: str | None
@@ -125,7 +162,28 @@ class MonthRevenue(BaseModel):
     revenue_cents: int
 
 
+class Territory(BaseModel):
+    territory_id: str
+    name: str
+    region: str
+
+
+class EmployeePersonal(BaseModel):
+    """What only someone signed in sees about an employee. A rep who signed in here has none of it."""
+
+    birth_date: str | None
+    address: str | None = Field(description="Home address")
+    region: str | None
+    postal_code: str | None
+    home_phone: str | None
+    extension: str | None = Field(description="Office telephone extension")
+    notes: str | None
+    has_photo: bool = Field(description="Whether /api/employees/{employee_id}/photo has a photo")
+
+
 class EmployeeDetail(Employee):
+    territories: list[Territory]
+    personal: EmployeePersonal | None = Field(description="Null unless you are signed in")
     revenue_by_month: list[MonthRevenue]
 
 
@@ -189,6 +247,7 @@ class NameChange(BaseModel):
 class Shipper(BaseModel):
     shipper_id: int
     company_name: str
+    phone: str | None
 
 
 class LineInput(BaseModel):

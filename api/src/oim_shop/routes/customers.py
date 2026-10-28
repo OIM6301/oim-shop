@@ -3,13 +3,14 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, HTTPException, Path, Query
 
 from oim_shop.deps import Conn, Name, PageNumber, PerPage, SortOrder, page_of, rows
-from oim_shop.models import Customer, CustomerPage
+from oim_shop.models import Customer, CustomerDetail, CustomerPage
 
 router = APIRouter(tags=["customers"])
 
 # Each customer with the orders it has placed so far.
 CUSTOMER = """
     SELECT c.customer_id, c.company_name, c.contact_name, c.city, c.country,
+           c.contact_title, c.address, c.region, c.postal_code, c.phone, c.fax,
            COUNT(o.order_id) AS order_count,
            COALESCE(SUM(o.total_cents), 0) AS revenue_cents,
            MAX(o.order_date) AS last_order_date
@@ -60,7 +61,7 @@ def customers(
 
 
 @router.get("/customers/{customer_id}", responses={404: {"description": "No such customer"}})
-def customer(conn: Conn, customer_id: Annotated[str, Path(max_length=10)]) -> Customer:
+def customer(conn: Conn, customer_id: Annotated[str, Path(max_length=10)]) -> CustomerDetail:
     # Every id is five characters; ten leaves room for spaces, and a longer one is refused before any SQL.
     # One id in the data, "Val2 ", has lower case and a trailing space; compare both sides trimmed, in upper case.
     found = rows(
@@ -68,7 +69,7 @@ def customer(conn: Conn, customer_id: Annotated[str, Path(max_length=10)]) -> Cu
     )
     if not found:
         raise HTTPException(status_code=404, detail=f"No customer {customer_id}")
-    return Customer(**found[0])
+    return CustomerDetail(**found[0])
 
 
 @router.get("/countries", tags=["orders"])
