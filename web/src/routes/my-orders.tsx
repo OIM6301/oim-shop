@@ -38,7 +38,7 @@ function MyOrders() {
   const manager = account?.role === 'manager'
   const scope = manager && search.scope === 'all' ? 'all' : 'mine'
   const query = { scope, sort: search.sort, order: search.order, page: search.page ?? 1, per_page: 20 } as const
-  const orders = useQuery({ ...myOrdersQuery(query), enabled: Boolean(account) })
+  const orders = useQuery(myOrdersQuery(query, account))
   const canChange = useCanChange()
 
   if (!account)

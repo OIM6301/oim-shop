@@ -1,12 +1,13 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 
-import { api, unwrap } from './client'
+import { api, type Schemas, unwrap } from './client'
 import type { paths } from './schema'
 
 // One queryOptions per API call. The key holds every parameter, so each page,
 // filter and sort is cached on its own.
 
 type Query<P extends keyof paths> = paths[P]['get'] extends { parameters: { query?: infer Q } } ? NonNullable<Q> : never
+type Viewer = Schemas['Account'] | null | undefined
 
 export type ProductQuery = Query<'/api/products'>
 export type CustomerQuery = Query<'/api/customers'>
@@ -82,11 +83,17 @@ export const employeesQuery = queryOptions({
   queryFn: () => unwrap(api.GET('/api/employees')),
 })
 
-export const employeeQuery = (employeeId: number) =>
+export const employeeQuery = (employeeId: number, viewer: Viewer) =>
   queryOptions({
-    queryKey: ['employee', employeeId],
-    queryFn: () =>
-      unwrap(api.GET('/api/employees/{employee_id}', { params: { path: { employee_id: employeeId } } })),
+    queryKey: ['employee', employeeId, viewer?.csrf_token ?? null],
+    gcTime: viewer ? 0 : undefined,
+    queryFn: async ({ signal }) => {
+      const employee = await unwrap(
+        api.GET('/api/employees/{employee_id}', { params: { path: { employee_id: employeeId } }, signal }),
+      )
+      // The cookie can be signed in before /me finishes. Never put personal details in the public cache.
+      return { ...employee, personal: viewer ? employee.personal : null }
+    },
   })
 
 export const dashboardQuery = (query: DashboardQuery) =>
@@ -103,16 +110,19 @@ export const dashboardQuery = (query: DashboardQuery) =>
  */
 export const meQuery = queryOptions({
   queryKey: ['me'],
-  queryFn: () => unwrap(api.GET('/api/me')),
+  queryFn: ({ signal }) => unwrap(api.GET('/api/me', { signal })),
   refetchInterval: 10 * 60_000,
 })
 
 /** For someone signed in: the chosen names they may see (a manager every one, a rep the managers'). */
-export const namesQuery = queryOptions({
-  queryKey: ['me', 'names'],
-  queryFn: () => unwrap(api.GET('/api/me/names')),
-  select: (names) => new Map(names.map((r) => [r.employee_id, r.display_name])),
-})
+export const namesQuery = (viewer: Viewer) =>
+  queryOptions({
+    queryKey: ['me', 'names', viewer?.csrf_token ?? null],
+    queryFn: ({ signal }) => unwrap(api.GET('/api/me/names', { signal })),
+    enabled: Boolean(viewer),
+    gcTime: 0,
+    select: (names) => new Map(names.map((r) => [r.employee_id, r.display_name])),
+  })
 
 export const shippersQuery = queryOptions({
   queryKey: ['shippers'],
@@ -126,9 +136,13 @@ export const allProductsQuery = queryOptions({
   queryFn: () => unwrap(api.GET('/api/products', { params: { query: { per_page: 100 } } })),
 })
 
-export const myOrdersQuery = (query: MyOrdersQuery) =>
+export const myOrdersQuery = (query: MyOrdersQuery, viewer: Viewer) =>
   queryOptions({
-    queryKey: ['my-orders', query],
-    queryFn: () => unwrap(api.GET('/api/me/orders', { params: { query } })),
-    placeholderData: keepPreviousData,
+    queryKey: ['my-orders', viewer?.csrf_token ?? null, query],
+    queryFn: ({ signal }) => unwrap(api.GET('/api/me/orders', { params: { query }, signal })),
+    enabled: Boolean(viewer),
+    gcTime: 0,
+    // Keep a previous page only within the same session.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === viewer?.csrf_token ? previous : undefined,
   })

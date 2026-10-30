@@ -17,7 +17,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDate, formatMoney, formatMonth, formatNumber } from '@/lib/format'
 import { compact, isOneOf, order, page, positiveInt, sortOf } from '@/lib/search'
-import { useNameOf } from '@/lib/me'
+import { useMe, useNameOf } from '@/lib/me'
 
 export const Route = createFileRoute('/employees/$employeeId')({
   validateSearch: z.object({ sort: sortOf(ORDER_SORTS), order, page }),
@@ -86,7 +86,8 @@ function EmployeePage() {
   const employeeId = positiveInt(Route.useParams().employeeId)
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
-  const { data, error, isPending, refetch } = useQuery({ ...employeeQuery(employeeId ?? 0), enabled: employeeId !== null })
+  const account = useMe()?.account
+  const { data, error, isPending, refetch } = useQuery({ ...employeeQuery(employeeId ?? 0, account), enabled: employeeId !== null })
   const everyone = useQuery(employeesQuery)
   const nameOf = useNameOf()
   const back = <BackLink to="/employees">Employees</BackLink>
@@ -149,7 +150,7 @@ function EmployeePage() {
             <StatCard label="Revenue" value={data && formatMoney(data.revenue_cents)} />
           </div>
           {/* A rep who signed in here has none of these, so the card would be empty. */}
-          {data?.personal && Object.values(data.personal).some(Boolean) && (
+          {account && data?.personal && Object.values(data.personal).some(Boolean) && (
             <PersonalDetails
               employeeId={data.employee_id}
               name={nameOf(data.employee_id, `${data.first_name} ${data.last_name}`)}

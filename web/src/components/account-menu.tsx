@@ -122,9 +122,9 @@ export function AccountMenu() {
  * as "Sales rep" or "Sales manager" and a number, which is not the same as no one having chosen a name.
  */
 export function NamesProblem() {
-  const signedIn = Boolean(useMeQuery().data?.account)
-  const names = useQuery({ ...namesQuery, enabled: signedIn })
-  if (!signedIn || !names.isError) return null
+  const account = useMeQuery().data?.account
+  const names = useQuery(namesQuery(account))
+  if (!account || !names.isError) return null
   return (
     <Alert className="mb-4">
       <AlertCircle />

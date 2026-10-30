@@ -35,7 +35,13 @@ export function useChooseName() {
 }
 
 export function useSignOut() {
-  return useWrite((csrf: string) => succeed(api.POST('/api/auth/logout', { headers: headers(csrf) })))
+  const queryClient = useQueryClient()
+  return useWrite(async (csrf: string) => {
+    await succeed(api.POST('/api/auth/logout', { headers: headers(csrf) }))
+    await queryClient.cancelQueries({ queryKey: meQuery.queryKey, exact: true })
+    // A failed refresh must not restore the account after the server has signed it out.
+    queryClient.setQueryData(meQuery.queryKey, (me) => me && { ...me, account: null })
+  })
 }
 
 export function useEnterOrder() {

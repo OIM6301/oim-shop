@@ -318,3 +318,97 @@ test('signed in, an employee’s personal details and photo show', async ({ page
   await expect(photo).toBeVisible()
   expect(await photo.evaluate((img) => (img as unknown as { naturalWidth: number }).naturalWidth)).toBeGreaterThan(0)
 })
+
+test('personal details stay hidden after signing out when the employee refresh fails', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
+  await page.goto('/employees/1')
+  await expect(page.getByText('(206) 555-9857')).toBeVisible()
+  await page.getByRole('link', { name: 'Products', exact: true }).first().click()
+  await page.getByRole('button', { name: 'Ana', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible()
+  await page.route('**/api/employees/1', (route) => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+  await page.getByRole('link', { name: 'Employees', exact: true }).first().click()
+  await page.getByRole('link', { name: 'Nancy Davolio', exact: true }).first().click()
+  await expect(page.getByText('(206) 555-9857')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Personal details' })).toHaveCount(0)
+})
+
+test('signing out hides personal details even when the account refresh fails', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
+  await page.goto('/employees/1')
+  await expect(page.getByText('(206) 555-9857')).toBeVisible()
+  await page.route('**/api/me', (route) => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+  await page.getByRole('button', { name: 'Ana', exact: true }).click()
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible()
+  await page.route('**/api/employees/1', (route) => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+  await page.getByRole('link', { name: 'Employees', exact: true }).first().click()
+  await page.getByRole('link', { name: 'Nancy Davolio', exact: true }).first().click()
+  await expect(page.getByText('(206) 555-9857')).toHaveCount(0)
+})
+
+test('personal details disappear when an open page learns that the session ended', async ({ page }) => {
+  await page.clock.install()
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
+  await page.goto('/employees/1')
+  await expect(page.getByText('(206) 555-9857')).toBeVisible()
+  const me = await page.request.get('/api/me').then((response) => response.json()) as { account: { csrf_token: string } }
+  const logout = await page.request.post('/api/auth/logout', { headers: { 'X-CSRF-Token': me.account.csrf_token } })
+  expect(logout.status()).toBe(204)
+  await page.route('**/api/employees/1', (route) => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+  await page.clock.fastForward(10 * 60_000)
+  await expect(page.getByRole('link', { name: 'Sign in', exact: true })).toBeVisible()
+  await expect(page.getByText('(206) 555-9857')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Personal details' })).toHaveCount(0)
+})
+
+test('a rep cannot reuse a manager’s cached names after another tab changes the session', async ({ page }) => {
+  await page.clock.install()
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Private rep name')
+  const rep = await page.request.get('/api/me').then((response) => response.json()) as { account: { employee_id: number } }
+  await page.context().clearCookies()
+  await signIn(page, 'e2e-manager')
+  await nameAs(page, 'Manager')
+  await page.goto(`/employees/${rep.account.employee_id}`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Private rep name')
+
+  const other = await page.context().newPage()
+  try {
+    await other.request.post(`${GITHUB}/test/next-user`, { data: { login: 'e2e-other' } })
+    await other.goto('/api/auth/login')
+    await nameAs(other, 'Ben')
+    await page.route('**/api/me/names', (route) => route.fulfill({ status: 503, json: { detail: 'Unavailable' } }))
+    await page.bringToFront()
+    await page.clock.fastForward(10 * 60_000)
+    await expect(page.getByRole('button', { name: 'Ben', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Sales rep ${rep.account.employee_id}`)
+    await expect(page.getByText('Private rep name', { exact: true })).toHaveCount(0)
+  } finally {
+    await other.close()
+  }
+})
+
+test('personal details wait until the browser knows who is signed in', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/api/me', async (route) => {
+    await held
+    await route.fallback()
+  })
+  try {
+    await page.goto('/employees/1')
+    await expect(page.getByRole('heading', { level: 1, name: 'Nancy Davolio' })).toBeVisible()
+    await expect(page.getByText('(206) 555-9857')).toHaveCount(0)
+    release()
+    await expect(page.getByText('(206) 555-9857')).toBeVisible()
+  } finally {
+    release()
+  }
+})

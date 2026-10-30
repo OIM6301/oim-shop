@@ -76,6 +76,8 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 ## The web app
 
+**Personal data belongs to its session.** The browser caches employee personal details, chosen names and My orders under the session's CSRF token. Those cached answers are removed when their last observer closes, and a different session cannot reuse them. Signing out clears the account immediately, even if the next account request fails. Until the browser knows who is signed in, employee pages show only public details.
+
 **Types come from the API.** `npm run api:types` turns the API's OpenAPI schema into TypeScript types. CI checks that the committed schema matches the API and that the types match the schema, so a field renamed in the API without regenerating them fails CI; regenerate them, and TypeScript points at every place the web app still uses the old name. Either way the change cannot be deployed until the web app follows it.
 
 **Filters live in the address.** Every page keeps its filters, sort and page in the address bar, so a view can be shared, bookmarked and reached with Back.

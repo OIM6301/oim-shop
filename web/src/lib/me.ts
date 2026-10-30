@@ -18,7 +18,7 @@ export function useMe() {
  */
 export function useNameOf(): (employeeId: number, publicName: string) => string {
   const account = useMe()?.account
-  const names = useQuery({ ...namesQuery, enabled: Boolean(account) }).data
+  const names = useQuery(namesQuery(account)).data
   return (employeeId, publicName) => {
     if (account && account.employee_id === employeeId && account.display_name) return account.display_name
     return (account && names?.get(employeeId)) || publicName
