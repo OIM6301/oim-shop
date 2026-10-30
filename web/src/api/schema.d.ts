@@ -480,6 +480,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/sql": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Sql
+         * @description Run one read-only statement, with the same permissions and clock as the pages.
+         *
+         *     The query is in the body, never in the address, so no log line holds it.
+         */
+        post: operations["run_sql_api_sql_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sql/schema": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sql Schema
+         * @description The tables and views the SQL page may read, with their columns.
+         */
+        get: operations["sql_schema_api_sql_schema_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1061,6 +1103,45 @@ export interface components {
             company_name: string;
             /** Phone */
             phone: string | null;
+        };
+        /** SqlColumn */
+        SqlColumn: {
+            /** Name */
+            name: string;
+            /** Type */
+            type: string;
+        };
+        /** SqlQuery */
+        SqlQuery: {
+            /**
+             * Query
+             * @description One statement, read-only
+             */
+            query: string;
+        };
+        /** SqlResult */
+        SqlResult: {
+            /** Columns */
+            columns: string[];
+            /**
+             * Rows
+             * @description A picture shows as its size, such as 'JPEG, 12,315 bytes'
+             */
+            rows: (number | string | null)[][];
+            /**
+             * Truncated
+             * @description More rows matched than came back
+             */
+            truncated: boolean;
+            /** Elapsed Ms */
+            elapsed_ms: number;
+        };
+        /** SqlTable */
+        SqlTable: {
+            /** Name */
+            name: string;
+            /** Columns */
+            columns: components["schemas"]["SqlColumn"][];
         };
         /** Supplier */
         Supplier: {
@@ -2197,6 +2278,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChosenName"][];
+                };
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    run_sql_api_sql_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SqlQuery"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SqlResult"];
+                };
+            };
+            /** @description The query was refused or failed */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not signed in */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not from the app's own pages */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Too many queries */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    sql_schema_api_sql_schema_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SqlTable"][];
                 };
             };
             /** @description Not signed in */

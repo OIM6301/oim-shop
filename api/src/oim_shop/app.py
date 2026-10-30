@@ -14,9 +14,9 @@ from fastapi import APIRouter, FastAPI
 from oim_shop import clock
 from oim_shop.accounts import SignIn
 from oim_shop.deps import Conn
-from oim_shop.limits import BodyLimit, RateLimit, WriteLimit, cache_headers
+from oim_shop.limits import BodyLimit, PersonLimit, RateLimit, cache_headers
 from oim_shop.models import Health
-from oim_shop.routes import auth, customers, dashboard, employees, order_entry, orders, products, suppliers
+from oim_shop.routes import auth, customers, dashboard, employees, order_entry, orders, products, sql, suppliers
 from oim_shop.routes.dashboard import MinuteCache
 from oim_shop.web import web_router
 
@@ -36,6 +36,11 @@ def create_app(
     sign_ins_at_once: int = 8,
     # Orders entered, changed, cancelled or shipped, per signed-in person.
     writes_per_minute: int = 30,
+    # The SQL page: queries per signed-in person, queries running at once, and each query's time and rows.
+    sql_per_minute: int = 20,
+    sql_at_once: int = 2,
+    sql_seconds: float = 2.0,
+    sql_rows: int = 500,
     monotonic: Callable[[], float] = time.monotonic,
     web_dist: Path | None = None,
     # GitHub and the allowlist; without them, no one can sign in and the app is read-only.
@@ -67,7 +72,12 @@ def create_app(
     app.state.sign_in = sign_in
     app.state.sign_ins_at_once = sign_ins_at_once
     app.state.sign_ins_waiting = 0
-    app.state.write_limit = WriteLimit(writes_per_minute, monotonic)
+    app.state.write_limit = PersonLimit(writes_per_minute, monotonic)
+    app.state.sql_limit = PersonLimit(sql_per_minute, monotonic)
+    # SQL queries run on threads of their own, so a slow one never takes an ordinary route's place.
+    app.state.sql_queries = anyio.CapacityLimiter(sql_at_once)
+    app.state.sql_seconds = sql_seconds
+    app.state.sql_rows = sql_rows
     app.middleware("http")(cache_headers)
     app.state.dashboard_cache = MinuteCache()
     app.state.dashboards_waiting = dashboards_waiting
@@ -88,7 +98,7 @@ def create_app(
         conn.execute("SELECT 1").fetchone()
         return Health(status="ok")
 
-    for module in (products, suppliers, customers, orders, order_entry, employees, dashboard, auth):
+    for module in (products, suppliers, customers, orders, order_entry, employees, dashboard, auth, sql):
         api.include_router(module.router)
     app.include_router(api)
     if web_dist is not None:

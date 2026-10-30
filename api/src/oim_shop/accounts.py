@@ -184,6 +184,17 @@ def current_session(request: Request, conn: Conn, now: Now) -> Session | None:
     return Session(**dict(row)) if row else None
 
 
+def from_the_app(request: Request, session: Session) -> None:
+    """Refuse a request that does not carry the session's CSRF token, or that another site sent."""
+    sign_in: SignIn = request.app.state.sign_in  # current_session finds no session without it
+    sent = request.headers.get("X-CSRF-Token", "").encode()
+    origin = request.headers.get("Origin")
+    if not secrets.compare_digest(sent, session.csrf_token.encode()) or (
+        origin is not None and origin != sign_in.origin
+    ):
+        raise HTTPException(status_code=403, detail="This request did not come from the app's own pages")
+
+
 def signed_in_write(request: Request, session: Annotated[Session | None, Depends(current_session)]) -> Session:
     """A write must come from a signed-in person, on a page of this app.
 
@@ -194,13 +205,7 @@ def signed_in_write(request: Request, session: Annotated[Session | None, Depends
     """
     if session is None:
         raise HTTPException(status_code=401, detail="Sign in first")
-    sign_in: SignIn = request.app.state.sign_in  # current_session finds no session without it
-    sent = request.headers.get("X-CSRF-Token", "").encode()
-    origin = request.headers.get("Origin")
-    if not secrets.compare_digest(sent, session.csrf_token.encode()) or (
-        origin is not None and origin != sign_in.origin
-    ):
-        raise HTTPException(status_code=403, detail="This request did not come from the app's own pages")
+    from_the_app(request, session)
     if not request.app.state.write_limit.allow(session.github_id):
         raise HTTPException(status_code=429, detail="Too many changes; try again in a minute")
     return session

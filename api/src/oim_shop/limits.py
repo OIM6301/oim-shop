@@ -112,11 +112,11 @@ class BodyLimit:
         await self.app(scope, replay, send)
 
 
-class WriteLimit:
-    """At most `per_minute` writes per signed-in person in each one-minute window.
+class PersonLimit:
+    """At most `per_minute` requests of one kind (writes, SQL queries) per signed-in person in each minute.
 
     The rate limit per address cannot tell apart the students who share a campus address;
-    this one counts each person's own writes.
+    this one counts each person's own.
     """
 
     def __init__(self, per_minute: int, monotonic: Callable[[], float] = time.monotonic) -> None:
@@ -124,7 +124,7 @@ class WriteLimit:
         self.monotonic = monotonic
         self.window = 0
         self.counts: dict[int, int] = {}
-        # Writes are checked on the thread pool, several at once.
+        # Requests are checked on the thread pool, several at once.
         self.lock = threading.Lock()
 
     def allow(self, person: int) -> bool:

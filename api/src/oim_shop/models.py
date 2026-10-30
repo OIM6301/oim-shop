@@ -237,6 +237,31 @@ class ChosenName(BaseModel):
     display_name: str
 
 
+class SqlQuery(BaseModel):
+    query: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=5_000)] = Field(
+        description="One statement, read-only"
+    )
+
+
+class SqlResult(BaseModel):
+    columns: list[str]
+    rows: list[list[int | float | str | None]] = Field(
+        description="A picture shows as its size, such as 'JPEG, 12,315 bytes'"
+    )
+    truncated: bool = Field(description="More rows matched than came back")
+    elapsed_ms: int
+
+
+class SqlColumn(BaseModel):
+    name: str
+    type: str
+
+
+class SqlTable(BaseModel):
+    name: str
+    columns: list[SqlColumn]
+
+
 class NameChange(BaseModel):
     display_name: Annotated[
         str,

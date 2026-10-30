@@ -1563,6 +1563,89 @@
           }
         }
       }
+    },
+    "/api/sql": {
+      "post": {
+        "tags": [
+          "sql"
+        ],
+        "summary": "Run Sql",
+        "description": "Run one read-only statement, with the same permissions and clock as the pages.\n\nThe query is in the body, never in the address, so no log line holds it.",
+        "operationId": "run_sql_api_sql_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SqlQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SqlResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The query was refused or failed"
+          },
+          "401": {
+            "description": "Not signed in"
+          },
+          "403": {
+            "description": "Not from the app's own pages"
+          },
+          "429": {
+            "description": "Too many queries"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/sql/schema": {
+      "get": {
+        "tags": [
+          "sql"
+        ],
+        "summary": "Sql Schema",
+        "description": "The tables and views the SQL page may read, with their columns.",
+        "operationId": "sql_schema_api_sql_schema_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SqlTable"
+                  },
+                  "type": "array",
+                  "title": "Response Sql Schema Api Sql Schema Get"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3259,6 +3342,113 @@
           "phone"
         ],
         "title": "Shipper"
+      },
+      "SqlColumn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "type": {
+            "type": "string",
+            "title": "Type"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "type"
+        ],
+        "title": "SqlColumn"
+      },
+      "SqlQuery": {
+        "properties": {
+          "query": {
+            "type": "string",
+            "maxLength": 5000,
+            "minLength": 1,
+            "title": "Query",
+            "description": "One statement, read-only"
+          }
+        },
+        "type": "object",
+        "required": [
+          "query"
+        ],
+        "title": "SqlQuery"
+      },
+      "SqlResult": {
+        "properties": {
+          "columns": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Columns"
+          },
+          "rows": {
+            "items": {
+              "items": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Rows",
+            "description": "A picture shows as its size, such as 'JPEG, 12,315 bytes'"
+          },
+          "truncated": {
+            "type": "boolean",
+            "title": "Truncated",
+            "description": "More rows matched than came back"
+          },
+          "elapsed_ms": {
+            "type": "integer",
+            "title": "Elapsed Ms"
+          }
+        },
+        "type": "object",
+        "required": [
+          "columns",
+          "rows",
+          "truncated",
+          "elapsed_ms"
+        ],
+        "title": "SqlResult"
+      },
+      "SqlTable": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/SqlColumn"
+            },
+            "type": "array",
+            "title": "Columns"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "columns"
+        ],
+        "title": "SqlTable"
       },
       "Supplier": {
         "properties": {
