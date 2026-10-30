@@ -45,6 +45,9 @@ function Privacy() {
             are deleted and stock goes back to what it was. Your account and your name are kept.
           </p>
           <p>
+            On the SQL page, a query runs once and is then forgotten: the server does not keep or log what you ask.
+          </p>
+          <p>
             The companies, products and Northwind’s own orders and employees are fictional. Even so, the employees’
             personal details, such as birth dates and home addresses, are shown only to people signed in.
           </p>

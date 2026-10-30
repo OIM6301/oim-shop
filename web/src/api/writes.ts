@@ -44,6 +44,23 @@ export function useSignOut() {
   })
 }
 
+/**
+ * Run one query on the SQL page. It changes nothing, so nothing is fetched again afterwards, but it
+ * is sent like a write: by POST, so the query never sits in an address or a log, with the CSRF token.
+ * Its answer can hold personal details, so it is not kept once the page is gone.
+ */
+export function useRunSql() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (query: string) => {
+      const me = await queryClient.ensureQueryData(meQuery)
+      if (!me.account) throw new ApiError(401, 'Sign in first.')
+      return unwrap(api.POST('/api/sql', { body: { query }, headers: headers(me.account.csrf_token) }))
+    },
+    gcTime: 0,
+  })
+}
+
 export function useEnterOrder() {
   return useWrite((csrf, body: OrderInput) => unwrap(api.POST('/api/orders', { body, headers: headers(csrf) })))
 }

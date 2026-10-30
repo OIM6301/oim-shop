@@ -124,6 +124,16 @@ export const namesQuery = (viewer: Viewer) =>
     select: (names) => new Map(names.map((r) => [r.employee_id, r.display_name])),
   })
 
+/** For someone signed in: the tables and columns the SQL page may read. */
+export const sqlSchemaQuery = (viewer: Viewer) =>
+  queryOptions({
+    queryKey: ['sql-schema', viewer?.csrf_token ?? null],
+    queryFn: ({ signal }) => unwrap(api.GET('/api/sql/schema', { signal })),
+    enabled: Boolean(viewer),
+    gcTime: 0,
+    staleTime: Infinity,
+  })
+
 export const shippersQuery = queryOptions({
   queryKey: ['shippers'],
   queryFn: () => unwrap(api.GET('/api/shippers')),

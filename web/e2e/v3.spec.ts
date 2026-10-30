@@ -435,3 +435,40 @@ test('order entry keeps the customer and product names readable at narrow widths
     }
   }
 })
+
+test('on the SQL page, a rep finds the rows an order wrote, and finds them gone once it is cancelled', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await enterOrder(page, 'Chai', '5')
+  await expect(page).toHaveURL(/\/orders\/\d+$/)
+  const orderId = new URL(page.url()).pathname.split('/').pop() ?? ''
+
+  await page.goto('/sql')
+  const query = page.getByLabel('Query')
+  const run = async (sql: string) => {
+    await query.fill(sql)
+    await query.press('Control+Enter')
+  }
+  await run(`SELECT order_id, source, quantity FROM orders JOIN order_lines USING (order_id) WHERE order_id = ${orderId}`)
+  await expect(page.getByRole('row', { name: new RegExp(`${orderId}.*entered.*5`) })).toBeVisible()
+  await expect(page.getByText('1 row in')).toBeVisible()
+
+  await page.goto(`/orders/${orderId}`)
+  await page.getByRole('button', { name: 'Cancel order' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel the order' }).click()
+  await expect(page).toHaveURL(/\/my-orders$/)
+
+  await page.goto('/sql')
+  await run(`SELECT order_id FROM orders WHERE order_id = ${orderId}`)
+  await expect(page.getByText('0 rows in')).toBeVisible()
+  await expect(page.getByText('No rows.')).toBeVisible()
+
+  // What no one reads comes back as the database's own refusal.
+  await run('SELECT * FROM sessions')
+  await expect(page.getByRole('alert')).toContainText('prohibited')
+})
+
+test('the SQL page asks a visitor to sign in', async ({ page }) => {
+  await page.goto('/sql')
+  await expect(page.getByRole('link', { name: 'Sign in with GitHub' })).toBeVisible()
+  await expect(page.getByLabel('Query')).toHaveCount(0)
+})

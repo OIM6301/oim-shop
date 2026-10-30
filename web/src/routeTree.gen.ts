@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as MyOrdersRouteImport } from './routes/my-orders'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SqlRouteImport } from './routes/sql'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as CustomersIndexRouteImport } from './routes/customers/index'
 import { Route as CustomersCustomerIdRouteImport } from './routes/customers/$customerId'
@@ -45,6 +46,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const SignInRoute = SignInRouteImport.update({
   id: '/sign-in',
   path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SqlRoute = SqlRouteImport.update({
+  id: '/sql',
+  path: '/sql',
   getParentRoute: () => rootRouteImport,
 } as any)
 const WelcomeRoute = WelcomeRouteImport.update({
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/my-orders': typeof MyOrdersRoute
   '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
+  '/sql': typeof SqlRoute
   '/welcome': typeof WelcomeRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/employees/$employeeId': typeof EmployeesEmployeeIdRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/my-orders': typeof MyOrdersRoute
   '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
+  '/sql': typeof SqlRoute
   '/welcome': typeof WelcomeRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/employees/$employeeId': typeof EmployeesEmployeeIdRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/my-orders': typeof MyOrdersRoute
   '/privacy': typeof PrivacyRoute
   '/sign-in': typeof SignInRoute
+  '/sql': typeof SqlRoute
   '/welcome': typeof WelcomeRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/employees/$employeeId': typeof EmployeesEmployeeIdRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/privacy'
     | '/sign-in'
+    | '/sql'
     | '/welcome'
     | '/customers/$customerId'
     | '/employees/$employeeId'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/privacy'
     | '/sign-in'
+    | '/sql'
     | '/welcome'
     | '/customers/$customerId'
     | '/employees/$employeeId'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/my-orders'
     | '/privacy'
     | '/sign-in'
+    | '/sql'
     | '/welcome'
     | '/customers/$customerId'
     | '/employees/$employeeId'
@@ -236,6 +248,7 @@ export interface RootRouteChildren {
   MyOrdersRoute: typeof MyOrdersRoute
   PrivacyRoute: typeof PrivacyRoute
   SignInRoute: typeof SignInRoute
+  SqlRoute: typeof SqlRoute
   WelcomeRoute: typeof WelcomeRoute
   CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
   EmployeesEmployeeIdRoute: typeof EmployeesEmployeeIdRoute
@@ -279,6 +292,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sql': {
+      id: '/sql'
+      path: '/sql'
+      fullPath: '/sql'
+      preLoaderRoute: typeof SqlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/welcome': {
@@ -380,6 +400,7 @@ const rootRouteChildren: RootRouteChildren = {
   MyOrdersRoute: MyOrdersRoute,
   PrivacyRoute: PrivacyRoute,
   SignInRoute: SignInRoute,
+  SqlRoute: SqlRoute,
   WelcomeRoute: WelcomeRoute,
   CustomersCustomerIdRoute: CustomersCustomerIdRoute,
   EmployeesEmployeeIdRoute: EmployeesEmployeeIdRoute,

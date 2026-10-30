@@ -87,6 +87,18 @@ Added on `main` after the `v3` tag. Every table and column of the Northwind data
 
 The people are fictional, but a real sales system would keep personal details from the public in the same way, so the API sends them only with a session.
 
+### After v3: the SQL page
+
+Added on `main` after the `v3` tag. Someone signed in opens **SQL**, runs one read-only statement against the live database, and finds the rows their own work wrote: an order, its lines, the stock it took, and nothing left once it is cancelled.
+
+- The same three levels as the pages: what a person may read on the site, and nothing more. No one reads `accounts` or `sessions`; the names people chose come through `chosen_names`, which holds what this person may see.
+- The shop's clock: `orders`, `order_lines` and `line_totals` hold only the orders placed by now, so the page never shows an order the site does not.
+- The database itself refuses any change, and the permissions are checked inside the database connection, so no way of writing a query gets around them.
+- Limits: one statement, 2 seconds, 500 rows, a megabyte per value, 20 queries a minute per person.
+- A query is never kept or logged.
+
+Acceptance: each rule above has a test that tries to get around it in several ways; a rep finds an order they entered on the SQL page and finds it gone once cancelled.
+
 ## 6. Business rules (v3)
 
 Each comes from a field already in the Northwind data.
@@ -139,7 +151,7 @@ The v2 and v3 interface must look and behave like a professional product. Checka
 
 - Read-only pages are public. Protection against bots: hard `per_page` caps, rejected unbounded queries, rate limiting in the app, `robots.txt`, container memory and CPU limits. No API response is cached, because orders and stock change at any moment.
 - Sign-in (v3) with a GitHub OAuth App, no scope, for the accounts on the allowlist only. Store the GitHub id and the chosen display name only; never the username or the email. A rep's chosen name is shown only to the rep and to managers; every other page shows "Sales rep" and the employee number. A manager's chosen name is shown to everyone signed in, and "Sales manager" and the employee number to visitors.
-- Session cookie `HttpOnly`, `Secure`, `SameSite=Lax`; CSRF protection on every write; rate limits per user and length caps on writes.
+- Session cookie `HttpOnly`, `Secure`, `SameSite=Lax`; CSRF protection on every write and on every SQL query; rate limits per user and length caps on writes and queries.
 - Secrets live in `.env` locally and in the server's environment file in production; the repo carries `.env.example` only. The production OAuth app belongs to the project; to sign in on your own computer, you create your own.
 - The privacy page says what the site keeps, and matches it: the server's log keeps each request's time, page and result, never the address it came from; visits are counted with Umami, which sets no cookie, only on a server built with its settings.
 - `SECURITY.md` says how to report a problem.
