@@ -63,8 +63,8 @@ function CustomerPage() {
       {error && !data ? (
         <QueryError error={error} onRetry={() => void refetch()} title="Could not load this customer" />
       ) : (
-        <div className="grid gap-6">
-          <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6">
+          <div className="grid gap-4 @min-[42rem]/content:grid-cols-3">
             <StatCard label="Orders" value={data && formatNumber(data.order_count)} />
             <StatCard label="Revenue" value={data && formatMoney(data.revenue_cents)} />
             <StatCard label="Last order" value={data && formatDate(data.last_order_date)} />

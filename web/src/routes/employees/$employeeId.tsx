@@ -129,8 +129,8 @@ function EmployeePage() {
       {error && !data ? (
         <QueryError error={error} onRetry={() => void refetch()} title="Could not load this employee" />
       ) : (
-        <div className="grid gap-6">
-          <div className="grid gap-4 md:grid-cols-[2fr_1fr_1fr]">
+        <div className="grid grid-cols-1 gap-6">
+          <div className="grid gap-4 @min-[52rem]/content:grid-cols-[2fr_1fr_1fr]">
             <Card size="sm">
               <CardContent>
                 <Facts

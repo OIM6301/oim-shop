@@ -16,11 +16,11 @@ export function BackLink({ to, children }: { to: LinkProps['to']; children: Reac
 /** Labels and values; a skeleton stands in for each value while it loads. */
 export function Facts({ items, loading = false }: { items: { label: string; value: ReactNode }[]; loading?: boolean }) {
   return (
-    <dl className="grid gap-x-8 gap-y-3 text-sm sm:grid-cols-[max-content_1fr]">
+    <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-3 text-sm sm:grid-cols-[max-content_minmax(0,1fr)]">
       {items.map(({ label, value }) => (
         <div key={label} className="contents">
           <dt className="text-muted-foreground">{label}</dt>
-          <dd className="tabular-nums">{loading ? <Skeleton className="h-5 w-40" /> : value}</dd>
+          <dd className="min-w-0 wrap-anywhere tabular-nums">{loading ? <Skeleton className="h-5 w-40 max-w-full" /> : value}</dd>
         </div>
       ))}
     </dl>

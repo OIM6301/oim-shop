@@ -170,7 +170,7 @@ export function OrderForm({
             <CardTitle>Order</CardTitle>
           </CardHeader>
           <CardContent>
-            <FieldGroup className="grid gap-4 md:grid-cols-3">
+            <FieldGroup className="grid gap-4 @min-[42rem]/content:grid-cols-3">
               <Controller
                 control={form.control}
                 name="customer_id"
@@ -257,7 +257,7 @@ export function OrderForm({
           <CardHeader>
             <CardTitle>Lines</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4">
+          <CardContent className="@container/order-lines grid gap-4">
             {products.isError && <LookupRetry what="products" onRetry={() => void products.refetch()} />}
             {lines.fields.map((line, i) => {
               const value = watched?.[i]
@@ -271,14 +271,14 @@ export function OrderForm({
                 <fieldset
                   key={line.id}
                   aria-label={`Line ${i + 1}`}
-                  className="grid gap-3 border-b pb-4 last:border-b-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_6rem_6rem_7rem_auto] sm:items-start"
+                  className="grid gap-3 border-b pb-4 last:border-b-0 last:pb-0 @min-[40rem]/order-lines:grid-cols-[minmax(0,1fr)_6rem_6rem_7rem_auto] @min-[40rem]/order-lines:items-start"
                 >
                   <Controller
                     control={form.control}
                     name={`lines.${i}.product_id`}
                     render={({ field, fieldState }) => (
                       <Field data-invalid={fieldState.invalid}>
-                        <FieldLabel htmlFor={`line-${i}-product`} className={i > 0 ? 'sm:sr-only' : ''}>
+                        <FieldLabel htmlFor={`line-${i}-product`} className={i > 0 ? '@min-[40rem]/order-lines:sr-only' : ''}>
                           Product
                         </FieldLabel>
                         <Combobox
@@ -304,7 +304,7 @@ export function OrderForm({
                     )}
                   />
                   <Field data-invalid={Boolean(errors?.quantity)}>
-                    <FieldLabel htmlFor={`line-${i}-quantity`} className={i > 0 ? 'sm:sr-only' : ''}>
+                    <FieldLabel htmlFor={`line-${i}-quantity`} className={i > 0 ? '@min-[40rem]/order-lines:sr-only' : ''}>
                       Quantity
                     </FieldLabel>
                     <Input
@@ -319,7 +319,7 @@ export function OrderForm({
                     <FieldError id={errorId(`line-${i}-quantity`)} errors={[errors?.quantity]} />
                   </Field>
                   <Field data-invalid={Boolean(errors?.discount_pct)}>
-                    <FieldLabel htmlFor={`line-${i}-discount`} className={i > 0 ? 'sm:sr-only' : ''}>
+                    <FieldLabel htmlFor={`line-${i}-discount`} className={i > 0 ? '@min-[40rem]/order-lines:sr-only' : ''}>
                       Discount %
                     </FieldLabel>
                     <Input
@@ -335,14 +335,14 @@ export function OrderForm({
                     <FieldError id={errorId(`line-${i}-discount`)} errors={[errors?.discount_pct]} />
                   </Field>
                   <div className="grid gap-2">
-                    <span className={`text-sm font-medium ${i > 0 ? 'sm:sr-only' : ''}`}>Line total</span>
-                    <span className="text-sm tabular-nums sm:pt-2 sm:text-right">{total === null ? '—' : formatMoney(total)}</span>
+                    <span className={`text-sm font-medium ${i > 0 ? '@min-[40rem]/order-lines:sr-only' : ''}`}>Line total</span>
+                    <span className="text-sm tabular-nums @min-[40rem]/order-lines:pt-2 @min-[40rem]/order-lines:text-right">{total === null ? '—' : formatMoney(total)}</span>
                   </div>
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className={i === 0 ? 'sm:mt-6' : ''}
+                    className={i === 0 ? '@min-[40rem]/order-lines:mt-6' : ''}
                     aria-label={`Remove line ${i + 1}`}
                     disabled={lines.fields.length === 1}
                     onClick={() => lines.remove(i)}

@@ -67,7 +67,7 @@ function Dashboard() {
         <QueryError error={error} onRetry={() => void refetch()} title="Could not load the dashboard" />
       ) : (
         <div className="grid gap-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 @min-[42rem]/content:grid-cols-3">
             <StatCard label="Revenue" value={data && formatMoney(data.revenue_cents)} />
             <StatCard label="Orders" value={data && formatNumber(data.order_count)} />
             <StatCard

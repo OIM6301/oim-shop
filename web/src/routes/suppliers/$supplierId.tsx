@@ -73,7 +73,7 @@ function SupplierPage() {
       {error && !data ? (
         <QueryError error={error} onRetry={() => void refetch()} title="Could not load this supplier" />
       ) : (
-        <div className="grid gap-6">
+        <div className="grid grid-cols-1 gap-6">
           <Card>
             <CardContent>
               <ContactFacts

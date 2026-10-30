@@ -56,7 +56,7 @@ export function DateRangeFilter({
       }}
     >
       <PopoverTrigger asChild>
-        <Button variant="outline" className="justify-start border-input font-normal">
+        <Button variant="outline" className="min-w-0 max-w-full justify-start border-input font-normal">
           <CalendarDays />
           <span className="truncate">{label}</span>
         </Button>

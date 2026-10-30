@@ -412,3 +412,26 @@ test('personal details wait until the browser knows who is signed in', async ({ 
     release()
   }
 })
+
+test('order entry keeps the customer and product names readable at narrow widths', async ({ page }, testInfo) => {
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana')
+  await page.goto('/orders/new')
+  await choose(page, 'Customer', /^Alfreds Futterkiste/)
+  await choose(page, 'Product', /^Grandma's Boysenberry Spread/)
+  for (const colorScheme of ['light', 'dark'] as const) {
+    await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+    for (const width of [320, 640, 768, 1024, 1440]) {
+      await test.step(`${width}px in ${colorScheme} mode`, async () => {
+        await page.setViewportSize({ width, height: 900 })
+        await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+        for (const field of ['Customer', 'Product']) {
+          const button = page.getByRole('combobox', { name: field, exact: true })
+          const text = button.locator('span').first()
+          await expect.poll(() => text.evaluate((element) => element.scrollWidth - element.clientWidth), { message: `${field} shows its complete name` }).toBeLessThanOrEqual(1)
+        }
+        await testInfo.attach(`order-${width}-${colorScheme}`, { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' })
+      })
+    }
+  }
+})

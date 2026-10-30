@@ -53,7 +53,7 @@ function Layout() {
             <ThemeToggle />
           </div>
         </header>
-        <main id="main" tabIndex={-1} className="mx-auto w-full max-w-6xl flex-1 px-4 py-6 outline-none md:px-6">
+        <main id="main" tabIndex={-1} className="@container/content mx-auto min-w-0 w-full max-w-6xl flex-1 px-4 py-6 outline-none md:px-6">
           <NamesProblem />
           <Outlet />
         </main>
