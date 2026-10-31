@@ -74,7 +74,7 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **A body has a size limit.** FastAPI reads and decodes a whole request body before it checks a single field, so a request carrying tens of megabytes would use memory the server does not have. Every request body over 64 KB is refused before the app reads it; the largest order is under 2 KB.
 
-**A limit per person.** The rate limit per address cannot tell apart the students on one campus network, so writes have a second limit: 30 a minute for each signed-in person.
+**A limit per person.** The rate limit per address cannot tell apart the students on one campus network, so writes have a second limit: 30 a minute for each signed-in person. Signing out does not count against it, so someone at a shared computer can always sign out.
 
 ## The web app
 
