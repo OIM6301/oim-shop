@@ -18,6 +18,7 @@ from oim_shop.accounts import (
     SESSION_COOKIE,
     SESSION_LENGTH,
     AllowlistError,
+    OnTheApp,
     Session,
     SignedIn,
     SignIn,
@@ -138,7 +139,7 @@ async def callback(
 
 
 @router.post("/auth/logout", status_code=204, responses={401: {}, 403: {}})
-def logout(request: Request, conn: Conn, _: Writer) -> Response:
+def logout(request: Request, conn: Conn, _: OnTheApp) -> Response:
     end_session(conn, request.cookies[SESSION_COOKIE])
     response = Response(status_code=204)
     response.delete_cookie(SESSION_COOKIE, path="/")

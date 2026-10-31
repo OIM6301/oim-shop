@@ -195,7 +195,7 @@ def from_the_app(request: Request, session: Session) -> None:
         raise HTTPException(status_code=403, detail="This request did not come from the app's own pages")
 
 
-def signed_in_write(request: Request, session: Annotated[Session | None, Depends(current_session)]) -> Session:
+def signed_in_on_the_app(request: Request, session: Annotated[Session | None, Depends(current_session)]) -> Session:
     """A write must come from a signed-in person, on a page of this app.
 
     The session cookie alone is not enough: a browser sends it with a form posted from any
@@ -206,6 +206,11 @@ def signed_in_write(request: Request, session: Annotated[Session | None, Depends
     if session is None:
         raise HTTPException(status_code=401, detail="Sign in first")
     from_the_app(request, session)
+    return session
+
+
+def signed_in_write(session: Annotated[Session, Depends(signed_in_on_the_app)], request: Request) -> Session:
+    """A write that changes the shop, at most `writes_per_minute` a minute for each person."""
     if not request.app.state.write_limit.allow(session.github_id):
         raise HTTPException(status_code=429, detail="Too many changes; try again in a minute")
     return session
@@ -220,3 +225,5 @@ def signed_in(session: Annotated[Session | None, Depends(current_session)]) -> S
 Viewer = Annotated[Session | None, Depends(current_session)]
 SignedIn = Annotated[Session, Depends(signed_in)]
 Writer = Annotated[Session, Depends(signed_in_write)]
+# Signing out is checked like a write but never limited: someone at a shared computer must always be able to leave.
+OnTheApp = Annotated[Session, Depends(signed_in_on_the_app)]

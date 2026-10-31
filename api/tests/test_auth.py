@@ -253,6 +253,20 @@ def test_signing_out_ends_the_session(client: TestClient, github: FakeGitHub, pa
     conn.close()
 
 
+def test_signing_out_works_after_the_limit_on_changes(path: Path, github: FakeGitHub, allowlist: Path) -> None:
+    # Someone at a shared computer must always be able to sign out.
+    app = create_app(path, now=lambda: NOW, sign_in=sign_in_settings(github, allowlist), writes_per_minute=1)
+    with TestClient(app, base_url=PUBLIC_URL, follow_redirects=False) as c:
+        sign_in(c, github, STUDENT)
+        headers = csrf(c)
+        assert [c.put("/api/me", json={"display_name": "Ana"}, headers=headers).status_code for _ in range(2)] == [
+            200,
+            429,
+        ]
+        assert c.post("/api/auth/logout", headers=headers).status_code == 204
+        assert me(c)["account"] is None
+
+
 def test_a_session_ends_after_a_week(path: Path, github: FakeGitHub, allowlist: Path) -> None:
     from datetime import timedelta
 
