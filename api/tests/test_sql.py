@@ -285,6 +285,38 @@ def test_queries_per_minute_are_limited(path: Path, github: FakeGitHub, allowlis
         assert sql(c, "SELECT 1", 429)["detail"] == "Too many queries; try again in a minute"
 
 
+def test_one_query_runs_at_a_time(rep: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    # On a small server, two large sorts at once each got half the time they needed and both stopped.
+    import threading
+
+    from oim_shop import sql as queries
+
+    running = most = 0
+    lock = threading.Lock()
+    run = queries.run
+
+    def counted(*args: Any) -> queries.Result:
+        nonlocal running, most
+        with lock:
+            running += 1
+            most = max(most, running)
+        try:
+            time.sleep(0.1)
+            return run(*args)
+        finally:
+            with lock:
+                running -= 1
+
+    monkeypatch.setattr(queries, "run", counted)
+    answers: list[Any] = []
+    threads = [threading.Thread(target=lambda: answers.append(value(rep, "SELECT 1"))) for _ in range(3)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert (answers, most) == ([1, 1, 1], 1)
+
+
 # --- the schema the page lists ---------------------------------------------------------------------
 
 

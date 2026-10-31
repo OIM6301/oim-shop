@@ -36,8 +36,9 @@ def create_app(
     sign_ins_at_once: int = 8,
     writes_per_minute: int = WRITES_PER_MINUTE,
     # The SQL page: queries per signed-in person, queries running at once, and each query's time and rows.
+    # One at a time: on a small server, two large sorts at once each got half the time they needed.
     sql_per_minute: int = 20,
-    sql_at_once: int = 2,
+    sql_at_once: int = 1,
     sql_seconds: float = 2.0,
     sql_rows: int = 500,
     monotonic: Callable[[], float] = time.monotonic,
