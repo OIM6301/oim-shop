@@ -4,7 +4,7 @@ The live site runs on one small Linux server, shared with other services. GitHub
 
 ## Files
 
-[oim-shop.container](oim-shop.container) is the container, as a Quadlet unit for rootless podman. It publishes the app on `127.0.0.1:8100`, keeps the database on the volume `oim-shop-data`, and caps the container at 200 MB of memory and half a CPU. It is the copy of record: edit it here, then copy it to the server.
+[oim-shop.container](oim-shop.container) is the container, as a Quadlet unit for rootless podman. It publishes the app on `127.0.0.1:8100`, keeps the database on the volume `oim-shop-data`, and caps the container at 200 MB of memory and half a CPU. SQLite's temporary files go to a 64 MB tmpfs inside that memory, so a query on the SQL page that sorts more than that fails instead of filling the server's disk. It is the copy of record: edit it here, then copy it to the server.
 
 ## Signing in (v3)
 

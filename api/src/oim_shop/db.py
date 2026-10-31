@@ -1,5 +1,6 @@
 """Connecting to SQLite and applying the numbered migrations."""
 
+import re
 import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
@@ -23,7 +24,7 @@ def connect(path: Path) -> sqlite3.Connection:
     return conn
 
 
-def as_of(conn: sqlite3.Connection, now: datetime) -> None:
+def as_of(conn: sqlite3.Connection, now: datetime, name: str = "visible_orders") -> None:
     """Create visible_orders: the orders placed by `now`, as oim-api shows them at that moment.
 
     The database holds every seeded order through 2027-06-30. This view hides the ones not
@@ -35,10 +36,13 @@ def as_of(conn: sqlite3.Connection, now: datetime) -> None:
     # `now` comes from the server's clock, never from a request, so it is safe to write into the SQL.
     # As a constant, it also lets SQLite use the index on order_date.
     moment = now.isoformat(timespec="seconds")
-    conn.execute("DROP VIEW IF EXISTS temp.visible_orders")
+    # The SQL page passes a name of its own (sql.py); it is letters, digits and underscores only.
+    if not re.fullmatch(r"[a-z_][a-z0-9_]*", name):
+        raise ValueError(f"not a view name: {name!r}")
+    conn.execute(f"DROP VIEW IF EXISTS temp.{name}")
     conn.execute(
         f"""
-        CREATE TEMP VIEW visible_orders AS
+        CREATE TEMP VIEW {name} AS
         SELECT order_id, customer_id, employee_id, order_date, required_date,
                CASE WHEN source = 'entered' OR shipped_date <= '{moment}' THEN shipped_date END AS shipped_date,
                shipper_id, freight_cents, ship_name, ship_address, ship_city, ship_region, ship_postal_code,

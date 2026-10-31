@@ -1,5 +1,6 @@
 """The SQL page: one read-only query, for someone signed in, with the pages' permissions and the shop's clock."""
 
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -146,6 +147,10 @@ def test_only_orders_placed_by_now_can_be_read(rep: TestClient) -> None:
         "SELECT EXISTS (SELECT 1 FROM main.orders WHERE order_date > '2027-01-01')",
         "SELECT 1 FROM main.order_lines LIMIT 1",
         "WITH visible_orders AS (SELECT * FROM main.orders) SELECT COUNT(*) FROM visible_orders",
+        "WITH visible_orders AS (SELECT order_date FROM main.orders) SELECT MAX(order_date) FROM visible_orders",
+        "WITH order_lines AS (SELECT * FROM main.order_lines) SELECT COUNT(product_id) FROM order_lines",
+        "WITH orders AS (SELECT * FROM main.orders) SELECT MAX(order_date) FROM orders",
+        "SELECT MAX(order_date) FROM MAIN.Orders",
         "SELECT COUNT(*) FROM (SELECT * FROM main.orders) AS order_lines",
         "WITH o AS (SELECT * FROM main.orders) SELECT COUNT(*) FROM o",
         "SELECT (SELECT MAX(order_date) FROM main.orders)",
@@ -169,6 +174,14 @@ def test_no_spelling_reaches_an_order_not_placed_yet(rep: TestClient, query: str
         "SELECT COUNT(*) FROM sessions",
         "SELECT EXISTS (SELECT 1 FROM accounts)",
         "SELECT 1 FROM main.accounts LIMIT 1",
+        "WITH chosen_names AS (SELECT * FROM main.accounts) SELECT github_id FROM chosen_names",
+        "WITH chosen_names AS (SELECT * FROM main.accounts) SELECT display_name, role FROM chosen_names",
+        "SELECT COUNT(*) FROM ACCOUNTS",
+        "SELECT EXISTS (SELECT 1 FROM Sessions)",
+        "SELECT name, sql FROM sqlite_master",
+        "SELECT sql FROM sqlite_schema WHERE name = 'accounts'",
+        "SELECT sql FROM temp.sqlite_master",
+        "SELECT COUNT(*) FROM sqlite_temp_schema",
         "WITH a AS (SELECT * FROM accounts) SELECT * FROM a",
         "SELECT e.first_name FROM employees e JOIN accounts a ON a.employee_id = e.employee_id",
     ],
@@ -222,23 +235,45 @@ def test_one_statement_at_a_time(rep: TestClient) -> None:
     assert "one statement" in refused(rep, "SELECT 1; SELECT 2")
 
 
-def test_a_query_that_runs_too_long_is_stopped(path: Path, github: FakeGitHub, allowlist: Path) -> None:
+@pytest.mark.parametrize(
+    "query",
+    [
+        "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n) SELECT COUNT(*) FROM n",
+        # Most of a large sort's time goes into one step, the merge, which only an interrupt stops.
+        "SELECT zeroblob(20000) AS x FROM order_lines ORDER BY random()",
+    ],
+)
+def test_a_query_that_runs_too_long_is_stopped(path: Path, github: FakeGitHub, allowlist: Path, query: str) -> None:
     app = create_app(path, now=lambda: NOW, sign_in=sign_in_settings(github, allowlist), sql_seconds=0.3)
     with TestClient(app, base_url=PUBLIC_URL, follow_redirects=False) as c:
         sign_in(c, github, STUDENT)
-        endless = "WITH RECURSIVE n(x) AS (SELECT 1 UNION ALL SELECT x + 1 FROM n) SELECT COUNT(*) FROM n"
-        assert refused(c, endless) == "The query ran longer than 0.3 seconds and was stopped."
+        start = time.monotonic()
+        assert refused(c, query) == "The query ran longer than 0.3 seconds and was stopped."
+        assert time.monotonic() - start < 1.5
 
 
 @pytest.mark.parametrize(
     "query",
     [
+        "SELECT zeroblob(100001)",
         "SELECT zeroblob(1000000000)",
-        "SELECT length(printf('%.*c', 900000, 'x') || printf('%.*c', 900000, 'x'))",
+        "SELECT length(printf('%.*c', 90000, 'x') || printf('%.*c', 90000, 'x'))",
     ],
 )
-def test_a_value_larger_than_a_megabyte_is_refused(rep: TestClient, query: str) -> None:
+def test_a_value_larger_than_100_kb_is_refused(rep: TestClient, query: str) -> None:
     assert "too big" in refused(rep, query)
+
+
+def test_a_result_larger_than_5_mb_is_refused(rep: TestClient) -> None:
+    """Each value may be under the limit, and the rows under 500, and the whole still too large to hold."""
+    columns = ", ".join(["x"] * 60)
+    detail = refused(rep, f"SELECT {columns} FROM (SELECT zeroblob(99999) AS x FROM order_lines)")  # noqa: S608
+    assert detail == "The result is larger than 5 MB. Ask for fewer rows or columns."
+
+
+def test_at_most_100_columns(rep: TestClient) -> None:
+    assert "too many columns" in refused(rep, "SELECT " + ", ".join(["1"] * 101))
+    assert len(sql(rep, "SELECT " + ", ".join(["1"] * 100))["columns"]) == 100
 
 
 def test_queries_per_minute_are_limited(path: Path, github: FakeGitHub, allowlist: Path) -> None:

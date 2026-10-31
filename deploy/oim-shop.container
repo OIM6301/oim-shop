@@ -17,6 +17,11 @@ Volume=oim-shop-data:/data
 EnvironmentFile=%h/.config/oim-shop.env
 Environment=OIM_SHOP_PUBLIC_URL=https://oim-shop.zhili.dev OIM_SHOP_ALLOWED_USERS=/run/oim-shop/allowed-users
 Volume=%h/.config/oim-shop/allowed-users:/run/oim-shop/allowed-users:ro
+# SQLite's temporary files (a large sort or grouping) go to a small tmpfs, so a query on the SQL
+# page that sorts too much fails with "database or disk is full" instead of filling the disk. Its
+# pages count against MemoryMax below.
+Tmpfs=/sqlite-tmp:rw,size=64m,mode=1777
+Environment=SQLITE_TMPDIR=/sqlite-tmp
 HealthCmd=python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')"
 HealthInterval=5m
 

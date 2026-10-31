@@ -94,7 +94,7 @@ Added on `main` after the `v3` tag. Someone signed in opens **SQL**, runs one re
 - The same three levels as the pages: what a person may read on the site, and nothing more. No one reads `accounts` or `sessions`; the names people chose come through `chosen_names`, which holds what this person may see.
 - The shop's clock: `orders`, `order_lines` and `line_totals` hold only the orders placed by now, so the page never shows an order the site does not.
 - The database itself refuses any change, and the permissions are checked inside the database connection, so no way of writing a query gets around them.
-- Limits: one statement, 2 seconds, 500 rows, a megabyte per value, 20 queries a minute per person.
+- Limits: one statement, 2 seconds, 500 rows, 100 columns, 100 KB per value, 5 MB per result, 64 MB of temporary space for sorting, 20 queries a minute per person.
 - A query is never kept or logged.
 
 Acceptance: each rule above has a test that tries to get around it in several ways; a rep finds an order they entered on the SQL page and finds it gone once cancelled.
