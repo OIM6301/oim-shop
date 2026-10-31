@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
-import { AlertCircle, Play } from 'lucide-react'
-import { type FormEvent, type KeyboardEvent, useState } from 'react'
+import { AlertCircle, ChevronRight, Play, Plus } from 'lucide-react'
+import { type FormEvent, type KeyboardEvent, useRef, useState } from 'react'
 
 import type { Schemas } from '@/api/client'
 import { sqlSchemaQuery } from '@/api/queries'
@@ -15,12 +15,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { explain } from '@/lib/errors'
 import { formatNumber } from '@/lib/format'
 import { useMeQuery } from '@/lib/me'
+import { elapsed, insertAt } from '@/lib/sql'
 import { type Column, columnHelper } from '@/lib/table'
+import { cn } from '@/lib/utils'
+import { useSqlDraft } from '@/stores/sql-draft'
 
-// The query stays in this page's state, never in the address: the server logs every address it is asked for.
+// The query is kept in this tab (stores/sql-draft.ts), never in the address: the server logs every address it is asked for.
 export const Route = createFileRoute('/sql')({
   component: SqlPage,
 })
@@ -65,43 +69,100 @@ function columnsOf(result: Schemas['SqlResult']): { columns: Column<Row>[]; nume
   return { columns, numeric }
 }
 
-function Schema({ account }: { account: Schemas['Account'] }) {
-  const schema = useQuery(sqlSchemaQuery(account))
+function SchemaTable({ table, onInsert }: { table: Schemas['SqlTable']; onInsert: (name: string) => void }) {
+  const [open, setOpen] = useState(false)
   return (
-    <Card size="sm">
+    <li>
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 flex-1 justify-start gap-1 px-1 font-mono"
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <ChevronRight className={cn('size-3.5 transition-transform', open && 'rotate-90')} aria-hidden />
+          {table.name}
+        </Button>
+        <Button type="button" variant="ghost" size="icon" className="size-7" aria-label={`Insert ${table.name}`} onClick={() => onInsert(table.name)}>
+          <Plus className="size-3.5" />
+        </Button>
+      </div>
+      {open && (
+        <ul className="mb-2 ml-5 border-l pl-2">
+          {table.columns.map((c) => (
+            <li key={c.name}>
+              <button
+                type="button"
+                className="w-full rounded px-1 py-0.5 text-left font-mono text-xs hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                aria-label={`Insert ${c.name}`}
+                onClick={() => onInsert(c.name)}
+              >
+                {c.name} <span className="text-muted-foreground">{c.type.toLowerCase()}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  )
+}
+
+/** The tables this person may read. A name clicked goes into the query; on a phone the list starts closed. */
+function Schema({ account, onInsert, className }: { account: Schemas['Account']; onInsert: (name: string) => void; className?: string }) {
+  const schema = useQuery(sqlSchemaQuery(account))
+  const isMobile = useIsMobile()
+  const [shown, setShown] = useState(false)
+  const open = !isMobile || shown
+  return (
+    <Card size="sm" className={className}>
       <CardHeader>
-        <CardTitle>Tables you can read</CardTitle>
+        <CardTitle>
+          {isMobile ? (
+            <button type="button" className="flex w-full items-center gap-1 text-left" aria-expanded={shown} onClick={() => setShown(!shown)}>
+              <ChevronRight className={cn('size-4 transition-transform', shown && 'rotate-90')} aria-hidden />
+              Tables you can read
+            </button>
+          ) : (
+            'Tables you can read'
+          )}
+        </CardTitle>
       </CardHeader>
-      <CardContent className="text-sm">
-        {schema.data ? (
-          <ul className="space-y-1">
-            {schema.data.map((table) => (
-              <li key={table.name}>
-                <details>
-                  <summary className="cursor-pointer font-mono">{table.name}</summary>
-                  <ul className="mt-1 mb-2 ml-4 font-mono text-xs text-muted-foreground">
-                    {table.columns.map((c) => (
-                      <li key={c.name}>
-                        {c.name} <span className="opacity-70">{c.type.toLowerCase()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </li>
-            ))}
-          </ul>
-        ) : schema.isError ? (
-          <p className="text-muted-foreground">{explain(schema.error)}</p>
-        ) : (
-          <Skeleton className="h-64 w-full" />
-        )}
-      </CardContent>
+      {open && (
+        <CardContent className="text-sm">
+          {schema.data ? (
+            <ul>
+              {schema.data.map((table) => (
+                <SchemaTable key={table.name} table={table} onInsert={onInsert} />
+              ))}
+            </ul>
+          ) : schema.isError ? (
+            <p className="text-muted-foreground">{explain(schema.error)}</p>
+          ) : (
+            <Skeleton className="h-64 w-full" />
+          )}
+        </CardContent>
+      )}
     </Card>
   )
 }
 
 function Workbench({ account }: { account: Schemas['Account'] }) {
-  const [query, setQuery] = useState('')
+  const draft = useSqlDraft()
+  const query = draft.owner === account.employee_id ? draft.query : ''
+  const setQuery = (text: string) => draft.setQuery(account.employee_id, text)
+  const box = useRef<HTMLTextAreaElement>(null)
+  const insert = (name: string) => {
+    const el = box.current
+    const { text, caret } = insertAt(query, el?.selectionStart ?? query.length, el?.selectionEnd ?? query.length, name)
+    setQuery(text)
+    // After React has put the new text in the box.
+    requestAnimationFrame(() => {
+      el?.focus()
+      el?.setSelectionRange(caret, caret)
+    })
+  }
   const run = useRunSql()
   const result = run.data
   const submit = (event?: FormEvent) => {
@@ -114,11 +175,13 @@ function Workbench({ account }: { account: Schemas['Account'] }) {
   const table = result && columnsOf(result)
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_16rem]">
+    // On a phone the tables come between the query and its result; on a wide screen they stand beside both.
+    <div className="grid gap-6 lg:grid-cols-[1fr_16rem] lg:grid-rows-[auto_1fr]">
       <div className="grid min-w-0 content-start gap-4">
         <form onSubmit={submit} className="grid gap-3">
           <Label htmlFor="query">Query</Label>
           <Textarea
+            ref={box}
             id="query"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -146,9 +209,12 @@ function Workbench({ account }: { account: Schemas['Account'] }) {
             ))}
           </div>
         </form>
+      </div>
+      <Schema account={account} onInsert={insert} className="self-start lg:col-start-2 lg:row-span-2 lg:row-start-1" />
+      <div className="grid min-w-0 content-start gap-4">
         <div aria-live="polite" className="text-sm text-muted-foreground">
           {result &&
-            `${formatNumber(result.rows.length)} ${result.rows.length === 1 ? 'row' : 'rows'}${result.truncated ? ', the first 500 of more' : ''} in ${formatNumber(result.elapsed_ms)} ms`}
+            `${formatNumber(result.rows.length)} ${result.rows.length === 1 ? 'row' : 'rows'}${result.truncated ? ', the first 500 of more' : ''} in ${elapsed(result.elapsed_ms)}`}
         </div>
         {run.isError && (
           <Alert variant="destructive">
@@ -170,7 +236,6 @@ function Workbench({ account }: { account: Schemas['Account'] }) {
           />
         )}
       </div>
-      <Schema account={account} />
     </div>
   )
 }

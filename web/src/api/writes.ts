@@ -1,5 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 
+import { useSqlDraft } from '@/stores/sql-draft'
+
 import { ApiError, api, type Schemas, succeed, unwrap } from './client'
 import { meQuery } from './queries'
 
@@ -41,6 +43,7 @@ export function useSignOut() {
     await queryClient.cancelQueries({ queryKey: meQuery.queryKey, exact: true })
     // A failed refresh must not restore the account after the server has signed it out.
     queryClient.setQueryData(meQuery.queryKey, (me) => me && { ...me, account: null })
+    useSqlDraft.getState().clear()
   })
 }
 

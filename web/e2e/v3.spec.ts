@@ -472,3 +472,39 @@ test('the SQL page asks a visitor to sign in', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'Sign in with GitHub' })).toBeVisible()
   await expect(page.getByLabel('Query')).toHaveCount(0)
 })
+
+test('the SQL page keeps the query across pages, takes names from the table list, and forgets it on signing out', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await nameAs(page, 'Ana') // whatever earlier tests named this account, so the account menu can be found
+  await page.goto('/sql')
+  const query = page.getByLabel('Query')
+  await query.fill('SELECT  FROM products')
+  // Put the caret after "SELECT ", open products in the table list, and pick its column name.
+  await query.evaluate((el) => (el as unknown as { setSelectionRange: (a: number, b: number) => void }).setSelectionRange(7, 7))
+  await page.getByRole('button', { name: 'products', exact: true }).click()
+  await page.getByRole('button', { name: 'Insert name' }).click()
+  await expect(query).toHaveValue('SELECT name FROM products')
+  await expect(query).toBeFocused()
+
+  await page.getByRole('link', { name: 'Products' }).first().click()
+  await page.getByRole('link', { name: 'SQL' }).click()
+  await expect(page.getByLabel('Query')).toHaveValue('SELECT name FROM products')
+
+  await page.getByRole('button', { name: 'Ana' }).click()
+  await page.getByRole('menuitem', { name: 'Sign out' }).click()
+  await expect(page.getByText('Signed out')).toBeVisible()
+  await signIn(page, 'e2e-rep')
+  await page.goto('/sql')
+  await expect(page.getByLabel('Query')).toHaveValue('')
+})
+
+test('on a phone, the SQL page starts with the table list closed', async ({ browser }) => {
+  const page = await browser.newPage({ viewport: { width: 390, height: 844 } })
+  await signIn(page, 'e2e-rep')
+  await page.goto('/sql')
+  const toggle = page.getByRole('button', { name: 'Tables you can read' })
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(page.getByRole('button', { name: 'Insert orders' })).toHaveCount(0)
+  await toggle.click()
+  await expect(page.getByRole('button', { name: 'Insert orders' })).toBeVisible()
+})
