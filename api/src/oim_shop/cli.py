@@ -16,6 +16,8 @@ Settings come from the environment:
     OIM_SHOP_GITHUB_URL, OIM_SHOP_GITHUB_API_URL  GitHub's addresses; tests point them at a fake
     OIM_SHOP_NOW    a fixed moment such as 2026-10-22T17:00:00 (Boston time, unless it names a zone), used instead of
                     the clock, so tests and screenshots show the same figures every day
+    OIM_SHOP_WRITES_PER_MINUTE  changes each signed-in person may make in a minute (default: 30); the
+                    end-to-end tests, where one account makes every change, raise it
 """
 
 import argparse
@@ -37,6 +39,7 @@ from oim_shop.accounts import SignIn
 from oim_shop.app import create_app
 from oim_shop.deps import FIRST_DAY, LAST_DAY
 from oim_shop.github import GitHub
+from oim_shop.limits import WRITES_PER_MINUTE
 
 REPO = Path(__file__).resolve().parents[3]
 REPO_SEED = REPO / "data" / "seed"
@@ -71,6 +74,15 @@ def clock_from_env() -> Callable[[], datetime]:
     if not FIRST_DAY <= moment.date() <= LAST_DAY:
         raise SystemExit(f"OIM_SHOP_NOW={fixed!r} must fall between 2010 and 2030, where the shop has dates")
     return lambda: moment
+
+
+def writes_per_minute_from_env() -> int:
+    value = os.environ.get("OIM_SHOP_WRITES_PER_MINUTE")
+    if value is None:
+        return WRITES_PER_MINUTE
+    if not value.isdigit() or int(value) < 1:
+        raise SystemExit(f"OIM_SHOP_WRITES_PER_MINUTE={value!r} must be a whole number of at least 1")
+    return int(value)
 
 
 def sign_in_from_env() -> SignIn | None:
@@ -137,7 +149,13 @@ def main(argv: list[str] | None = None) -> int:
     web = Path(os.environ.get("OIM_SHOP_WEB", REPO_WEB))
     if not (web / "index.html").is_file():
         print(f"No web build at {web}; serving the API only. Build it with: npm --prefix web run build")
-    app = create_app(db_path, now=now, web_dist=web if (web / "index.html").is_file() else None, sign_in=sign_in)
+    app = create_app(
+        db_path,
+        now=now,
+        writes_per_minute=writes_per_minute_from_env(),
+        web_dist=web if (web / "index.html").is_file() else None,
+        sign_in=sign_in,
+    )
     # On stop (podman sends SIGTERM, then kills after ten seconds), requests still running get five
     # seconds; a sign-in waiting on GitHub could otherwise outlast the ten.
     uvicorn.run(

@@ -14,7 +14,7 @@ from fastapi import APIRouter, FastAPI
 from oim_shop import clock
 from oim_shop.accounts import SignIn
 from oim_shop.deps import Conn
-from oim_shop.limits import BodyLimit, PersonLimit, RateLimit, cache_headers
+from oim_shop.limits import WRITES_PER_MINUTE, BodyLimit, PersonLimit, RateLimit, cache_headers
 from oim_shop.models import Health
 from oim_shop.routes import auth, customers, dashboard, employees, order_entry, orders, products, sql, suppliers
 from oim_shop.routes.dashboard import MinuteCache
@@ -34,8 +34,7 @@ def create_app(
     dashboards_waiting: int = 8,
     # Sign-ins waiting on GitHub at once; past this, the next is told to try again.
     sign_ins_at_once: int = 8,
-    # Orders entered, changed, cancelled or shipped, per signed-in person.
-    writes_per_minute: int = 30,
+    writes_per_minute: int = WRITES_PER_MINUTE,
     # The SQL page: queries per signed-in person, queries running at once, and each query's time and rows.
     sql_per_minute: int = 20,
     sql_at_once: int = 2,

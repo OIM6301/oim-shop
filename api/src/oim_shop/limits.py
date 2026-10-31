@@ -112,6 +112,10 @@ class BodyLimit:
         await self.app(scope, replay, send)
 
 
+# Orders entered, changed, cancelled or shipped, and names chosen, per signed-in person.
+WRITES_PER_MINUTE = 30
+
+
 class PersonLimit:
     """At most `per_minute` requests of one kind (writes, SQL queries) per signed-in person in each minute.
 

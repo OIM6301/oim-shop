@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from oim_shop.cli import clock_from_env, main, open_database, sign_in_from_env
+from oim_shop.cli import clock_from_env, main, open_database, sign_in_from_env, writes_per_minute_from_env
 
 from .conftest import NOW, SEED_DIR
 
@@ -52,6 +52,20 @@ def test_a_fixed_clock_must_fall_where_the_shop_has_dates(monkeypatch: pytest.Mo
     monkeypatch.setenv("OIM_SHOP_NOW", moment)
     with pytest.raises(SystemExit, match="between 2010 and 2030"):
         clock_from_env()
+
+
+def test_the_limit_on_changes_comes_from_the_environment(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("OIM_SHOP_WRITES_PER_MINUTE", raising=False)
+    assert writes_per_minute_from_env() == 30
+    monkeypatch.setenv("OIM_SHOP_WRITES_PER_MINUTE", "1000")
+    assert writes_per_minute_from_env() == 1000
+
+
+@pytest.mark.parametrize("value", ["many", "0", "-5", "2.5"])
+def test_the_limit_on_changes_must_be_a_positive_whole_number(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("OIM_SHOP_WRITES_PER_MINUTE", value)
+    with pytest.raises(SystemExit, match="a whole number of at least 1"):
+        writes_per_minute_from_env()
 
 
 SIGN_IN_ENV = {

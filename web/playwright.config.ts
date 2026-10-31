@@ -21,6 +21,8 @@ export default defineConfig({
       env: {
         OIM_SHOP_DB: 'e2e.db',
         OIM_SHOP_NOW: '2026-10-22T17:00:00',
+        // One account makes almost every change in these tests, faster than any person would.
+        OIM_SHOP_WRITES_PER_MINUTE: '1000',
         OIM_SHOP_WEB: 'dist',
         OIM_SHOP_PUBLIC_URL: `http://127.0.0.1:${PORT}`,
         OIM_SHOP_GITHUB_CLIENT_ID: 'e2e',
