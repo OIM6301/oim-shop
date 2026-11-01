@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatDate, formatMoney, formatMoneyShort, formatMonth, formatNumber, formatPercent } from './format'
+import { formatDate, formatMoment, formatMoney, formatMoneyShort, formatMonth, formatNumber, formatPercent } from './format'
 
 describe('formatMoney', () => {
   it('shows cents as dollars with separators', () => {
@@ -46,5 +46,12 @@ describe('formatMonth', () => {
   it('names a YYYY-MM month', () => {
     expect(formatMonth('2026-01')).toBe('Jan 2026')
     expect(formatMonth('2025-12', 'short')).toBe('Dec')
+  })
+})
+
+describe('formatMoment', () => {
+  it('reads the time as the shop clock gives it, to the second', () => {
+    expect(formatMoment('2026-10-22T17:00:42')).toBe('Oct 22, 2026, 5:00:42 PM')
+    expect(formatMoment('2026-01-05T09:03:00')).toBe('Jan 5, 2026, 9:03:00 AM')
   })
 })

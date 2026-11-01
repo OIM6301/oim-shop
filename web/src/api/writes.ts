@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSqlDraft } from '@/stores/sql-draft'
 
 import { ApiError, api, type Schemas, succeed, unwrap } from './client'
-import { meQuery } from './queries'
+import { type LastChange, lastChangeQuery, meQuery } from './queries'
 
 // Every write sends the CSRF token that /api/me gave this browser, as the X-CSRF-Token
 // header. The session cookie alone would not do: a browser sends it with a form posted
@@ -44,6 +44,7 @@ export function useSignOut() {
     // A failed refresh must not restore the account after the server has signed it out.
     queryClient.setQueryData(meQuery.queryKey, (me) => me && { ...me, account: null })
     useSqlDraft.getState().clear()
+    queryClient.removeQueries({ queryKey: lastChangeQuery.queryKey })
   })
 }
 
@@ -64,24 +65,50 @@ export function useRunSql() {
   })
 }
 
+/** Keep a write's transaction for the page that shows its order, or My orders after a cancel. */
+function useKeepChange() {
+  const queryClient = useQueryClient()
+  return (change: LastChange) => queryClient.setQueryData(lastChangeQuery.queryKey, change)
+}
+
 export function useEnterOrder() {
-  return useWrite((csrf, body: OrderInput) => unwrap(api.POST('/api/orders', { body, headers: headers(csrf) })))
+  const keep = useKeepChange()
+  return useWrite(async (csrf, body: OrderInput) => {
+    const change = await unwrap(api.POST('/api/orders', { body, headers: headers(csrf) }))
+    keep({ kind: 'entered', orderId: change.order.order_id, at: change.at, transaction: change.transaction })
+    return change
+  })
 }
 
 export function useEditOrder() {
-  return useWrite((csrf, { orderId, body }: { orderId: number; body: OrderInput }) =>
-    unwrap(api.PUT('/api/orders/{order_id}', { params: { path: { order_id: orderId } }, body, headers: headers(csrf) })),
-  )
+  const keep = useKeepChange()
+  return useWrite(async (csrf, { orderId, body }: { orderId: number; body: OrderInput }) => {
+    const change = await unwrap(
+      api.PUT('/api/orders/{order_id}', { params: { path: { order_id: orderId } }, body, headers: headers(csrf) }),
+    )
+    keep({ kind: 'edited', orderId, at: change.at, transaction: change.transaction })
+    return change
+  })
 }
 
 export function useCancelOrder() {
-  return useWrite((csrf, orderId: number) =>
-    unwrap(api.DELETE('/api/orders/{order_id}', { params: { path: { order_id: orderId } }, headers: headers(csrf) })),
-  )
+  const keep = useKeepChange()
+  return useWrite(async (csrf, orderId: number) => {
+    const change = await unwrap(
+      api.DELETE('/api/orders/{order_id}', { params: { path: { order_id: orderId } }, headers: headers(csrf) }),
+    )
+    keep({ kind: 'cancelled', orderId, at: change.at, transaction: change.transaction })
+    return change
+  })
 }
 
 export function useShipOrder() {
-  return useWrite((csrf, orderId: number) =>
-    unwrap(api.POST('/api/orders/{order_id}/ship', { params: { path: { order_id: orderId } }, headers: headers(csrf) })),
-  )
+  const keep = useKeepChange()
+  return useWrite(async (csrf, orderId: number) => {
+    const change = await unwrap(
+      api.POST('/api/orders/{order_id}/ship', { params: { path: { order_id: orderId } }, headers: headers(csrf) }),
+    )
+    keep({ kind: 'shipped', orderId, at: change.at, transaction: change.transaction })
+    return change
+  })
 }

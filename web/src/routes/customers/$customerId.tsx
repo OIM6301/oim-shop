@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
-import { customerQuery } from '@/api/queries'
+import { customerQuery, ordersQuery } from '@/api/queries'
 import { BackLink, ContactFacts } from '@/components/detail'
 import { isNotFound } from '@/lib/errors'
 import { OrdersTable } from '@/components/orders-table'
@@ -13,8 +13,11 @@ import { NotFound, QueryError } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SqlPanel } from '@/components/sql-panel'
+import { labeled } from '@/lib/statements'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
 import { compact, isOneOf, order, page, sortOf } from '@/lib/search'
+import { useNamesStatement } from '@/lib/me'
 
 export const Route = createFileRoute('/customers/$customerId')({
   validateSearch: z.object({ sort: sortOf(ORDER_SORTS), order, page }),
@@ -26,6 +29,16 @@ function CustomerPage() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const { data, error, isPending, refetch } = useQuery(customerQuery(customerId))
+  const history = {
+    customer_id: customerId,
+    sort: search.sort ?? 'order_date',
+    order: search.order ?? 'desc',
+    page: search.page ?? 1,
+    per_page: 10,
+  }
+  // The table's own query, which react-query answers once, for the SQL panel.
+  const orders = useQuery(ordersQuery(history))
+  const namesStatement = useNamesStatement()
   const back = <BackLink to="/customers">Customers</BackLink>
 
   if (isNotFound(error)) {
@@ -79,13 +92,7 @@ function CustomerPage() {
               Order history
             </h2>
             <OrdersTable
-              query={{
-                customer_id: customerId,
-                sort: search.sort ?? 'order_date',
-                order: search.order ?? 'desc',
-                page: search.page ?? 1,
-                per_page: 10,
-              }}
+              query={history}
               without={['customer']}
               empty="This customer has not placed an order yet."
               onSort={({ id, desc }) => {
@@ -97,6 +104,14 @@ function CustomerPage() {
           </section>
         </div>
       )}
+      <SqlPanel
+        className="mt-6"
+        statements={[
+          ...labeled(data?.sql, ['The customer']),
+          ...labeled(orders.data?.sql, ['How many orders', 'This page of orders']),
+          namesStatement,
+        ]}
+      />
     </>
   )
 }

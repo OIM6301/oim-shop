@@ -6,6 +6,8 @@ import { suppliersQuery } from '@/api/queries'
 import { DataTable } from '@/components/data-table'
 import { PageHeader } from '@/components/page-header'
 import { QueryError } from '@/components/states'
+import { SqlPanel } from '@/components/sql-panel'
+import { labeled } from '@/lib/statements'
 import { formatNumber } from '@/lib/format'
 import { type Column, columnHelper } from '@/lib/table'
 
@@ -57,6 +59,7 @@ function Suppliers() {
           empty="No suppliers."
         />
       )}
+      <SqlPanel className="mt-6" statements={labeled(suppliers.data?.sql, ['Every supplier'])} />
     </>
   )
 }

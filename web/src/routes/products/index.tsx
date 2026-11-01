@@ -10,6 +10,8 @@ import { type Column, columnHelper } from '@/lib/table'
 import { PageHeader } from '@/components/page-header'
 import { Pager } from '@/components/pager'
 import { SearchInput } from '@/components/search-input'
+import { SqlPanel } from '@/components/sql-panel'
+import { pageStatements } from '@/lib/statements'
 import { LookupRetry } from '@/components/states'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -123,6 +125,7 @@ function Products() {
         noun="products"
         onPage={(p) => void navigate({ search: (prev) => compact({ ...prev, page: p === 1 ? undefined : p }) })}
       />
+      <SqlPanel className="mt-6" statements={pageStatements(products.data?.sql)} />
     </>
   )
 }

@@ -11,6 +11,8 @@ import { PageHeader } from '@/components/page-header'
 import { Pager } from '@/components/pager'
 import { NeedsAccount } from '@/components/sign-in-first'
 import { Button } from '@/components/ui/button'
+import { LastChangePanel, SqlPanel } from '@/components/sql-panel'
+import { pageStatements } from '@/lib/statements'
 import { formatDate, formatMoney } from '@/lib/format'
 import { useCanChange, useMeQuery } from '@/lib/me'
 import { compact, isOneOf, order, page, sortOf } from '@/lib/search'
@@ -167,6 +169,8 @@ function MyOrders() {
         noun="orders"
         onPage={(p) => void navigate({ search: (prev) => compact({ ...prev, page: p > 1 ? p : undefined }) })}
       />
+      <LastChangePanel className="mt-6" />
+      <SqlPanel className="mt-6" statements={pageStatements(orders.data?.sql)} />
     </>
   )
 }

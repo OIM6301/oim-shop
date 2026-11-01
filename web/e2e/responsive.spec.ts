@@ -30,3 +30,17 @@ for (const colorScheme of ['light', 'dark'] as const) {
     })
   }
 }
+
+test('public pages fit at 320px with their SQL panels open', async ({ page }) => {
+  test.setTimeout(90_000)
+  await page.setViewportSize({ width: 320, height: 900 })
+  await page.goto('/')
+  await page.evaluate(() => localStorage.setItem('oim-shop-sql-panel', JSON.stringify({ state: { open: true }, version: 0 })))
+  for (const path of ['/', '/products', '/customers', '/orders', '/suppliers', '/customers/ALFKI', '/employees/1', '/suppliers/1', '/orders/10248']) {
+    await test.step(path, async () => {
+      await page.goto(path)
+      await expect(page.locator('pre').first()).toBeVisible()
+      await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth), { message: `${path} fits the viewport` }).toBeLessThanOrEqual(320)
+    })
+  }
+})

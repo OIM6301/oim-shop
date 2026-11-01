@@ -8,6 +8,8 @@ import { type ChartConfig, ChartContainer, ChartTooltip } from '@/components/ui/
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatMoney, formatMoneyShort, formatMonth, formatNumber } from '@/lib/format'
+import { SqlPanel } from '@/components/sql-panel'
+import type { Statement } from '@/lib/statements'
 
 // Every chart here has one series, revenue, in --chart-1 (checked for contrast on both
 // themes' card surfaces). Each can switch to a table of the same rows.
@@ -23,6 +25,7 @@ export function ChartCard({
   isPending,
   children,
   keyHeader,
+  sql = [],
 }: {
   title: string
   description?: string
@@ -30,6 +33,8 @@ export function ChartCard({
   isPending: boolean
   children: (rows: RevenueRow[]) => ReactNode
   keyHeader: string
+  /** The statements behind the chart, for its SQL panel. */
+  sql?: (Statement | undefined)[]
 }) {
   const [view, setView] = useState<'chart' | 'table'>('chart')
   return (
@@ -76,6 +81,7 @@ export function ChartCard({
         ) : (
           <RevenueTable rows={rows} keyHeader={keyHeader} />
         )}
+        <SqlPanel className="mt-4" statements={sql} />
       </CardContent>
     </Card>
   )

@@ -11,6 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SqlPanel } from '@/components/sql-panel'
+import { labeled } from '@/lib/statements'
 import { formatMoney, formatNumber } from '@/lib/format'
 
 export const Route = createFileRoute('/products/$productId')({
@@ -99,6 +101,7 @@ function ProductPage() {
           </CardContent>
         </Card>
       )}
+      <SqlPanel className="mt-6" statements={labeled(data?.sql, ['The product'])} />
     </>
   )
 }

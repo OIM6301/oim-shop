@@ -10,7 +10,7 @@ import { useCancelOrder, useShipOrder } from '@/api/writes'
 import { BackLink, Facts } from '@/components/detail'
 import { explain, isNotFound } from '@/lib/errors'
 import { focusHeading } from '@/lib/focus'
-import { useCanChange, useMeQuery, useNameOf } from '@/lib/me'
+import { useCanChange, useMeQuery, useNameOf, useNamesStatement } from '@/lib/me'
 import { positiveInt } from '@/lib/search'
 import { ShipStatus } from '@/components/orders-table'
 import { PageHeader } from '@/components/page-header'
@@ -30,6 +30,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { LastChangePanel, SqlPanel } from '@/components/sql-panel'
+import { labeled } from '@/lib/statements'
 import { formatDate, formatMoney, formatNumber, formatPercent } from '@/lib/format'
 
 export const Route = createFileRoute('/orders/$orderId')({
@@ -41,6 +43,7 @@ function OrderPage() {
   const { data, error, isPending, refetch } = useQuery({ ...orderQuery(orderId ?? 0), enabled: orderId !== null })
   const back = <BackLink to="/orders">Orders</BackLink>
   const nameOf = useNameOf()
+  const namesStatement = useNamesStatement()
   const canChange = useCanChange()
   const me = useMeQuery()
 
@@ -208,6 +211,8 @@ function OrderPage() {
           </Card>
         </div>
       )}
+      {orderId !== null && <LastChangePanel className="mt-6" orderId={orderId} />}
+      <SqlPanel className="mt-6" statements={[...labeled(data?.sql, ['The order', 'Its lines']), namesStatement]} />
     </>
   )
 }

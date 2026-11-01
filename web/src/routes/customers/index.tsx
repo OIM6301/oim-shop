@@ -10,6 +10,8 @@ import { type Column, columnHelper } from '@/lib/table'
 import { PageHeader } from '@/components/page-header'
 import { Pager } from '@/components/pager'
 import { SearchInput } from '@/components/search-input'
+import { SqlPanel } from '@/components/sql-panel'
+import { pageStatements } from '@/lib/statements'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
 import { compact, isOneOf, order, page, sortOf, text } from '@/lib/search'
 
@@ -94,6 +96,7 @@ function Customers() {
         noun="customers"
         onPage={(p) => void navigate({ search: (prev) => compact({ ...prev, page: p === 1 ? undefined : p }) })}
       />
+      <SqlPanel className="mt-6" statements={pageStatements(customers.data?.sql)} />
     </>
   )
 }

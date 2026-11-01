@@ -2,10 +2,13 @@ import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
 
 type SqlDraftState = {
-  /** The employee whose query this is; another person signed in this tab starts empty. */
+  /**
+   * The employee whose query this is; another person signed in this tab starts empty. Null for a
+   * statement a visitor opened from a page's SQL panel, which is for whoever signs in next here.
+   */
   owner: number | null
   query: string
-  setQuery: (owner: number, query: string) => void
+  setQuery: (owner: number | null, query: string) => void
   clear: () => void
 }
 

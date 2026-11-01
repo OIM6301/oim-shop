@@ -3,7 +3,7 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import { z } from 'zod'
 
 import type { Schemas } from '@/api/client'
-import { employeeQuery, employeesQuery } from '@/api/queries'
+import { employeeQuery, employeesQuery, ordersQuery } from '@/api/queries'
 import { ChartCard, ColumnChart, type RevenueRow } from '@/components/charts'
 import { BackLink, Facts } from '@/components/detail'
 import { isNotFound } from '@/lib/errors'
@@ -15,9 +15,11 @@ import { NotFound, QueryError } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SqlPanel } from '@/components/sql-panel'
+import { labeled } from '@/lib/statements'
 import { formatDate, formatMoney, formatMonth, formatNumber } from '@/lib/format'
 import { compact, isOneOf, order, page, positiveInt, sortOf } from '@/lib/search'
-import { useMe, useNameOf } from '@/lib/me'
+import { useMe, useNameOf, useNamesStatement } from '@/lib/me'
 
 export const Route = createFileRoute('/employees/$employeeId')({
   validateSearch: z.object({ sort: sortOf(ORDER_SORTS), order, page }),
@@ -90,6 +92,16 @@ function EmployeePage() {
   const { data, error, isPending, refetch } = useQuery({ ...employeeQuery(employeeId ?? 0, account), enabled: employeeId !== null })
   const everyone = useQuery(employeesQuery)
   const nameOf = useNameOf()
+  const history = {
+    employee_id: employeeId ?? 0,
+    sort: search.sort ?? 'order_date',
+    order: search.order ?? 'desc',
+    page: search.page ?? 1,
+    per_page: 10,
+  }
+  // The table's own query, which react-query answers once, for the SQL panel.
+  const orders = useQuery({ ...ordersQuery(history), enabled: employeeId !== null })
+  const namesStatement = useNamesStatement()
   const back = <BackLink to="/employees">Employees</BackLink>
 
   if (employeeId === null || isNotFound(error)) {
@@ -165,13 +177,7 @@ function EmployeePage() {
               Orders
             </h2>
             <OrdersTable
-              query={{
-                employee_id: employeeId,
-                sort: search.sort ?? 'order_date',
-                order: search.order ?? 'desc',
-                page: search.page ?? 1,
-                per_page: 10,
-              }}
+              query={history}
               without={['employee']}
               empty="This employee has not entered an order yet."
               onSort={({ id, desc }) => {
@@ -183,6 +189,21 @@ function EmployeePage() {
           </section>
         </div>
       )}
+      <SqlPanel
+        className="mt-6"
+        statements={[
+          ...labeled(
+            data?.sql,
+            // Signed in, the API also read the personal details, third.
+            data?.sql.statements.length === 4
+              ? ['The employee', 'Their territories', 'Their personal details', 'Their sales by month']
+              : ['The employee', 'Their territories', 'Their sales by month'],
+          ),
+          ...labeled(everyone.data?.sql, ['Every employee, for who they report to']),
+          ...labeled(orders.data?.sql, ['How many orders', 'This page of orders']),
+          namesStatement,
+        ]}
+      />
     </>
   )
 }

@@ -5,15 +5,17 @@ import { useRef } from 'react'
 import { z } from 'zod'
 
 import type { Schemas } from '@/api/client'
-import { countriesQuery, customersQuery, employeesQuery } from '@/api/queries'
+import { countriesQuery, customersQuery, employeesQuery, ordersQuery } from '@/api/queries'
 import { DateRangeFilter } from '@/components/date-range-filter'
 import { OrdersTable } from '@/components/orders-table'
 import { ORDER_SORTS } from '@/lib/table'
 import { PageHeader } from '@/components/page-header'
+import { SqlPanel } from '@/components/sql-panel'
+import { pageStatements } from '@/lib/statements'
 import { LookupRetry } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useNameOf } from '@/lib/me'
+import { useNameOf, useNamesStatement } from '@/lib/me'
 import { compact, day, id, isOneOf, order, page, sortOf, text } from '@/lib/search'
 
 export const Route = createFileRoute('/orders/')({
@@ -105,6 +107,20 @@ function Orders() {
     void navigate({ search: (prev) => compact({ ...prev, ...change, page: change.page }) })
   const filters = useRef<HTMLDivElement>(null)
   const nameOf = useNameOf()
+  const query = {
+    customer_id: search.customer,
+    employee_id: search.employee,
+    country: search.country,
+    from: search.from,
+    to: search.to,
+    sort: search.sort ?? 'order_date',
+    order: search.order ?? 'desc',
+    page: search.page ?? 1,
+    per_page: 20,
+  }
+  // The same query as the table's, which react-query answers once, for the SQL panel.
+  const orders = useQuery(ordersQuery(query))
+  const namesStatement = useNamesStatement()
   const filtered = Boolean(search.customer || search.employee || search.country || search.from || search.to)
 
   return (
@@ -156,20 +172,11 @@ function Orders() {
         )}
       </div>
       <OrdersTable
-        query={{
-          customer_id: search.customer,
-          employee_id: search.employee,
-          country: search.country,
-          from: search.from,
-          to: search.to,
-          sort: search.sort ?? 'order_date',
-          order: search.order ?? 'desc',
-          page: search.page ?? 1,
-          per_page: 20,
-        }}
+        query={query}
         onSort={({ id: key, desc }) => isOneOf(ORDER_SORTS, key) && set({ sort: key, order: desc ? 'desc' : 'asc' })}
         onPage={(p) => set({ page: p === 1 ? undefined : p })}
       />
+      <SqlPanel className="mt-6" statements={[...pageStatements(orders.data?.sql), namesStatement]} />
     </>
   )
 }

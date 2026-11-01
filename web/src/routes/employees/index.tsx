@@ -10,8 +10,10 @@ import { PageHeader } from '@/components/page-header'
 import { QueryError } from '@/components/states'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SqlPanel } from '@/components/sql-panel'
+import { labeled } from '@/lib/statements'
 import { formatDate, formatMoney, formatNumber } from '@/lib/format'
-import { useNameOf } from '@/lib/me'
+import { useNameOf, useNamesStatement } from '@/lib/me'
 import { isOneOf, order, sortOf } from '@/lib/search'
 
 const SORTS = ['name', 'hire_date', 'order_count', 'revenue'] as const
@@ -100,6 +102,7 @@ function Employees() {
   const listed = employees.data?.items
   const byId = new Map((listed ?? []).map((e) => [e.employee_id, e]))
   const nameOf = useNameOf()
+  const namesStatement = useNamesStatement()
   const name: NameOf = (e) => nameOf(e.employee_id, `${e.first_name} ${e.last_name}`)
 
   return (
@@ -134,6 +137,7 @@ function Employees() {
           </Card>
         </div>
       )}
+      <SqlPanel className="mt-6" statements={[...labeled(employees.data?.sql, ['Every employee']), namesStatement]} />
     </>
   )
 }

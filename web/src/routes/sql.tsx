@@ -150,7 +150,7 @@ function Schema({ account, onInsert, className }: { account: Schemas['Account'];
 
 function Workbench({ account }: { account: Schemas['Account'] }) {
   const draft = useSqlDraft()
-  const query = draft.owner === account.employee_id ? draft.query : ''
+  const query = draft.owner === account.employee_id || draft.owner === null ? draft.query : ''
   const setQuery = (text: string) => draft.setQuery(account.employee_id, text)
   const box = useRef<HTMLTextAreaElement>(null)
   const insert = (name: string) => {

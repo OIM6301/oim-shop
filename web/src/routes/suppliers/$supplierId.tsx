@@ -10,6 +10,8 @@ import { NotFound, QueryError } from '@/components/states'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SqlPanel } from '@/components/sql-panel'
+import { labeled } from '@/lib/statements'
 import { isNotFound } from '@/lib/errors'
 import { formatMoney, formatNumber } from '@/lib/format'
 import { positiveInt } from '@/lib/search'
@@ -115,6 +117,7 @@ function SupplierPage() {
           </section>
         </div>
       )}
+      <SqlPanel className="mt-6" statements={labeled(data?.sql, ['The supplier', 'Its products'])} />
     </>
   )
 }

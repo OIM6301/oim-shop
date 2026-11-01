@@ -114,15 +114,35 @@ export const meQuery = queryOptions({
   refetchInterval: 10 * 60_000,
 })
 
-/** For someone signed in: the chosen names they may see (a manager every one, a rep the managers'). */
+/** For someone signed in: the chosen names they may see (a manager every one, a rep the managers' and their own), and the statement that read them. */
 export const namesQuery = (viewer: Viewer) =>
   queryOptions({
     queryKey: ['me', 'names', viewer?.csrf_token ?? null],
     queryFn: ({ signal }) => unwrap(api.GET('/api/me/names', { signal })),
     enabled: Boolean(viewer),
     gcTime: 0,
-    select: (names) => new Map(names.items.map((r) => [r.employee_id, r.display_name])),
+    select: (names) => ({ byId: new Map(names.items.map((r) => [r.employee_id, r.display_name])), sql: names.sql }),
   })
+
+/** The last write this browser made, with the statements its transaction ran, for that order's page. */
+export type LastChange = {
+  kind: 'entered' | 'edited' | 'shipped' | 'cancelled'
+  orderId: number
+  at: string
+  transaction: Schemas['Ran'][]
+}
+
+/**
+ * Set by the write itself (api/writes.ts), never fetched: it is disabled, so the refetch every
+ * write asks for leaves it alone. Removed on signing out.
+ */
+export const lastChangeQuery = queryOptions({
+  queryKey: ['last-change'],
+  queryFn: (): LastChange | null => null,
+  enabled: false,
+  staleTime: Infinity,
+  gcTime: Infinity,
+})
 
 /** For someone signed in: the tables and columns the SQL page may read. */
 export const sqlSchemaQuery = (viewer: Viewer) =>

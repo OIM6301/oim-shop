@@ -2,14 +2,17 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 
+import type { Schemas } from '@/api/client'
 import { dashboardQuery } from '@/api/queries'
 import { ChartCard, ColumnChart, RankChart, type RevenueRow } from '@/components/charts'
 import { DateRangeFilter } from '@/components/date-range-filter'
 import { PageHeader } from '@/components/page-header'
+import { SqlPanel } from '@/components/sql-panel'
+import type { Statement } from '@/lib/statements'
 import { StatCard } from '@/components/stat-card'
 import { QueryError } from '@/components/states'
 import { formatMoney, formatMonth, formatNumber } from '@/lib/format'
-import { useNameOf } from '@/lib/me'
+import { useNameOf, useNamesStatement } from '@/lib/me'
 import { compact, day } from '@/lib/search'
 
 export const Route = createFileRoute('/')({
@@ -22,6 +25,10 @@ function Dashboard() {
   const navigate = Route.useNavigate()
   const { data, error, isPending, refetch } = useQuery(dashboardQuery(search))
   const nameOf = useNameOf()
+  const namesStatement = useNamesStatement()
+  // The statement behind each part, read at the start of the minute the dashboard counts to.
+  const statement = (label: string, part: Exclude<keyof Schemas['DashboardSql'], 'at'>): Statement | undefined =>
+    data && { label, sql: data.sql[part], at: data.sql.at }
 
   const months: RevenueRow[] | undefined = data?.revenue_by_month.map((m) => ({
     key: m.month,
@@ -75,18 +82,45 @@ function Dashboard() {
               value={data && (data.order_count ? formatMoney(Math.round(data.revenue_cents / data.order_count)) : '—')}
             />
           </div>
-          <ChartCard title="Revenue by month" rows={months} isPending={isPending} keyHeader="Month">
+          <SqlPanel statements={[statement('Revenue and orders', 'totals')]} />
+          <ChartCard
+            title="Revenue by month"
+            rows={months}
+            isPending={isPending}
+            keyHeader="Month"
+            sql={[statement('Revenue by month', 'revenue_by_month')]}
+          >
             {(rows) => <ColumnChart rows={rows} />}
           </ChartCard>
           <div className="grid gap-4 lg:grid-cols-2">
-            <ChartCard title="Top products" description="The 10 with the most revenue" rows={products} isPending={isPending} keyHeader="Product">
+            <ChartCard
+              title="Top products"
+              description="The 10 with the most revenue"
+              rows={products}
+              isPending={isPending}
+              keyHeader="Product"
+              sql={[statement('Top products', 'top_products')]}
+            >
               {(rows) => <RankChart rows={rows} />}
             </ChartCard>
-            <ChartCard title="Sales by employee" rows={employees} isPending={isPending} keyHeader="Employee">
+            <ChartCard
+              title="Sales by employee"
+              rows={employees}
+              isPending={isPending}
+              keyHeader="Employee"
+              sql={[statement('Sales by employee', 'by_employee'), namesStatement]}
+            >
               {(rows) => <RankChart rows={rows} />}
             </ChartCard>
           </div>
-          <ChartCard title="Sales by country" description="Where orders were shipped" rows={countries} isPending={isPending} keyHeader="Country">
+          <ChartCard
+            title="Sales by country"
+            description="Where orders were shipped"
+            rows={countries}
+            isPending={isPending}
+            keyHeader="Country"
+            sql={[statement('Sales by country', 'by_country')]}
+          >
             {(rows) => <RankChart rows={rows} />}
           </ChartCard>
         </div>

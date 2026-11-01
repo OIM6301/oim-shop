@@ -508,3 +508,53 @@ test('on a phone, the SQL page starts with the table list closed', async ({ brow
   await toggle.click()
   await expect(page.getByRole('button', { name: 'Insert orders' })).toBeVisible()
 })
+
+test('a visitor reads the SQL behind a list, watches a filter join it, and takes it to the SQL page', async ({ page }) => {
+  await page.goto('/products')
+  const panel = page.getByRole('button', { name: /^SQL 2 statements, read Oct 22, 2026, 5:00:00 PM/ })
+  await expect(panel).toHaveAttribute('aria-expanded', 'false')
+  await panel.click()
+  await expect(page.getByText('How many match')).toBeVisible()
+  await page.getByLabel('Search products by name').fill("grandma's")
+  await expect(page.locator('pre').last()).toContainText("casefold('grandma''s')")
+  // The choice to keep it open follows you to the next page.
+  await page.getByRole('link', { name: 'Customers' }).first().click()
+  await expect(page.getByRole('button', { name: /^SQL 2 statements/ })).toHaveAttribute('aria-expanded', 'true')
+  await page.getByRole('link', { name: 'Products' }).first().click()
+  await page.getByLabel('Search products by name').fill("grandma's")
+  // Grandma's is on the first page anyway, so wait for the statement, not the row.
+  await expect(page.locator('pre').last()).toContainText("casefold('grandma''s')")
+  await page.getByRole('button', { name: 'Open on the SQL page' }).last().click()
+  await expect(page.getByRole('link', { name: 'Sign in with GitHub' })).toBeVisible()
+  await signIn(page, 'e2e-rep', '/sql')
+  // A first sign-in asks for a name first, then goes on to the SQL page.
+  if (page.url().includes('/welcome')) await chooseName(page, 'Ana')
+  await expect(page).toHaveURL(/\/sql$/)
+  await expect(page.getByLabel('Query')).toHaveValue(/casefold\('grandma''s'\)/)
+  await page.getByRole('button', { name: 'Run' }).click()
+  await expect(page.getByText('1 row in')).toBeVisible()
+  await expect(page.getByRole('cell', { name: "Grandma's Boysenberry Spread" })).toBeVisible()
+  // Closed again for the tests after this one.
+  await page.goto('/products')
+  await page.getByRole('button', { name: /^SQL 2 statements/ }).click()
+})
+
+test('after a write, the order shows what its transaction ran and wrote', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await enterOrder(page, 'Chai', '2')
+  await expect(page).toHaveURL(/\/orders\/\d+$/)
+  const orderId = new URL(page.url()).pathname.split('/').pop() ?? ''
+  const change = page.getByRole('button', { name: /^Entering this order \d+ statements, ran/ })
+  await change.click()
+  await expect(page.getByText('BEGIN IMMEDIATE', { exact: true })).toBeVisible()
+  // The INSERT's RETURNING row: the new order, with its number.
+  await expect(page.getByRole('cell', { name: orderId, exact: true }).first()).toBeVisible()
+  await expect(page.getByText('COMMIT', { exact: true })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Cancel order' }).click()
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel the order' }).click()
+  await expect(page).toHaveURL(/\/my-orders$/)
+  await expect(page.getByRole('button', { name: new RegExp(`^Cancelling order #${orderId}`) })).toBeVisible()
+  await expect(page.getByText(`DELETE FROM main.orders WHERE order_id = ${orderId} RETURNING *`)).toBeVisible()
+  await page.getByRole('button', { name: new RegExp(`^Cancelling order #${orderId}`) }).click()
+})

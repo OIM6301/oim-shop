@@ -13,6 +13,11 @@ const number = new Intl.NumberFormat('en-US')
 const date = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
 const month = new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 const monthShort = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' })
+const moment = new Intl.DateTimeFormat('en-US', {
+  dateStyle: 'medium',
+  timeStyle: 'medium',
+  timeZone: 'UTC',
+})
 
 export function formatMoney(cents: number): string {
   return money.format(cents / 100)
@@ -35,6 +40,14 @@ export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '—'
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
   return date.format(Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1))
+}
+
+/** "2026-10-22T17:00:42" -> "Oct 22, 2026, 5:00:42 PM", the shop's clock as the API gives it. */
+export function formatMoment(iso: string): string {
+  const [day = '', time = ''] = iso.split('T')
+  const [y, m, d] = day.split('-').map(Number)
+  const [h, min, sec] = time.split(':').map(Number)
+  return moment.format(Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1, h ?? 0, min ?? 0, sec ?? 0))
 }
 
 /** "2026-01" -> "Jan 2026", or "Jan" when short. */
