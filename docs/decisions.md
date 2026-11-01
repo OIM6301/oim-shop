@@ -36,6 +36,18 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 **No response is cached.** In v2, a route whose answer was the same for every visitor let browsers keep it for a minute. Since v3, a rep can enter an order at any moment, and a list kept for a minute would leave it out, so every API response is `no-store` ([limits.py](../api/src/oim_shop/limits.py)). Cloudflare never cached these responses anyway; the dashboard's own cache, above, is what keeps the server's work in bounds.
 
+## The SQL behind each page
+
+**Recorded as they run, never written twice.** A route's statements are recorded by SQLite's trace callback, which reports each statement as it starts with its values written in as SQL literals ([statements.py](../api/src/oim_shop/statements.py)). A second copy of each statement, written for the panel, would drift from the one that ran; this one cannot, and SQLite does the quoting, so `Grandma's` comes out as `'Grandma''s'`.
+
+**The pages use the SQL page's names.** A statement shown on a page has to run on the SQL page. So the clock's views are named like the tables they hide (above), names come from `chosen_names` instead of `accounts`, and the employee list decides who to show from public columns. The SQL page's connection also gets `casefold()`.
+
+**No arithmetic after the SQL.** The dashboard filled in empty months, added up the employees after the first 10 and summed the totals in Python, so its statements did not return what it showed. A recursive CTE now counts out the months, `ROW_NUMBER()` numbers the employees, and the totals have a statement of their own. The dashboard over all dates became about a fifth slower; it is still computed once a minute.
+
+**A write's rows come from RETURNING.** Each write ends with `RETURNING`, so the statement itself hands back the rows it wrote or deleted. Reading them afterwards would be a statement the transaction never ran, and a deleted row could not be read at all. Cancelling deletes an order's lines with a statement of their own: the foreign key's `ON DELETE CASCADE` would delete them anyway, but its rows never come back. SQLite reports a statement a second time when it runs that foreign key action, so a statement reported twice in a row is recorded once.
+
+**The moment comes from the API.** A panel says when its page read the data, since seeded orders keep arriving. The browser's clock would be wrong whenever the shop's clock is fixed, as in the tests, so each answer says it: `sql.at`, the moment its views were made for.
+
 ## Signing in
 
 **Only the people on a list.** Anyone with a GitHub account could otherwise sign in and enter orders. The server reads a file of GitHub usernames, one per line, at every sign-in, so adding or removing someone takes effect without a restart. A word after a username, `manager`, makes that person a manager. The file stays on the server and never goes into git.
