@@ -459,12 +459,12 @@ def test_who_sees_which_chosen_names(
     other.get("/api/me")  # signed in, no name chosen yet
     ana = rep.get("/api/me").json()["account"]["employee_id"]
     boss = manager.get("/api/me").json()["account"]["employee_id"]
-    names = {n["employee_id"]: n["display_name"] for n in manager.get("/api/me/names").json()}
+    names = {n["employee_id"]: n["display_name"] for n in manager.get("/api/me/names").json()["items"]}
     assert names == {ana: "Ana", boss: "Octo Teacher"}
-    assert {n["employee_id"]: n["display_name"] for n in rep.get("/api/me/names").json()} == {
+    assert {n["employee_id"]: n["display_name"] for n in rep.get("/api/me/names").json()["items"]} == {
         ana: "Ana",
         boss: "Octo Teacher",
     }
-    assert {n["employee_id"] for n in other.get("/api/me/names").json()} == {boss}
+    assert {n["employee_id"] for n in other.get("/api/me/names").json()["items"]} == {boss}
     rep.post("/api/auth/logout", headers=csrf(rep))
     assert client.get("/api/me/names").status_code == 401

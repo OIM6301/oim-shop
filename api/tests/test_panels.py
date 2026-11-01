@@ -1,0 +1,180 @@
+"""The SQL panel's rule: each statement a page shows, run on the SQL page by someone at the same
+level, returns the rows the page shows (PRD, "After v3: the SQL behind each page")."""
+
+import re
+import sqlite3
+from pathlib import Path
+from typing import Any
+
+import pytest
+from fastapi.testclient import TestClient
+
+from oim_shop import db
+from oim_shop import sql as queries
+from oim_shop.accounts import Session, add_chosen_names
+from oim_shop.app import create_app
+
+from .conftest import NOW
+from .fake_github import PUBLIC_URL, STUDENT, TEACHER, FakeGitHub, csrf, sign_in, sign_in_settings
+
+# Someone signed in as a rep, for the statements every visitor's pages run.
+VISITOR_ON_THE_SQL_PAGE = Session(github_id=0, employee_id=1, display_name=None, role="rep", csrf_token="unused")  # noqa: S106
+PRIVATE = re.compile(r"\b(accounts|sessions)\b", re.IGNORECASE)
+
+
+@pytest.fixture
+def rep(client: TestClient, github: FakeGitHub) -> TestClient:
+    sign_in(client, github, STUDENT)
+    client.put("/api/me", json={"display_name": "Ana O'Brien"}, headers=csrf(client))
+    return client
+
+
+@pytest.fixture
+def manager(path: Path, github: FakeGitHub, allowlist: Path) -> Any:
+    app = create_app(path, now=lambda: NOW, sign_in=sign_in_settings(github, allowlist))
+    with TestClient(app, base_url=PUBLIC_URL, follow_redirects=False) as c:
+        sign_in(c, github, TEACHER)
+        c.put("/api/me", json={"display_name": "Señora Teacher"}, headers=csrf(c))
+        yield c
+
+
+def session_of(client: TestClient) -> Session:
+    account = client.get("/api/me").json()["account"]
+    return Session(github_id=0, employee_id=account["employee_id"], display_name=None, role=account["role"],
+                   csrf_token="unused")  # fmt: skip  # noqa: S106
+
+
+def run_both(path: Path, session: Session, statement: str) -> queries.Result:
+    """Run the statement on the SQL page and on the app's own connection; they must agree."""
+    assert not PRIVATE.search(statement), statement
+    on_the_sql_page = queries.run(path, NOW, session, statement, 30.0, 100_000)
+    assert not on_the_sql_page.truncated
+    conn = db.connect(path)
+    db.as_of(conn, NOW)
+    add_chosen_names(conn, session)
+    try:
+        own = [list(row) for row in conn.execute(statement)]
+    finally:
+        conn.close()
+    assert on_the_sql_page.rows == own, statement
+    return on_the_sql_page
+
+
+def as_dicts(result: queries.Result) -> list[dict[str, Any]]:
+    return [dict(zip(result.columns, row, strict=True)) for row in result.rows]
+
+
+def same(rows: list[dict[str, Any]], items: list[dict[str, Any]]) -> None:
+    """Every column the statement returns has the page's value, row by row (true is 1 in SQL)."""
+    assert len(rows) == len(items)
+    for row, item in zip(rows, items, strict=True):
+        assert {k: row[k] for k in row if k in item} == {k: item[k] for k in row if k in item}
+
+
+def check_page(client: TestClient, path: Path, session: Session, url: str) -> dict[str, Any]:
+    """A paged list: the count is its total, and the page of rows is its items."""
+    answer = client.get(url).json()
+    count, page = answer["sql"]
+    assert run_both(path, session, count).rows == [[answer["pagination"]["total"]]]
+    same(as_dicts(run_both(path, session, page)), answer["items"])
+    return answer
+
+
+LISTS = [
+    "/api/products?name=grandma's",
+    "/api/products?category_id=2&sort=unit_price&order=desc&per_page=5&page=2",
+    "/api/customers?name=BÓLIDO",
+    "/api/customers?country=FRANCE&sort=revenue&order=desc",
+    "/api/orders?customer_id=vinet",
+    "/api/orders?country=belgium&employee_id=4&sort=total&order=asc&page=2&per_page=5",
+    "/api/orders?from=2026-10-01&to=2026-10-22",
+]
+
+
+@pytest.mark.parametrize("url", LISTS)
+def test_a_lists_statements_return_its_rows(client: TestClient, path: Path, url: str) -> None:
+    check_page(client, path, VISITOR_ON_THE_SQL_PAGE, url)
+
+
+@pytest.mark.parametrize("url", ["/api/products/2", "/api/customers/val2", "/api/customers/ALFKI"])
+def test_a_records_statement_returns_it(client: TestClient, path: Path, url: str) -> None:
+    answer = client.get(url).json()
+    (statement,) = answer["sql"]
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), [answer])
+
+
+def test_a_suppliers_statements(client: TestClient, path: Path) -> None:
+    listed = client.get("/api/suppliers").json()
+    (statement,) = listed["sql"]
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), listed["items"])
+    supplier = client.get("/api/suppliers/1").json()
+    itself, products = supplier["sql"]
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, itself)), [supplier])
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, products)), supplier["products"])
+
+
+def test_an_orders_statements(client: TestClient, path: Path) -> None:
+    order = client.get("/api/orders/10248").json()
+    itself, lines = order["sql"]
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, itself)), [order])
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, lines)), order["lines"])
+
+
+def test_the_employee_lists_statement(client: TestClient, path: Path) -> None:
+    listed = client.get("/api/employees").json()
+    (statement,) = listed["sql"]
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), listed["items"])
+
+
+def test_an_employees_statements_depend_on_who_is_signed_in(client: TestClient, path: Path, github: FakeGitHub) -> None:
+    public = client.get("/api/employees/1").json()
+    itself, territories, months = public["sql"]
+    assert not any("birth_date" in s for s in public["sql"])
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, itself)), [public])
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, territories)), public["territories"])
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, months)), public["revenue_by_month"])
+
+    sign_in(client, github, STUDENT)
+    signed_in = client.get("/api/employees/1").json()
+    personal = signed_in["sql"][2]
+    assert "birth_date" in personal
+    same(as_dicts(run_both(path, session_of(client), personal)), [signed_in["personal"]])
+
+
+def test_the_dashboards_statements_return_its_figures(client: TestClient, path: Path) -> None:
+    board = client.get("/api/dashboard?from=2025-01-01&to=2025-06-30").json()
+    sql = board["sql"]
+    assert set(sql) == {"totals", "revenue_by_month", "top_products", "by_employee", "by_country"}
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, sql["totals"])), [board])
+    for part in ("revenue_by_month", "top_products", "by_employee", "by_country"):
+        same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, sql[part])), board[part])
+    assert [m["month"] for m in board["revenue_by_month"]] == [f"2025-0{m}" for m in range(1, 7)]
+
+
+def test_the_dashboard_adds_up_the_others_in_its_statement(path: Path) -> None:
+    from .test_reset import add_reps, enter_as
+
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    db.add_functions(conn)
+    for i, employee_id in enumerate(add_reps(conn, 4)):
+        db.as_of(conn, NOW)
+        enter_as(conn, employee_id, i + 1)
+    conn.close()
+    with TestClient(create_app(path, now=lambda: NOW)) as c:
+        board = c.get("/api/dashboard?from=2026-10-01&to=2026-10-22").json()
+    assert board["by_employee"][-1]["name"] == "3 others"
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, board["sql"]["by_employee"])), board["by_employee"])
+
+
+def test_my_orders_and_the_names_at_each_level(rep: TestClient, manager: TestClient, path: Path) -> None:
+    body = {"customer_id": "ALFKI", "shipper_id": 1, "required_date": "2026-10-30",
+            "lines": [{"product_id": 1, "quantity": 1, "discount_pct": 0}]}  # fmt: skip
+    assert rep.post("/api/orders", json=body, headers=csrf(rep)).status_code == 201
+    for client, url in [(rep, "/api/me/orders"), (manager, "/api/me/orders?scope=all")]:
+        answer = check_page(client, path, session_of(client), url)
+        assert "Ana O'Brien" in {o["rep_name"] for o in answer["items"]}
+    for client in (rep, manager):
+        names = client.get("/api/me/names").json()
+        (statement,) = names["sql"]
+        same(as_dicts(run_both(path, session_of(client), statement)), names["items"])

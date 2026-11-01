@@ -209,7 +209,7 @@ def test_the_employee_list_shows_reps_only_while_they_have_orders(path: Path) ->
     enter_as(conn, busy, 1)
     conn.close()
     with TestClient(create_app(path, now=lambda: NOW)) as c:
-        listed = {e["employee_id"] for e in get(c, "/api/employees")}
+        listed = {e["employee_id"] for e in get(c, "/api/employees")["items"]}
         assert listed == {*range(1, 10), busy}
         # A rep's own page is there either way.
         assert get(c, f"/api/employees/{idle}")["order_count"] == 0

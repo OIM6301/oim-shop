@@ -3,6 +3,7 @@ import threading
 from collections.abc import Callable
 from datetime import date, datetime
 from pathlib import Path
+from typing import Any
 
 import anyio
 import anyio.to_thread
@@ -12,6 +13,7 @@ from oim_shop import db
 from oim_shop.deps import FromDay, Now, ToDay, rows
 from oim_shop.models import CountryRevenue, Dashboard, EmployeeRevenue, MonthRevenue, ProductRevenue
 from oim_shop.routes.orders import date_range
+from oim_shop.statements import recording
 
 router = APIRouter(tags=["dashboard"])
 
@@ -130,6 +132,13 @@ def compute_as_of(path: Path, moment: datetime, first: date, last: date) -> Dash
 SHOWN_EMPLOYEES = 10
 
 
+def recorded(conn: sqlite3.Connection, sql: str, params: list[object]) -> tuple[list[dict[str, Any]], str]:
+    """The rows of one statement, and the statement as it ran, for the panel beside its chart."""
+    with recording(conn) as statements:
+        found = rows(conn, sql, params)
+    return found, statements[0]
+
+
 def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datetime) -> Dashboard:
     """The dashboard for orders placed from from_date through last, read from the clock's `orders` view.
 
@@ -144,16 +153,18 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datet
     params.append(moment.isoformat(timespec="seconds"))
     clause = " AND ".join(where)
 
-    totals = rows(
+    sql: dict[str, str] = {}
+    found, sql["totals"] = recorded(
         conn,
         f"""
         SELECT COUNT(*) AS order_count, COALESCE(SUM(o.total_cents), 0) AS revenue_cents
         FROM orders o WHERE {clause}
         """,  # noqa: S608
         params,
-    )[0]
+    )
+    totals = found[0]
     # Every month in the range, with or without orders: a recursive CTE counts them out.
-    revenue_by_month = rows(
+    revenue_by_month, sql["revenue_by_month"] = recorded(
         conn,
         f"""
         WITH RECURSIVE months(month) AS (
@@ -171,7 +182,7 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datet
         """,  # noqa: S608
         [from_date.isoformat(), last.isoformat(), *params],
     )
-    top_products = rows(
+    top_products, sql["top_products"] = recorded(
         conn,
         f"""
         SELECT t.product_id, p.name, SUM(t.quantity) AS quantity, SUM(t.line_total_cents) AS revenue_cents
@@ -185,7 +196,7 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datet
     )
     # The first SHOWN_EMPLOYEES by revenue, then one row adding up the rest: a window function
     # numbers the employees, and UNION ALL adds the row of others when there are any.
-    by_employee = rows(
+    by_employee, sql["by_employee"] = recorded(
         conn,
         f"""
         WITH sales AS (
@@ -206,7 +217,7 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datet
         """,  # noqa: S608
         [*params, SHOWN_EMPLOYEES, SHOWN_EMPLOYEES, SHOWN_EMPLOYEES],
     )
-    by_country = rows(
+    by_country, sql["by_country"] = recorded(
         conn,
         f"""
         SELECT o.ship_country AS country, COUNT(*) AS order_count, SUM(o.total_cents) AS revenue_cents
@@ -225,5 +236,6 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datet
             "top_products": [ProductRevenue(**r) for r in top_products],
             "by_employee": [EmployeeRevenue(**r) for r in by_employee],
             "by_country": [CountryRevenue(**r) for r in by_country],
+            "sql": sql,
         }
     )

@@ -15,6 +15,13 @@ from pydantic import BaseModel, Field, StringConstraints
 MAX_ID = 2**63 - 1
 
 
+# The statements a request ran, for the SQL panel on each page (statements.py).
+Statements = Annotated[
+    list[str],
+    Field(description="The statements this request ran, in order, with their values written in"),
+]
+
+
 class Pagination(BaseModel):
     page: int
     per_page: int
@@ -53,6 +60,11 @@ class Product(BaseModel):
 class ProductPage(BaseModel):
     items: list[Product]
     pagination: Pagination
+    sql: Statements
+
+
+class ProductDetail(Product):
+    sql: Statements
 
 
 class Customer(BaseModel):
@@ -73,6 +85,7 @@ class CustomerDetail(Customer):
     postal_code: str | None
     phone: str | None
     fax: str | None
+    sql: Statements
 
 
 class Supplier(BaseModel):
@@ -93,11 +106,18 @@ class SupplierDetail(Supplier):
     fax: str | None
     home_page: str | None = Field(description="A web address, or null")
     products: list[Product]
+    sql: Statements
+
+
+class SupplierList(BaseModel):
+    items: list[Supplier]
+    sql: Statements
 
 
 class CustomerPage(BaseModel):
     items: list[Customer]
     pagination: Pagination
+    sql: Statements
 
 
 class Order(BaseModel):
@@ -122,6 +142,7 @@ class Order(BaseModel):
 class OrderPage(BaseModel):
     items: list[Order]
     pagination: Pagination
+    sql: Statements
 
 
 class OrderLine(BaseModel):
@@ -140,6 +161,7 @@ class OrderDetail(Order):
     ship_postal_code: str | None
     shipper_phone: str | None
     lines: list[OrderLine]
+    sql: Statements
 
 
 class Employee(BaseModel):
@@ -154,6 +176,11 @@ class Employee(BaseModel):
     country: str | None
     order_count: int
     revenue_cents: int
+
+
+class EmployeeList(BaseModel):
+    items: list[Employee]
+    sql: Statements
 
 
 class MonthRevenue(BaseModel):
@@ -185,6 +212,7 @@ class EmployeeDetail(Employee):
     territories: list[Territory]
     personal: EmployeePersonal | None = Field(description="Null unless you are signed in")
     revenue_by_month: list[MonthRevenue]
+    sql: Statements
 
 
 class ProductRevenue(BaseModel):
@@ -207,6 +235,16 @@ class CountryRevenue(BaseModel):
     revenue_cents: int
 
 
+class DashboardSql(BaseModel):
+    """The statement behind each part of the dashboard."""
+
+    totals: str
+    revenue_by_month: str
+    top_products: str
+    by_employee: str
+    by_country: str
+
+
 class Dashboard(BaseModel):
     from_: str = Field(alias="from", description="First day included, YYYY-MM-DD")
     to: str = Field(description="Last day included, YYYY-MM-DD")
@@ -216,6 +254,7 @@ class Dashboard(BaseModel):
     top_products: list[ProductRevenue] = Field(description="The 10 products with the most revenue")
     by_employee: list[EmployeeRevenue]
     by_country: list[CountryRevenue]
+    sql: DashboardSql
 
 
 class Account(BaseModel):
@@ -235,6 +274,11 @@ class Me(BaseModel):
 class ChosenName(BaseModel):
     employee_id: int
     display_name: str
+
+
+class ChosenNameList(BaseModel):
+    items: list[ChosenName]
+    sql: Statements
 
 
 class SqlQuery(BaseModel):
@@ -297,3 +341,4 @@ class MyOrder(Order):
 class MyOrderPage(BaseModel):
     items: list[MyOrder]
     pagination: Pagination
+    sql: Statements

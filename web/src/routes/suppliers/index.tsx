@@ -47,7 +47,7 @@ function Suppliers() {
         <DataTable
           caption="Suppliers"
           columns={columns}
-          data={suppliers.data}
+          data={suppliers.data?.items}
           isPending={suppliers.isPending}
           error={suppliers.error}
           onRetry={() => void suppliers.refetch()}

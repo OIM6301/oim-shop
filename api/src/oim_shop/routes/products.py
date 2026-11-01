@@ -3,7 +3,8 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from oim_shop.deps import Conn, Name, PageNumber, PathId, PerPage, QueryId, SortOrder, page_of, rows
-from oim_shop.models import Category, Product, ProductPage
+from oim_shop.models import Category, Product, ProductDetail, ProductPage
+from oim_shop.statements import recording
 
 router = APIRouter(tags=["products"])
 
@@ -53,22 +54,24 @@ def products(
     if name and name.strip():
         where.append("instr(casefold(p.name), casefold(?)) > 0")
         params.append(name.strip())
-    items, pagination = page_of(
-        conn,
-        select=PRODUCT,
-        count="SELECT COUNT(*) FROM products p",
-        where=where,
-        params=params,
-        order_by=f"{SORT[sort]} {order}, p.product_id",
-        page=page,
-        per_page=per_page,
-    )
-    return ProductPage(items=[Product(**r) for r in items], pagination=pagination)
+    with recording(conn) as sql:
+        items, pagination = page_of(
+            conn,
+            select=PRODUCT,
+            count="SELECT COUNT(*) FROM products p",
+            where=where,
+            params=params,
+            order_by=f"{SORT[sort]} {order}, p.product_id",
+            page=page,
+            per_page=per_page,
+        )
+    return ProductPage(items=[Product(**r) for r in items], pagination=pagination, sql=sql)
 
 
 @router.get("/products/{product_id}", responses={404: {"description": "No such product"}})
-def product(conn: Conn, product_id: PathId) -> Product:
-    found = rows(conn, f"{PRODUCT} WHERE p.product_id = ?", [product_id])
+def product(conn: Conn, product_id: PathId) -> ProductDetail:
+    with recording(conn) as sql:
+        found = rows(conn, f"{PRODUCT} WHERE p.product_id = ?", [product_id])
     if not found:
         raise HTTPException(status_code=404, detail=f"No product {product_id}")
-    return Product(**found[0])
+    return ProductDetail(**found[0], sql=sql)

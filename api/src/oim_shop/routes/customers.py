@@ -4,6 +4,7 @@ from fastapi import APIRouter, HTTPException, Path, Query
 
 from oim_shop.deps import Conn, Name, PageNumber, PerPage, SortOrder, page_of, rows
 from oim_shop.models import Customer, CustomerDetail, CustomerPage
+from oim_shop.statements import recording
 
 router = APIRouter(tags=["customers"])
 
@@ -47,29 +48,33 @@ def customers(
         where.append("casefold(c.country) = casefold(?)")
         params.append(country.strip())
     # The totals are grouped first; the filters then read the same column names as in customers.
-    items, pagination = page_of(
-        conn,
-        select=f"SELECT * FROM ({CUSTOMER} GROUP BY c.customer_id) AS c",  # noqa: S608 (constants only)
-        count="SELECT COUNT(*) FROM customers c",
-        where=where,
-        params=params,
-        order_by=f"{SORT[sort]} {order}, c.customer_id",
-        page=page,
-        per_page=per_page,
-    )
-    return CustomerPage(items=[Customer(**r) for r in items], pagination=pagination)
+    with recording(conn) as sql:
+        items, pagination = page_of(
+            conn,
+            select=f"SELECT * FROM ({CUSTOMER} GROUP BY c.customer_id) AS c",  # noqa: S608 (constants only)
+            count="SELECT COUNT(*) FROM customers c",
+            where=where,
+            params=params,
+            order_by=f"{SORT[sort]} {order}, c.customer_id",
+            page=page,
+            per_page=per_page,
+        )
+    return CustomerPage(items=[Customer(**r) for r in items], pagination=pagination, sql=sql)
 
 
 @router.get("/customers/{customer_id}", responses={404: {"description": "No such customer"}})
 def customer(conn: Conn, customer_id: Annotated[str, Path(max_length=10)]) -> CustomerDetail:
     # Every id is five characters; ten leaves room for spaces, and a longer one is refused before any SQL.
     # One id in the data, "Val2 ", has lower case and a trailing space; compare both sides trimmed, in upper case.
-    found = rows(
-        conn, f"{CUSTOMER} WHERE upper(trim(c.customer_id)) = upper(?) GROUP BY c.customer_id", [customer_id.strip()]
-    )
+    with recording(conn) as sql:
+        found = rows(
+            conn,
+            f"{CUSTOMER} WHERE upper(trim(c.customer_id)) = upper(?) GROUP BY c.customer_id",
+            [customer_id.strip()],
+        )
     if not found:
         raise HTTPException(status_code=404, detail=f"No customer {customer_id}")
-    return CustomerDetail(**found[0])
+    return CustomerDetail(**found[0], sql=sql)
 
 
 @router.get("/countries", tags=["orders"])

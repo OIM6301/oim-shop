@@ -111,7 +111,7 @@ function EmployeePage() {
     )
   }
 
-  const manager = everyone.data?.find((e) => e.employee_id === data?.reports_to)
+  const manager = everyone.data?.items.find((e) => e.employee_id === data?.reports_to)
   const months: RevenueRow[] | undefined = data?.revenue_by_month.map((m) => ({
     key: m.month,
     label: formatMonth(m.month),

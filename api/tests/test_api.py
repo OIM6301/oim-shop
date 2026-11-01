@@ -62,7 +62,9 @@ def test_products_page_through_all_77(client: TestClient) -> None:
 
 
 def test_product_detail(client: TestClient) -> None:
-    assert get(client, "/api/products/2") == {
+    chang = get(client, "/api/products/2")
+    assert chang.pop("sql")[0].startswith("SELECT p.product_id, p.name")
+    assert chang == {
         "product_id": 2,
         "name": "Chang",
         "category_id": 1,
@@ -206,7 +208,7 @@ def test_orders_reject_a_backward_range(client: TestClient) -> None:
 
 
 def test_employees(client: TestClient, conn: sqlite3.Connection) -> None:
-    employees = get(client, "/api/employees")
+    employees = get(client, "/api/employees")["items"]
     assert len(employees) == 9
     fuller = next(e for e in employees if e["employee_id"] == 2)
     assert (fuller["first_name"], fuller["last_name"], fuller["reports_to"]) == ("Andrew", "Fuller", None)

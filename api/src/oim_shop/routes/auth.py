@@ -32,7 +32,8 @@ from oim_shop.accounts import (
 )
 from oim_shop.deps import Conn, Now, rows
 from oim_shop.github import GitHubError
-from oim_shop.models import Account, ChosenName, Me, NameChange
+from oim_shop.models import Account, ChosenName, ChosenNameList, Me, NameChange
+from oim_shop.statements import recording
 
 router = APIRouter(tags=["account"])
 log = logging.getLogger(__name__)
@@ -177,7 +178,7 @@ def choose_name(change: NameChange, conn: Conn, writer: Writer, now: Now) -> Me:
 
 
 @router.get("/me/names", responses={401: {"description": "Not signed in"}})
-def chosen_names(conn: Conn, viewer: SignedIn) -> list[ChosenName]:
+def chosen_names(conn: Conn, viewer: SignedIn) -> ChosenNameList:
     """The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.
 
     A manager sees everyone's; a rep sees the managers' and their own, as in the SQL page's
@@ -185,5 +186,6 @@ def chosen_names(conn: Conn, viewer: SignedIn) -> list[ChosenName]:
     allowlist has people.
     """
     add_chosen_names(conn, viewer)
-    found = rows(conn, "SELECT employee_id, display_name FROM chosen_names ORDER BY employee_id")
-    return [ChosenName(**r) for r in found]
+    with recording(conn) as sql:
+        found = rows(conn, "SELECT employee_id, display_name FROM chosen_names ORDER BY employee_id")
+    return ChosenNameList(items=[ChosenName(**r) for r in found], sql=sql)

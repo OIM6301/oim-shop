@@ -572,6 +572,16 @@ export interface components {
             /** Display Name */
             display_name: string;
         };
+        /** ChosenNameList */
+        ChosenNameList: {
+            /** Items */
+            items: components["schemas"]["ChosenName"][];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
+        };
         /** CountryRevenue */
         CountryRevenue: {
             /** Country */
@@ -630,12 +640,22 @@ export interface components {
             phone: string | null;
             /** Fax */
             fax: string | null;
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /** CustomerPage */
         CustomerPage: {
             /** Items */
             items: components["schemas"]["Customer"][];
             pagination: components["schemas"]["Pagination"];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /** Dashboard */
         Dashboard: {
@@ -664,6 +684,23 @@ export interface components {
             by_employee: components["schemas"]["EmployeeRevenue"][];
             /** By Country */
             by_country: components["schemas"]["CountryRevenue"][];
+            sql: components["schemas"]["DashboardSql"];
+        };
+        /**
+         * DashboardSql
+         * @description The statement behind each part of the dashboard.
+         */
+        DashboardSql: {
+            /** Totals */
+            totals: string;
+            /** Revenue By Month */
+            revenue_by_month: string;
+            /** Top Products */
+            top_products: string;
+            /** By Employee */
+            by_employee: string;
+            /** By Country */
+            by_country: string;
         };
         /** Employee */
         Employee: {
@@ -726,6 +763,21 @@ export interface components {
             personal: components["schemas"]["EmployeePersonal"] | null;
             /** Revenue By Month */
             revenue_by_month: components["schemas"]["MonthRevenue"][];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
+        };
+        /** EmployeeList */
+        EmployeeList: {
+            /** Items */
+            items: components["schemas"]["Employee"][];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /**
          * EmployeePersonal
@@ -880,6 +932,11 @@ export interface components {
             /** Items */
             items: components["schemas"]["MyOrder"][];
             pagination: components["schemas"]["Pagination"];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /** NameChange */
         NameChange: {
@@ -990,6 +1047,11 @@ export interface components {
             shipper_phone: string | null;
             /** Lines */
             lines: components["schemas"]["OrderLine"][];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /**
          * OrderInput
@@ -1032,6 +1094,11 @@ export interface components {
             /** Items */
             items: components["schemas"]["Order"][];
             pagination: components["schemas"]["Pagination"];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /** Pagination */
         Pagination: {
@@ -1083,11 +1150,56 @@ export interface components {
             /** Discontinued */
             discontinued: boolean;
         };
+        /** ProductDetail */
+        ProductDetail: {
+            /** Product Id */
+            product_id: number;
+            /** Name */
+            name: string;
+            /** Category Id */
+            category_id: number;
+            /** Category */
+            category: string;
+            /** Supplier Id */
+            supplier_id: number;
+            /** Supplier */
+            supplier: string;
+            /** Quantity Per Unit */
+            quantity_per_unit: string;
+            /** Unit Price Cents */
+            unit_price_cents: number;
+            /** Units In Stock */
+            units_in_stock: number;
+            /**
+             * Units On Order
+             * @description Units the shop has ordered from the supplier and not yet received
+             */
+            units_on_order: number;
+            /** Reorder Level */
+            reorder_level: number;
+            /**
+             * Below Reorder Level
+             * @description Stock has fallen below the reorder level
+             */
+            below_reorder_level: boolean;
+            /** Discontinued */
+            discontinued: boolean;
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
+        };
         /** ProductPage */
         ProductPage: {
             /** Items */
             items: components["schemas"]["Product"][];
             pagination: components["schemas"]["Pagination"];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /** ProductRevenue */
         ProductRevenue: {
@@ -1198,6 +1310,21 @@ export interface components {
             home_page: string | null;
             /** Products */
             products: components["schemas"]["Product"][];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
+        };
+        /** SupplierList */
+        SupplierList: {
+            /** Items */
+            items: components["schemas"]["Supplier"][];
+            /**
+             * Sql
+             * @description The statements this request ran, in order, with their values written in
+             */
+            sql: string[];
         };
         /** Territory */
         Territory: {
@@ -1363,7 +1490,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Product"];
+                    "application/json": components["schemas"]["ProductDetail"];
                 };
             };
             /** @description No such product */
@@ -1399,7 +1526,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Supplier"][];
+                    "application/json": components["schemas"]["SupplierList"];
                 };
             };
         };
@@ -1965,7 +2092,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Employee"][];
+                    "application/json": components["schemas"]["EmployeeList"];
                 };
             };
         };
@@ -2282,7 +2409,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ChosenName"][];
+                    "application/json": components["schemas"]["ChosenNameList"];
                 };
             };
             /** @description Not signed in */

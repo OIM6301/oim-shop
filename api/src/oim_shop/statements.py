@@ -8,7 +8,6 @@ comes before it, which reads `sessions` and `accounts`, never is.
 """
 
 import sqlite3
-import textwrap
 from collections.abc import Generator
 from contextlib import contextmanager
 
@@ -46,6 +45,13 @@ def recording(conn: sqlite3.Connection) -> Generator[list[str]]:
 
 
 def tidy(statement: str) -> str:
-    """The statement without blank lines, trailing spaces or the indentation of the Python around it."""
+    """The statement without blank lines, trailing spaces or the indentation of the Python around it.
+
+    The first line's indentation is the Python's; a fragment joined on with less, such as
+    `PRODUCT + " WHERE ..."`, starts at the margin.
+    """
     lines = [line.rstrip() for line in statement.splitlines() if line.strip()]
-    return textwrap.dedent("\n".join(lines))
+    if not lines:
+        return ""
+    margin = len(lines[0]) - len(lines[0].lstrip())
+    return "\n".join(line[min(margin, len(line) - len(line.lstrip())) :] for line in lines)

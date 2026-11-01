@@ -247,7 +247,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Product"
+                  "$ref": "#/components/schemas/ProductDetail"
                 }
               }
             }
@@ -282,11 +282,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/Supplier"
-                  },
-                  "type": "array",
-                  "title": "Response Suppliers Api Suppliers Get"
+                  "$ref": "#/components/schemas/SupplierList"
                 }
               }
             }
@@ -1146,11 +1142,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/Employee"
-                  },
-                  "type": "array",
-                  "title": "Response Employees Api Employees Get"
+                  "$ref": "#/components/schemas/EmployeeList"
                 }
               }
             }
@@ -1549,11 +1541,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ChosenName"
-                  },
-                  "type": "array",
-                  "title": "Response Chosen Names Api Me Names Get"
+                  "$ref": "#/components/schemas/ChosenNameList"
                 }
               }
             }
@@ -1737,6 +1725,31 @@
           "display_name"
         ],
         "title": "ChosenName"
+      },
+      "ChosenNameList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ChosenName"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "sql"
+        ],
+        "title": "ChosenNameList"
       },
       "CountryRevenue": {
         "properties": {
@@ -1964,6 +1977,14 @@
               }
             ],
             "title": "Fax"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
@@ -1981,7 +2002,8 @@
           "region",
           "postal_code",
           "phone",
-          "fax"
+          "fax",
+          "sql"
         ],
         "title": "CustomerDetail"
       },
@@ -1996,12 +2018,21 @@
           },
           "pagination": {
             "$ref": "#/components/schemas/Pagination"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
         "required": [
           "items",
-          "pagination"
+          "pagination",
+          "sql"
         ],
         "title": "CustomerPage"
       },
@@ -2053,6 +2084,9 @@
             },
             "type": "array",
             "title": "By Country"
+          },
+          "sql": {
+            "$ref": "#/components/schemas/DashboardSql"
           }
         },
         "type": "object",
@@ -2064,9 +2098,44 @@
           "revenue_by_month",
           "top_products",
           "by_employee",
-          "by_country"
+          "by_country",
+          "sql"
         ],
         "title": "Dashboard"
+      },
+      "DashboardSql": {
+        "properties": {
+          "totals": {
+            "type": "string",
+            "title": "Totals"
+          },
+          "revenue_by_month": {
+            "type": "string",
+            "title": "Revenue By Month"
+          },
+          "top_products": {
+            "type": "string",
+            "title": "Top Products"
+          },
+          "by_employee": {
+            "type": "string",
+            "title": "By Employee"
+          },
+          "by_country": {
+            "type": "string",
+            "title": "By Country"
+          }
+        },
+        "type": "object",
+        "required": [
+          "totals",
+          "revenue_by_month",
+          "top_products",
+          "by_employee",
+          "by_country"
+        ],
+        "title": "DashboardSql",
+        "description": "The statement behind each part of the dashboard."
       },
       "Employee": {
         "properties": {
@@ -2259,6 +2328,14 @@
             },
             "type": "array",
             "title": "Revenue By Month"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
@@ -2276,9 +2353,35 @@
           "revenue_cents",
           "territories",
           "personal",
-          "revenue_by_month"
+          "revenue_by_month",
+          "sql"
         ],
         "title": "EmployeeDetail"
+      },
+      "EmployeeList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Employee"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "sql"
+        ],
+        "title": "EmployeeList"
       },
       "EmployeePersonal": {
         "properties": {
@@ -2685,12 +2788,21 @@
           },
           "pagination": {
             "$ref": "#/components/schemas/Pagination"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
         "required": [
           "items",
-          "pagination"
+          "pagination",
+          "sql"
         ],
         "title": "MyOrderPage"
       },
@@ -3024,6 +3136,14 @@
             },
             "type": "array",
             "title": "Lines"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
@@ -3049,7 +3169,8 @@
           "ship_region",
           "ship_postal_code",
           "shipper_phone",
-          "lines"
+          "lines",
+          "sql"
         ],
         "title": "OrderDetail"
       },
@@ -3143,12 +3264,21 @@
           },
           "pagination": {
             "$ref": "#/components/schemas/Pagination"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
         "required": [
           "items",
-          "pagination"
+          "pagination",
+          "sql"
         ],
         "title": "OrderPage"
       },
@@ -3265,6 +3395,90 @@
         ],
         "title": "Product"
       },
+      "ProductDetail": {
+        "properties": {
+          "product_id": {
+            "type": "integer",
+            "title": "Product Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "category_id": {
+            "type": "integer",
+            "title": "Category Id"
+          },
+          "category": {
+            "type": "string",
+            "title": "Category"
+          },
+          "supplier_id": {
+            "type": "integer",
+            "title": "Supplier Id"
+          },
+          "supplier": {
+            "type": "string",
+            "title": "Supplier"
+          },
+          "quantity_per_unit": {
+            "type": "string",
+            "title": "Quantity Per Unit"
+          },
+          "unit_price_cents": {
+            "type": "integer",
+            "title": "Unit Price Cents"
+          },
+          "units_in_stock": {
+            "type": "integer",
+            "title": "Units In Stock"
+          },
+          "units_on_order": {
+            "type": "integer",
+            "title": "Units On Order",
+            "description": "Units the shop has ordered from the supplier and not yet received"
+          },
+          "reorder_level": {
+            "type": "integer",
+            "title": "Reorder Level"
+          },
+          "below_reorder_level": {
+            "type": "boolean",
+            "title": "Below Reorder Level",
+            "description": "Stock has fallen below the reorder level"
+          },
+          "discontinued": {
+            "type": "boolean",
+            "title": "Discontinued"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
+          }
+        },
+        "type": "object",
+        "required": [
+          "product_id",
+          "name",
+          "category_id",
+          "category",
+          "supplier_id",
+          "supplier",
+          "quantity_per_unit",
+          "unit_price_cents",
+          "units_in_stock",
+          "units_on_order",
+          "reorder_level",
+          "below_reorder_level",
+          "discontinued",
+          "sql"
+        ],
+        "title": "ProductDetail"
+      },
       "ProductPage": {
         "properties": {
           "items": {
@@ -3276,12 +3490,21 @@
           },
           "pagination": {
             "$ref": "#/components/schemas/Pagination"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
         "required": [
           "items",
-          "pagination"
+          "pagination",
+          "sql"
         ],
         "title": "ProductPage"
       },
@@ -3652,6 +3875,14 @@
             },
             "type": "array",
             "title": "Products"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
           }
         },
         "type": "object",
@@ -3669,9 +3900,35 @@
           "phone",
           "fax",
           "home_page",
-          "products"
+          "products",
+          "sql"
         ],
         "title": "SupplierDetail"
+      },
+      "SupplierList": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/Supplier"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "sql": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Sql",
+            "description": "The statements this request ran, in order, with their values written in"
+          }
+        },
+        "type": "object",
+        "required": [
+          "items",
+          "sql"
+        ],
+        "title": "SupplierList"
       },
       "Territory": {
         "properties": {

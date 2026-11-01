@@ -2,7 +2,8 @@ from fastapi import APIRouter, HTTPException, Response
 
 from oim_shop.accounts import Viewer
 from oim_shop.deps import Conn, PathId, rows
-from oim_shop.models import Employee, EmployeeDetail, EmployeePersonal, MonthRevenue, Territory
+from oim_shop.models import Employee, EmployeeDetail, EmployeeList, EmployeePersonal, MonthRevenue, Territory
+from oim_shop.statements import recording
 
 router = APIRouter(tags=["employees"])
 
@@ -18,7 +19,7 @@ EMPLOYEE = """
 
 
 @router.get("/employees")
-def employees(conn: Conn) -> list[Employee]:
+def employees(conn: Conn) -> EmployeeList:
     """Northwind's nine employees, the managers who signed in here, and the reps while they have orders.
 
     Every student who signs in becomes a rep, and accounts outlast the nightly reset, so
@@ -29,61 +30,64 @@ def employees(conn: Conn) -> list[Employee]:
     Representative or a Sales Manager, so the list is decided from public columns alone, and
     its statement runs on the SQL page.
     """
-    found = rows(
-        conn,
-        f"""
+    with recording(conn) as sql:
+        found = rows(
+            conn,
+            f"""
         {EMPLOYEE}
         GROUP BY e.employee_id
         HAVING e.employee_id <= 9 OR e.title = 'Sales Manager' OR COUNT(o.order_id) > 0
         ORDER BY e.employee_id
         """,
-    )
-    return [Employee(**r) for r in found]
+        )
+    return EmployeeList(items=[Employee(**r) for r in found], sql=sql)
 
 
 @router.get("/employees/{employee_id}", responses={404: {"description": "No such employee"}})
 def employee(conn: Conn, employee_id: PathId, viewer: Viewer) -> EmployeeDetail:
     """An employee, with their territories and monthly sales; signed in, also their personal details."""
-    found = rows(conn, f"{EMPLOYEE} WHERE e.employee_id = ? GROUP BY e.employee_id", [employee_id])
-    if not found:
-        raise HTTPException(status_code=404, detail=f"No employee {employee_id}")
-    territories = rows(
-        conn,
-        """
-        SELECT t.territory_id, t.name, r.name AS region
-        FROM employee_territories et
-        JOIN territories t ON t.territory_id = et.territory_id
-        JOIN regions r ON r.region_id = t.region_id
-        WHERE et.employee_id = ? ORDER BY t.territory_id
-        """,
-        [employee_id],
-    )
-    personal = None
-    if viewer is not None:
-        personal = EmployeePersonal(
-            **rows(
-                conn,
-                """
-                SELECT birth_date, address, region, postal_code, home_phone, extension, notes,
-                       photo IS NOT NULL AS has_photo
-                FROM employees WHERE employee_id = ?
-                """,
-                [employee_id],
-            )[0]
+    with recording(conn) as sql:
+        found = rows(conn, f"{EMPLOYEE} WHERE e.employee_id = ? GROUP BY e.employee_id", [employee_id])
+        if not found:
+            raise HTTPException(status_code=404, detail=f"No employee {employee_id}")
+        territories = rows(
+            conn,
+            """
+            SELECT t.territory_id, t.name, r.name AS region
+            FROM employee_territories et
+            JOIN territories t ON t.territory_id = et.territory_id
+            JOIN regions r ON r.region_id = t.region_id
+            WHERE et.employee_id = ? ORDER BY t.territory_id
+            """,
+            [employee_id],
         )
-    months = rows(
-        conn,
-        """
-        SELECT substr(order_date, 1, 7) AS month, COUNT(*) AS order_count, SUM(total_cents) AS revenue_cents
-        FROM orders WHERE employee_id = ? GROUP BY 1 ORDER BY 1
-        """,
-        [employee_id],
-    )
+        personal = None
+        if viewer is not None:
+            personal = EmployeePersonal(
+                **rows(
+                    conn,
+                    """
+                    SELECT birth_date, address, region, postal_code, home_phone, extension, notes,
+                           photo IS NOT NULL AS has_photo
+                    FROM employees WHERE employee_id = ?
+                    """,
+                    [employee_id],
+                )[0]
+            )
+        months = rows(
+            conn,
+            """
+            SELECT substr(order_date, 1, 7) AS month, COUNT(*) AS order_count, SUM(total_cents) AS revenue_cents
+            FROM orders WHERE employee_id = ? GROUP BY 1 ORDER BY 1
+            """,
+            [employee_id],
+        )
     return EmployeeDetail(
         **found[0],
         territories=[Territory(**t) for t in territories],
         personal=personal,
         revenue_by_month=[MonthRevenue(**m) for m in months],
+        sql=sql,
     )
 
 

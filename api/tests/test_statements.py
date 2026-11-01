@@ -52,6 +52,12 @@ def test_layout_is_tidied_without_changing_the_statement() -> None:
     assert tidy(written) == "SELECT p.name\nFROM products p\n    WHERE p.name = 'a  b'"
 
 
+def test_a_fragment_joined_on_with_less_indentation_still_lines_up() -> None:
+    # PRODUCT + " WHERE p.product_id = ?", as the routes build it.
+    written = "\n    SELECT p.name,\n           p.unit_price_cents\n    FROM products p\n WHERE p.product_id = 1"
+    assert tidy(written) == "SELECT p.name,\n       p.unit_price_cents\nFROM products p\nWHERE p.product_id = 1"
+
+
 def test_a_recorded_statement_returns_the_same_rows_on_the_sql_page(
     conn: sqlite3.Connection, seeded_path: Path
 ) -> None:

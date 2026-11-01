@@ -121,7 +121,7 @@ export const namesQuery = (viewer: Viewer) =>
     queryFn: ({ signal }) => unwrap(api.GET('/api/me/names', { signal })),
     enabled: Boolean(viewer),
     gcTime: 0,
-    select: (names) => new Map(names.map((r) => [r.employee_id, r.display_name])),
+    select: (names) => new Map(names.items.map((r) => [r.employee_id, r.display_name])),
   })
 
 /** For someone signed in: the tables and columns the SQL page may read. */

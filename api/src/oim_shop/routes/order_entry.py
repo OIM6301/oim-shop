@@ -16,9 +16,10 @@ from fastapi import APIRouter, HTTPException, Query, Response
 from oim_shop import db
 from oim_shop.accounts import Session, SignedIn, Writer, add_chosen_names
 from oim_shop.deps import Conn, Now, PageNumber, PathId, PerPage, SortOrder, page_of, rows
-from oim_shop.models import LineInput, MyOrder, MyOrderPage, OrderDetail, OrderInput, Shipper
-from oim_shop.routes.orders import ORDER_COLUMNS, ORDER_FROM, SORT, order_detail
+from oim_shop.models import LineInput, MyOrder, MyOrderPage, OrderDetail, OrderInput, OrderLine, Shipper
+from oim_shop.routes.orders import ORDER_COLUMNS, ORDER_FROM, SORT, read_order
 from oim_shop.seed import update_totals
+from oim_shop.statements import recording
 
 router = APIRouter(tags=["order entry"])
 
@@ -178,10 +179,15 @@ def changeable(conn: sqlite3.Connection, order_id: int, writer: Session) -> None
         raise HTTPException(status_code=409, detail="This order has shipped")
 
 
+def written(found: dict[str, Any], lines: list[dict[str, Any]], sql: list[str]) -> OrderDetail:
+    """The order as a write left it, with every statement its transaction ran, BEGIN to COMMIT."""
+    return OrderDetail(**found, lines=[OrderLine(**line) for line in lines], sql=sql)
+
+
 @router.post("/orders", status_code=201, responses=REFUSED)
 def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> OrderDetail:
     """Enter an order as the signed-in rep. The prices are the products' current ones."""
-    with db.transaction(conn):
+    with recording(conn) as sql, db.transaction(conn):
         customer, products = check(conn, body, now)
         # The next number after the largest ever given, so a deleted order's number is never reused (migration 004).
         order_id: int = conn.execute(
@@ -204,7 +210,8 @@ def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> Order
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
         # Read back inside the transaction, so a reset that commits next cannot change the answer.
-        return order_detail(conn, order_id)
+        found, lines = read_order(conn, order_id)
+    return written(found, lines, sql)
 
 
 @router.put("/orders/{order_id}", responses={404: {"description": "No such order"}, **REFUSED})
@@ -214,7 +221,7 @@ def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer:
     The stock its old lines took counts as available to the new ones. It stays the order of
     the rep who entered it, even when a manager edits it.
     """
-    with db.transaction(conn):
+    with recording(conn) as sql, db.transaction(conn):
         changeable(conn, order_id, writer)
         return_stock(conn, order_id)
         conn.execute("DELETE FROM main.order_lines WHERE order_id = ?", (order_id,))
@@ -229,7 +236,8 @@ def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer:
         ship_to(conn, order_id, customer)
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
-        return order_detail(conn, order_id)
+        found, lines = read_order(conn, order_id)
+    return written(found, lines, sql)
 
 
 @router.delete("/orders/{order_id}", status_code=204, responses={404: {"description": "No such order"}, **REFUSED})
@@ -246,13 +254,14 @@ def cancel_order(order_id: PathId, conn: Conn, writer: Writer) -> Response:
 @router.post("/orders/{order_id}/ship", responses={404: {"description": "No such order"}, **REFUSED})
 def ship_order(order_id: PathId, conn: Conn, now: Now, writer: Writer) -> OrderDetail:
     """Mark an order shipped, now. It cannot be undone."""
-    with db.transaction(conn):
+    with recording(conn) as sql, db.transaction(conn):
         changeable(conn, order_id, writer)
         conn.execute(
             "UPDATE main.orders SET shipped_date = ? WHERE order_id = ?", (now.isoformat(timespec="seconds"), order_id)
         )
         db.changed(conn)
-        return order_detail(conn, order_id)
+        found, lines = read_order(conn, order_id)
+    return written(found, lines, sql)
 
 
 @router.get("/me/orders", responses={401: {"description": "Not signed in"}, 403: {"description": "Not a manager"}})
@@ -277,17 +286,18 @@ def my_orders(
     if scope == "mine":
         where.append("o.employee_id = ?")
         params.append(viewer.employee_id)
-    items, pagination = page_of(
-        conn,
-        select=f"""
-            SELECT {ORDER_COLUMNS}, COALESCE(n.display_name, e.first_name || ' ' || e.last_name) AS rep_name
-            {ORDER_FROM} LEFT JOIN chosen_names n ON n.employee_id = o.employee_id
-        """,
-        count="SELECT COUNT(*) FROM orders o",
-        where=where,
-        params=params,
-        order_by=f"{SORT[sort]} {order}, o.order_id {order}",
-        page=page,
-        per_page=per_page,
-    )
-    return MyOrderPage(items=[MyOrder(**r) for r in items], pagination=pagination)
+    with recording(conn) as sql:
+        items, pagination = page_of(
+            conn,
+            select=f"""
+                SELECT {ORDER_COLUMNS}, COALESCE(n.display_name, e.first_name || ' ' || e.last_name) AS rep_name
+                {ORDER_FROM} LEFT JOIN chosen_names n ON n.employee_id = o.employee_id
+            """,
+            count="SELECT COUNT(*) FROM orders o",
+            where=where,
+            params=params,
+            order_by=f"{SORT[sort]} {order}, o.order_id {order}",
+            page=page,
+            per_page=per_page,
+        )
+    return MyOrderPage(items=[MyOrder(**r) for r in items], pagination=pagination, sql=sql)

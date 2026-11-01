@@ -123,7 +123,7 @@ function Orders() {
         <Filter
           label="Employees"
           value={search.employee ? String(search.employee) : undefined}
-          options={employees.data?.map((e) => ({
+          options={employees.data?.items.map((e) => ({
             value: String(e.employee_id),
             label: nameOf(e.employee_id, `${e.first_name} ${e.last_name}`),
           }))}

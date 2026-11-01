@@ -97,7 +97,8 @@ function Employees() {
     if (!isOneOf(SORTS, id)) return
     void navigate({ search: { sort: id, order: desc ? 'desc' : 'asc' } })
   }
-  const byId = new Map((employees.data ?? []).map((e) => [e.employee_id, e]))
+  const listed = employees.data?.items
+  const byId = new Map((listed ?? []).map((e) => [e.employee_id, e]))
   const nameOf = useNameOf()
   const name: NameOf = (e) => nameOf(e.employee_id, `${e.first_name} ${e.last_name}`)
 
@@ -111,7 +112,7 @@ function Employees() {
           <DataTable
             caption="Employees"
             columns={columnsFor(byId, name)}
-            data={employees.data && sorted(employees.data, sort, name)}
+            data={listed && sorted(listed, sort, name)}
             sort={sort}
             onSortChange={setSort}
             isPending={employees.isPending}
@@ -128,7 +129,7 @@ function Employees() {
               <CardDescription>Who reports to whom</CardDescription>
             </CardHeader>
             <CardContent>
-              {employees.data ? <Hierarchy name={name} employees={employees.data} /> : <Skeleton className="h-48 w-full" />}
+              {listed ? <Hierarchy name={name} employees={listed} /> : <Skeleton className="h-48 w-full" />}
             </CardContent>
           </Card>
         </div>

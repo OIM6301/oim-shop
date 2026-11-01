@@ -1,10 +1,12 @@
+import sqlite3
 from datetime import date, timedelta
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, HTTPException, Query
 
 from oim_shop.deps import Conn, FromDay, PageNumber, PathId, PerPage, QueryId, SortOrder, ToDay, page_of, rows
 from oim_shop.models import Order, OrderDetail, OrderLine, OrderPage
+from oim_shop.statements import recording
 
 router = APIRouter(tags=["orders"])
 
@@ -64,21 +66,29 @@ def orders(
     if country and country.strip():
         where.append("casefold(o.ship_country) = casefold(?)")
         params.append(country.strip())
-    items, pagination = page_of(
-        conn,
-        select=ORDER,
-        count="SELECT COUNT(*) FROM orders o",
-        where=where,
-        params=params,
-        order_by=f"{SORT[sort]} {order}, o.order_id {order}",
-        page=page,
-        per_page=per_page,
-    )
-    return OrderPage(items=[Order(**r) for r in items], pagination=pagination)
+    with recording(conn) as sql:
+        items, pagination = page_of(
+            conn,
+            select=ORDER,
+            count="SELECT COUNT(*) FROM orders o",
+            where=where,
+            params=params,
+            order_by=f"{SORT[sort]} {order}, o.order_id {order}",
+            page=page,
+            per_page=per_page,
+        )
+    return OrderPage(items=[Order(**r) for r in items], pagination=pagination, sql=sql)
 
 
 @router.get("/orders/{order_id}", responses={404: {"description": "No such order"}})
 def order_detail(conn: Conn, order_id: PathId) -> OrderDetail:
+    with recording(conn) as sql:
+        found, lines = read_order(conn, order_id)
+    return OrderDetail(**found, lines=[OrderLine(**line) for line in lines], sql=sql)
+
+
+def read_order(conn: sqlite3.Connection, order_id: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """An order and its lines, for its page and for the answer to a write."""
     found = rows(conn, f"{ORDER} WHERE o.order_id = ?", [order_id])
     if not found:
         raise HTTPException(status_code=404, detail=f"No order {order_id}")
@@ -92,4 +102,4 @@ def order_detail(conn: Conn, order_id: PathId) -> OrderDetail:
         """,
         [order_id],
     )
-    return OrderDetail(**found[0], lines=[OrderLine(**line) for line in lines])
+    return found[0], lines

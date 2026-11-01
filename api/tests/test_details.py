@@ -29,7 +29,7 @@ def test_a_customer_has_its_contact_details(client: TestClient) -> None:
 
 
 def test_suppliers_with_their_contacts_and_products(client: TestClient) -> None:
-    suppliers = get(client, "/api/suppliers")
+    suppliers = get(client, "/api/suppliers")["items"]
     assert len(suppliers) == 29
     assert suppliers[0] == {
         "supplier_id": 1, "company_name": "Exotic Liquids", "contact_name": "Charlotte Cooper",
@@ -44,7 +44,8 @@ def test_suppliers_with_their_contacts_and_products(client: TestClient) -> None:
 
 
 def test_a_supplier_home_page_is_a_web_address_or_null(client: TestClient) -> None:
-    pages = [get(client, f"/api/suppliers/{s['supplier_id']}")["home_page"] for s in get(client, "/api/suppliers")]
+    suppliers = get(client, "/api/suppliers")["items"]
+    pages = [get(client, f"/api/suppliers/{s['supplier_id']}")["home_page"] for s in suppliers]
     assert sum(p is not None for p in pages) == 3
     assert all(p is None or p.startswith("http://") for p in pages)
 
