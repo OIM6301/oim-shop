@@ -16,6 +16,12 @@ PRODUCT = """
     JOIN categories c ON c.category_id = p.category_id
     JOIN suppliers s ON s.supplier_id = p.supplier_id
 """
+PRODUCT_STATUS = {
+    # Two columns of the same row compared with each other.
+    "below_reorder_level": "p.units_in_stock < p.reorder_level",
+    "discontinued": "p.discontinued = 1",
+    "sold": "p.discontinued = 0",
+}
 SORT = {"product_id": "p.product_id", "name": "p.name", "unit_price": "p.unit_price_cents", "stock": "p.units_in_stock"}
 
 
@@ -40,7 +46,9 @@ def category_picture(conn: Conn, category_id: PathId) -> Response:
 def products(
     conn: Conn,
     category_id: QueryId = None,
+    supplier_id: QueryId = None,
     name: Name = None,
+    status: Annotated[Literal["below_reorder_level", "discontinued", "sold"] | None, Query()] = None,
     sort: Annotated[Literal["product_id", "name", "unit_price", "stock"], Query()] = "product_id",
     order: SortOrder = "asc",
     page: PageNumber = 1,
@@ -51,9 +59,15 @@ def products(
     if category_id is not None:
         where.append("p.category_id = ?")
         params.append(category_id)
+    if supplier_id is not None:
+        where.append("p.supplier_id = ?")
+        params.append(supplier_id)
     if name and name.strip():
         where.append("instr(casefold(p.name), casefold(?)) > 0")
         params.append(name.strip())
+    if status is not None:
+        # Conditions written here, never from the request: the request only picks one.
+        where.append(PRODUCT_STATUS[status])
     with recording(conn) as sql:
         items, pagination = page_of(
             conn,

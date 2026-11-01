@@ -98,7 +98,9 @@ export interface paths {
         };
         /**
          * Suppliers
-         * @description Every supplier, with how many of the products it supplies. There are 29, so the list is not paged.
+         * @description Every supplier, or those in one country, with how many of the products each supplies.
+         *
+         *     There are 29, so the list is not paged.
          */
         get: operations["suppliers_api_suppliers_get"];
         put?: never;
@@ -1460,8 +1462,10 @@ export interface operations {
         parameters: {
             query?: {
                 category_id?: number | null;
+                supplier_id?: number | null;
                 /** @description Part of the name, any case */
                 name?: string | null;
+                status?: ("below_reorder_level" | "discontinued" | "sold") | null;
                 sort?: "product_id" | "name" | "unit_price" | "stock";
                 order?: "asc" | "desc";
                 page?: number;
@@ -1534,7 +1538,9 @@ export interface operations {
     };
     suppliers_api_suppliers_get: {
         parameters: {
-            query?: never;
+            query?: {
+                country?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1548,6 +1554,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupplierList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -1596,6 +1611,10 @@ export interface operations {
                 /** @description Part of the name, any case */
                 name?: string | null;
                 country?: string | null;
+                /** @description Part of the city's name, any case */
+                city?: string | null;
+                /** @description Part of the contact's title, any case */
+                contact_title?: string | null;
                 sort?: "company_name" | "country" | "order_count" | "revenue" | "last_order_date";
                 order?: "asc" | "desc";
                 page?: number;
@@ -1692,6 +1711,10 @@ export interface operations {
                 customer_id?: string | null;
                 employee_id?: number | null;
                 country?: string | null;
+                shipper_id?: number | null;
+                status?: ("shipped" | "not_shipped" | "late") | null;
+                /** @description Northwind's history, or entered here */
+                source?: ("seed" | "entered") | null;
                 /** @description First day included */
                 from?: string | null;
                 /** @description Last day included */

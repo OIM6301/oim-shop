@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Query
 
 from oim_shop.deps import Conn, PathId, rows
 from oim_shop.models import Product, Supplier, SupplierDetail, SupplierList
@@ -16,10 +18,16 @@ SUPPLIER = """
 
 
 @router.get("/suppliers")
-def suppliers(conn: Conn) -> SupplierList:
-    """Every supplier, with how many of the products it supplies. There are 29, so the list is not paged."""
+def suppliers(conn: Conn, country: Annotated[str | None, Query(max_length=100)] = None) -> SupplierList:
+    """Every supplier, or those in one country, with how many of the products each supplies.
+
+    There are 29, so the list is not paged.
+    """
+    where, params = "", []
+    if country and country.strip():
+        where, params = "WHERE casefold(s.country) = casefold(?)", [country.strip()]
     with recording(conn) as sql:
-        found = rows(conn, f"{SUPPLIER} GROUP BY s.supplier_id ORDER BY s.supplier_id")
+        found = rows(conn, f"{SUPPLIER} {where} GROUP BY s.supplier_id ORDER BY s.supplier_id", params)
     return SupplierList(items=[Supplier(**r) for r in found], sql=sql.sql())
 
 

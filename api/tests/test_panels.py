@@ -89,6 +89,11 @@ LISTS = [
     "/api/orders?customer_id=vinet",
     "/api/orders?country=belgium&employee_id=4&sort=total&order=asc&page=2&per_page=5",
     "/api/orders?from=2026-10-01&to=2026-10-22",
+    "/api/products?supplier_id=7&status=sold",
+    "/api/products?status=below_reorder_level&sort=stock",
+    "/api/orders?shipper_id=2&status=late&source=seed&from=2026-01-01",
+    "/api/orders?status=not_shipped",
+    "/api/customers?city=méxico&contact_title=OWNER",
 ]
 
 
@@ -102,6 +107,13 @@ def test_a_records_statement_returns_it(client: TestClient, path: Path, url: str
     answer = client.get(url).json()
     (statement,) = answer["sql"]["statements"]
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), [answer])
+
+
+@pytest.mark.parametrize("url", ["/api/suppliers", "/api/suppliers?country=usa"])
+def test_the_supplier_lists_statement(client: TestClient, path: Path, url: str) -> None:
+    listed = client.get(url).json()
+    (statement,) = listed["sql"]["statements"]
+    same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), listed["items"])
 
 
 def test_a_suppliers_statements(client: TestClient, path: Path) -> None:

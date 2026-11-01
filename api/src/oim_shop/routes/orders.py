@@ -24,6 +24,13 @@ ORDER = f"""
     SELECT {ORDER_COLUMNS}
     {ORDER_FROM}
 """
+ORDER_STATUS = {
+    "shipped": "o.shipped_date IS NOT NULL",
+    # Not shipped yet: the clock's view reads a shipped date still ahead as NULL.
+    "not_shipped": "o.shipped_date IS NULL",
+    # Shipped on a day after the one it was required by; date() leaves out the time of day.
+    "late": "date(o.shipped_date) > date(o.required_date)",
+}
 SORT = {"order_date": "o.order_date", "order_id": "o.order_id", "total": "o.total_cents"}
 
 
@@ -48,6 +55,11 @@ def orders(
     customer_id: Annotated[str | None, Query(max_length=10)] = None,
     employee_id: QueryId = None,
     country: Annotated[str | None, Query(max_length=100)] = None,
+    shipper_id: QueryId = None,
+    status: Annotated[Literal["shipped", "not_shipped", "late"] | None, Query()] = None,
+    source: Annotated[
+        Literal["seed", "entered"] | None, Query(description="Northwind's history, or entered here")
+    ] = None,
     from_date: FromDay = None,
     to_date: ToDay = None,
     sort: Annotated[Literal["order_date", "order_id", "total"], Query()] = "order_date",
@@ -66,6 +78,15 @@ def orders(
     if country and country.strip():
         where.append("casefold(o.ship_country) = casefold(?)")
         params.append(country.strip())
+    if shipper_id is not None:
+        where.append("o.shipper_id = ?")
+        params.append(shipper_id)
+    if status is not None:
+        # Conditions written here, never from the request: the request only picks one.
+        where.append(ORDER_STATUS[status])
+    if source is not None:
+        where.append("o.source = ?")
+        params.append(source)
     with recording(conn) as sql:
         items, pagination = page_of(
             conn,

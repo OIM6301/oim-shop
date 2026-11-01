@@ -32,6 +32,10 @@ def customers(
     conn: Conn,
     name: Name = None,
     country: Annotated[str | None, Query(max_length=100)] = None,
+    city: Annotated[str | None, Query(max_length=100, description="Part of the city's name, any case")] = None,
+    contact_title: Annotated[
+        str | None, Query(max_length=100, description="Part of the contact's title, any case")
+    ] = None,
     sort: Annotated[Literal["company_name", "country", "order_count", "revenue", "last_order_date"], Query()] = (
         "company_name"
     ),
@@ -47,6 +51,12 @@ def customers(
     if country and country.strip():
         where.append("casefold(c.country) = casefold(?)")
         params.append(country.strip())
+    if city and city.strip():
+        where.append("instr(casefold(c.city), casefold(?)) > 0")
+        params.append(city.strip())
+    if contact_title and contact_title.strip():
+        where.append("instr(casefold(c.contact_title), casefold(?)) > 0")
+        params.append(contact_title.strip())
     # The totals are grouped first; the filters then read the same column names as in customers.
     with recording(conn) as sql:
         items, pagination = page_of(

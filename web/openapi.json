@@ -122,6 +122,24 @@
             }
           },
           {
+            "name": "supplier_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Supplier Id"
+            }
+          },
+          {
             "name": "name",
             "in": "query",
             "required": false,
@@ -139,6 +157,27 @@
               "title": "Name"
             },
             "description": "Part of the name, any case"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "below_reorder_level",
+                    "discontinued",
+                    "sold"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
           },
           {
             "name": "sort",
@@ -274,8 +313,27 @@
           "products"
         ],
         "summary": "Suppliers",
-        "description": "Every supplier, with how many of the products it supplies. There are 29, so the list is not paged.",
+        "description": "Every supplier, or those in one country, with how many of the products each supplies.\n\nThere are 29, so the list is not paged.",
         "operationId": "suppliers_api_suppliers_get",
+        "parameters": [
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Country"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -283,6 +341,16 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SupplierList"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -380,6 +448,44 @@
               ],
               "title": "Country"
             }
+          },
+          {
+            "name": "city",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the city's name, any case",
+              "title": "City"
+            },
+            "description": "Part of the city's name, any case"
+          },
+          {
+            "name": "contact_title",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Part of the contact's title, any case",
+              "title": "Contact Title"
+            },
+            "description": "Part of the contact's title, any case"
           },
           {
             "name": "sort",
@@ -595,6 +701,67 @@
               ],
               "title": "Country"
             }
+          },
+          {
+            "name": "shipper_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "maximum": 9223372036854775807,
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Shipper Id"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "shipped",
+                    "not_shipped",
+                    "late"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Status"
+            }
+          },
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "seed",
+                    "entered"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Northwind's history, or entered here",
+              "title": "Source"
+            },
+            "description": "Northwind's history, or entered here"
           },
           {
             "name": "from",
