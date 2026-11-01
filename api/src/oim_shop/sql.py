@@ -100,6 +100,8 @@ def authorizer(own_tables: set[str], through: dict[str, str]) -> Authorizer:
 def connect(path: Path, now: datetime, session: Session) -> sqlite3.Connection:
     """A read-only connection with the clock's views and this person's names; nothing else may be read."""
     conn = sqlite3.connect(f"{path.resolve().as_uri()}?mode=ro", uri=True, autocommit=True, check_same_thread=False)
+    # The pages' statements must run here as they are.
+    db.add_functions(conn)
     # The only views that may read orders, order lines and accounts, under names no query can know.
     secret = secrets.token_hex(16)
     placed, lines, names = f"placed_{secret}", f"lines_{secret}", f"names_{secret}"

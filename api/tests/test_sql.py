@@ -74,6 +74,12 @@ def test_a_query_is_1_to_5000_characters(rep: TestClient, query: str) -> None:
 # --- what comes back ----------------------------------------------------------------------
 
 
+def test_the_pages_functions_work_here_too(rep: TestClient) -> None:
+    # The pages match names with casefold(), which also knows letters outside ASCII.
+    assert value(rep, "SELECT casefold('CÔTE')") == "côte"
+    assert value(rep, "SELECT COUNT(*) FROM customers WHERE casefold(country) = casefold('FRANCE')") == 11
+
+
 def test_a_query_returns_its_columns_and_rows(rep: TestClient) -> None:
     result = sql(rep, "SELECT product_id, name, units_in_stock FROM products WHERE product_id IN (1, 2) ORDER BY 1")
     assert result["columns"] == ["product_id", "name", "units_in_stock"]
