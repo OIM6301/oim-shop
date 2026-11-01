@@ -15,11 +15,11 @@ from pydantic import BaseModel, Field, StringConstraints
 MAX_ID = 2**63 - 1
 
 
-# The statements a request ran, for the SQL panel on each page (statements.py).
-Statements = Annotated[
-    list[str],
-    Field(description="The statements this request ran, in order, with their values written in"),
-]
+class Sql(BaseModel):
+    """The statements a request ran, for the SQL panel on each page (statements.py)."""
+
+    at: str = Field(description="The moment the request read the data, on the shop's clock")
+    statements: list[str] = Field(description="In the order they ran, with their values written in")
 
 
 class Pagination(BaseModel):
@@ -60,11 +60,11 @@ class Product(BaseModel):
 class ProductPage(BaseModel):
     items: list[Product]
     pagination: Pagination
-    sql: Statements
+    sql: Sql
 
 
 class ProductDetail(Product):
-    sql: Statements
+    sql: Sql
 
 
 class Customer(BaseModel):
@@ -85,7 +85,7 @@ class CustomerDetail(Customer):
     postal_code: str | None
     phone: str | None
     fax: str | None
-    sql: Statements
+    sql: Sql
 
 
 class Supplier(BaseModel):
@@ -106,18 +106,18 @@ class SupplierDetail(Supplier):
     fax: str | None
     home_page: str | None = Field(description="A web address, or null")
     products: list[Product]
-    sql: Statements
+    sql: Sql
 
 
 class SupplierList(BaseModel):
     items: list[Supplier]
-    sql: Statements
+    sql: Sql
 
 
 class CustomerPage(BaseModel):
     items: list[Customer]
     pagination: Pagination
-    sql: Statements
+    sql: Sql
 
 
 class Order(BaseModel):
@@ -142,7 +142,7 @@ class Order(BaseModel):
 class OrderPage(BaseModel):
     items: list[Order]
     pagination: Pagination
-    sql: Statements
+    sql: Sql
 
 
 class OrderLine(BaseModel):
@@ -161,7 +161,7 @@ class OrderDetail(Order):
     ship_postal_code: str | None
     shipper_phone: str | None
     lines: list[OrderLine]
-    sql: Statements
+    sql: Sql
 
 
 class Ran(BaseModel):
@@ -176,12 +176,14 @@ class OrderChange(BaseModel):
     """What a write left: the order as it is now, and its transaction, BEGIN to COMMIT."""
 
     order: OrderDetail
+    at: str = Field(description="The moment the write ran, on the shop's clock")
     transaction: list[Ran]
 
 
 class Cancellation(BaseModel):
     """A cancelled order's transaction, BEGIN to COMMIT, with what it deleted and the stock it gave back."""
 
+    at: str = Field(description="The moment the write ran, on the shop's clock")
     transaction: list[Ran]
 
 
@@ -201,7 +203,7 @@ class Employee(BaseModel):
 
 class EmployeeList(BaseModel):
     items: list[Employee]
-    sql: Statements
+    sql: Sql
 
 
 class MonthRevenue(BaseModel):
@@ -233,7 +235,7 @@ class EmployeeDetail(Employee):
     territories: list[Territory]
     personal: EmployeePersonal | None = Field(description="Null unless you are signed in")
     revenue_by_month: list[MonthRevenue]
-    sql: Statements
+    sql: Sql
 
 
 class ProductRevenue(BaseModel):
@@ -259,6 +261,7 @@ class CountryRevenue(BaseModel):
 class DashboardSql(BaseModel):
     """The statement behind each part of the dashboard."""
 
+    at: str = Field(description="The start of the minute the dashboard counts orders to")
     totals: str
     revenue_by_month: str
     top_products: str
@@ -299,7 +302,7 @@ class ChosenName(BaseModel):
 
 class ChosenNameList(BaseModel):
     items: list[ChosenName]
-    sql: Statements
+    sql: Sql
 
 
 class SqlQuery(BaseModel):
@@ -362,4 +365,4 @@ class MyOrder(Order):
 class MyOrderPage(BaseModel):
     items: list[MyOrder]
     pagination: Pagination
-    sql: Statements
+    sql: Sql

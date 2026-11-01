@@ -208,7 +208,7 @@ def read_back(conn: sqlite3.Connection, order_id: int) -> OrderDetail:
     """The order as the write left it, read inside its transaction, with the statements behind it."""
     with recording(conn) as sql:
         found, lines = read_order(conn, order_id)
-    return OrderDetail(**found, lines=[OrderLine(**line) for line in lines], sql=sql)
+    return OrderDetail(**found, lines=[OrderLine(**line) for line in lines], sql=sql.sql())
 
 
 @router.post("/orders", status_code=201, responses=REFUSED)
@@ -239,7 +239,7 @@ def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> Order
         db.changed(conn)
         # Read back inside the transaction, so a reset that commits next cannot change the answer.
         order = read_back(conn, order_id)
-    return OrderChange(order=order, transaction=transaction(sql))
+    return OrderChange(order=order, at=sql.moment(), transaction=transaction(sql))
 
 
 @router.put("/orders/{order_id}", responses={404: {"description": "No such order"}, **REFUSED})
@@ -266,7 +266,7 @@ def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer:
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
         order = read_back(conn, order_id)
-    return OrderChange(order=order, transaction=transaction(sql))
+    return OrderChange(order=order, at=sql.moment(), transaction=transaction(sql))
 
 
 @router.delete("/orders/{order_id}", responses={404: {"description": "No such order"}, **REFUSED})
@@ -282,7 +282,7 @@ def cancel_order(order_id: PathId, conn: Conn, writer: Writer) -> Cancellation:
         wrote(conn.execute("DELETE FROM main.order_lines WHERE order_id = ? RETURNING *", (order_id,)))
         wrote(conn.execute("DELETE FROM main.orders WHERE order_id = ? RETURNING *", (order_id,)))
         db.changed(conn)
-    return Cancellation(transaction=transaction(sql))
+    return Cancellation(at=sql.moment(), transaction=transaction(sql))
 
 
 @router.post("/orders/{order_id}/ship", responses={404: {"description": "No such order"}, **REFUSED})
@@ -296,7 +296,7 @@ def ship_order(order_id: PathId, conn: Conn, now: Now, writer: Writer) -> OrderC
         ))  # fmt: skip
         db.changed(conn)
         order = read_back(conn, order_id)
-    return OrderChange(order=order, transaction=transaction(sql))
+    return OrderChange(order=order, at=sql.moment(), transaction=transaction(sql))
 
 
 @router.get("/me/orders", responses={401: {"description": "Not signed in"}, 403: {"description": "Not a manager"}})
@@ -335,4 +335,4 @@ def my_orders(
             page=page,
             per_page=per_page,
         )
-    return MyOrderPage(items=[MyOrder(**r) for r in items], pagination=pagination, sql=sql)
+    return MyOrderPage(items=[MyOrder(**r) for r in items], pagination=pagination, sql=sql.sql())

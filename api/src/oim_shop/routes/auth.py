@@ -188,4 +188,4 @@ def chosen_names(conn: Conn, viewer: SignedIn) -> ChosenNameList:
     add_chosen_names(conn, viewer)
     with recording(conn) as sql:
         found = rows(conn, "SELECT employee_id, display_name FROM chosen_names ORDER BY employee_id")
-    return ChosenNameList(items=[ChosenName(**r) for r in found], sql=sql)
+    return ChosenNameList(items=[ChosenName(**r) for r in found], sql=sql.sql())

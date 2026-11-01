@@ -40,7 +40,7 @@ def employees(conn: Conn) -> EmployeeList:
         ORDER BY e.employee_id
         """,
         )
-    return EmployeeList(items=[Employee(**r) for r in found], sql=sql)
+    return EmployeeList(items=[Employee(**r) for r in found], sql=sql.sql())
 
 
 @router.get("/employees/{employee_id}", responses={404: {"description": "No such employee"}})
@@ -87,7 +87,7 @@ def employee(conn: Conn, employee_id: PathId, viewer: Viewer) -> EmployeeDetail:
         territories=[Territory(**t) for t in territories],
         personal=personal,
         revenue_by_month=[MonthRevenue(**m) for m in months],
-        sql=sql,
+        sql=sql.sql(),
     )
 
 

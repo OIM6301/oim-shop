@@ -59,7 +59,7 @@ def customers(
             page=page,
             per_page=per_page,
         )
-    return CustomerPage(items=[Customer(**r) for r in items], pagination=pagination, sql=sql)
+    return CustomerPage(items=[Customer(**r) for r in items], pagination=pagination, sql=sql.sql())
 
 
 @router.get("/customers/{customer_id}", responses={404: {"description": "No such customer"}})
@@ -74,7 +74,7 @@ def customer(conn: Conn, customer_id: Annotated[str, Path(max_length=10)]) -> Cu
         )
     if not found:
         raise HTTPException(status_code=404, detail=f"No customer {customer_id}")
-    return CustomerDetail(**found[0], sql=sql)
+    return CustomerDetail(**found[0], sql=sql.sql())
 
 
 @router.get("/countries", tags=["orders"])

@@ -14,6 +14,9 @@ import sqlite3
 from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
+from datetime import datetime
+
+from oim_shop.models import Sql
 
 # A transaction the route opens itself (db.transaction) starts with this.
 BEGIN = "BEGIN IMMEDIATE"
@@ -24,10 +27,20 @@ Value = int | float | str | None
 class Recording(list[str]):
     """The statements, in order, and the rows each write among them returned, by its position."""
 
-    def __init__(self) -> None:
+    def __init__(self, at: datetime | None) -> None:
         super().__init__()
+        self.at = at
         self.written: dict[int, tuple[list[str], list[list[Value]]]] = {}
         self.in_transaction = False
+
+    def moment(self) -> str:
+        """When the statements read the data: the moment the connection's clock views were made for."""
+        if self.at is None:
+            raise ValueError("a connection without the clock's views (db.as_of)")
+        return self.at.isoformat(timespec="seconds")
+
+    def sql(self) -> Sql:
+        return Sql(at=self.moment(), statements=list(self))
 
     def add(self, statement: str) -> None:
         # Python opens and commits read transactions on its own, with a plain BEGIN and COMMIT;
@@ -63,7 +76,7 @@ def _trace(statement: str) -> None:
 def recording(conn: sqlite3.Connection) -> Generator[Recording]:
     """Collect every statement this connection runs inside the block, in order, tidied."""
     outer = _open.get()
-    mine = Recording()
+    mine = Recording(getattr(conn, "as_of", None))
     token = _open.set((*outer, mine))
     if not outer:
         conn.set_trace_callback(_trace)

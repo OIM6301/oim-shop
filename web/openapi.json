@@ -1694,6 +1694,11 @@
       },
       "Cancellation": {
         "properties": {
+          "at": {
+            "type": "string",
+            "title": "At",
+            "description": "The moment the write ran, on the shop's clock"
+          },
           "transaction": {
             "items": {
               "$ref": "#/components/schemas/Ran"
@@ -1704,6 +1709,7 @@
         },
         "type": "object",
         "required": [
+          "at",
           "transaction"
         ],
         "title": "Cancellation",
@@ -1760,12 +1766,7 @@
             "title": "Items"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -2003,12 +2004,7 @@
             "title": "Fax"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -2044,12 +2040,7 @@
             "$ref": "#/components/schemas/Pagination"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -2129,6 +2120,11 @@
       },
       "DashboardSql": {
         "properties": {
+          "at": {
+            "type": "string",
+            "title": "At",
+            "description": "The start of the minute the dashboard counts orders to"
+          },
           "totals": {
             "type": "string",
             "title": "Totals"
@@ -2152,6 +2148,7 @@
         },
         "type": "object",
         "required": [
+          "at",
           "totals",
           "revenue_by_month",
           "top_products",
@@ -2354,12 +2351,7 @@
             "title": "Revenue By Month"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -2392,12 +2384,7 @@
             "title": "Items"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -2814,12 +2801,7 @@
             "$ref": "#/components/schemas/Pagination"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -2989,6 +2971,11 @@
           "order": {
             "$ref": "#/components/schemas/OrderDetail"
           },
+          "at": {
+            "type": "string",
+            "title": "At",
+            "description": "The moment the write ran, on the shop's clock"
+          },
           "transaction": {
             "items": {
               "$ref": "#/components/schemas/Ran"
@@ -3000,6 +2987,7 @@
         "type": "object",
         "required": [
           "order",
+          "at",
           "transaction"
         ],
         "title": "OrderChange",
@@ -3183,12 +3171,7 @@
             "title": "Lines"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -3311,12 +3294,7 @@
             "$ref": "#/components/schemas/Pagination"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -3497,12 +3475,7 @@
             "title": "Discontinued"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -3537,12 +3510,7 @@
             "$ref": "#/components/schemas/Pagination"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -3672,6 +3640,30 @@
           "phone"
         ],
         "title": "Shipper"
+      },
+      "Sql": {
+        "properties": {
+          "at": {
+            "type": "string",
+            "title": "At",
+            "description": "The moment the request read the data, on the shop's clock"
+          },
+          "statements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Statements",
+            "description": "In the order they ran, with their values written in"
+          }
+        },
+        "type": "object",
+        "required": [
+          "at",
+          "statements"
+        ],
+        "title": "Sql",
+        "description": "The statements a request ran, for the SQL panel on each page (statements.py)."
       },
       "SqlColumn": {
         "properties": {
@@ -3984,12 +3976,7 @@
             "title": "Products"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",
@@ -4022,12 +4009,7 @@
             "title": "Items"
           },
           "sql": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array",
-            "title": "Sql",
-            "description": "The statements this request ran, in order, with their values written in"
+            "$ref": "#/components/schemas/Sql"
           }
         },
         "type": "object",

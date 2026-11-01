@@ -74,7 +74,8 @@ def same(rows: list[dict[str, Any]], items: list[dict[str, Any]]) -> None:
 def check_page(client: TestClient, path: Path, session: Session, url: str) -> dict[str, Any]:
     """A paged list: the count is its total, and the page of rows is its items."""
     answer = client.get(url).json()
-    count, page = answer["sql"]
+    assert answer["sql"]["at"] == NOW.isoformat()
+    count, page = answer["sql"]["statements"]
     assert run_both(path, session, count).rows == [[answer["pagination"]["total"]]]
     same(as_dicts(run_both(path, session, page)), answer["items"])
     return answer
@@ -99,44 +100,44 @@ def test_a_lists_statements_return_its_rows(client: TestClient, path: Path, url:
 @pytest.mark.parametrize("url", ["/api/products/2", "/api/customers/val2", "/api/customers/ALFKI"])
 def test_a_records_statement_returns_it(client: TestClient, path: Path, url: str) -> None:
     answer = client.get(url).json()
-    (statement,) = answer["sql"]
+    (statement,) = answer["sql"]["statements"]
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), [answer])
 
 
 def test_a_suppliers_statements(client: TestClient, path: Path) -> None:
     listed = client.get("/api/suppliers").json()
-    (statement,) = listed["sql"]
+    (statement,) = listed["sql"]["statements"]
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), listed["items"])
     supplier = client.get("/api/suppliers/1").json()
-    itself, products = supplier["sql"]
+    itself, products = supplier["sql"]["statements"]
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, itself)), [supplier])
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, products)), supplier["products"])
 
 
 def test_an_orders_statements(client: TestClient, path: Path) -> None:
     order = client.get("/api/orders/10248").json()
-    itself, lines = order["sql"]
+    itself, lines = order["sql"]["statements"]
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, itself)), [order])
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, lines)), order["lines"])
 
 
 def test_the_employee_lists_statement(client: TestClient, path: Path) -> None:
     listed = client.get("/api/employees").json()
-    (statement,) = listed["sql"]
+    (statement,) = listed["sql"]["statements"]
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, statement)), listed["items"])
 
 
 def test_an_employees_statements_depend_on_who_is_signed_in(client: TestClient, path: Path, github: FakeGitHub) -> None:
     public = client.get("/api/employees/1").json()
-    itself, territories, months = public["sql"]
-    assert not any("birth_date" in s for s in public["sql"])
+    itself, territories, months = public["sql"]["statements"]
+    assert not any("birth_date" in s for s in public["sql"]["statements"])
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, itself)), [public])
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, territories)), public["territories"])
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, months)), public["revenue_by_month"])
 
     sign_in(client, github, STUDENT)
     signed_in = client.get("/api/employees/1").json()
-    personal = signed_in["sql"][2]
+    personal = signed_in["sql"]["statements"][2]
     assert "birth_date" in personal
     same(as_dicts(run_both(path, session_of(client), personal)), [signed_in["personal"]])
 
@@ -144,7 +145,7 @@ def test_an_employees_statements_depend_on_who_is_signed_in(client: TestClient, 
 def test_the_dashboards_statements_return_its_figures(client: TestClient, path: Path) -> None:
     board = client.get("/api/dashboard?from=2025-01-01&to=2025-06-30").json()
     sql = board["sql"]
-    assert set(sql) == {"totals", "revenue_by_month", "top_products", "by_employee", "by_country"}
+    assert set(sql) == {"at", "totals", "revenue_by_month", "top_products", "by_employee", "by_country"}
     same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, sql["totals"])), [board])
     for part in ("revenue_by_month", "top_products", "by_employee", "by_country"):
         same(as_dicts(run_both(path, VISITOR_ON_THE_SQL_PAGE, sql[part])), board[part])
@@ -176,7 +177,7 @@ def test_my_orders_and_the_names_at_each_level(rep: TestClient, manager: TestCli
         assert "Ana O'Brien" in {o["rep_name"] for o in answer["items"]}
     for client in (rep, manager):
         names = client.get("/api/me/names").json()
-        (statement,) = names["sql"]
+        (statement,) = names["sql"]["statements"]
         same(as_dicts(run_both(path, session_of(client), statement)), names["items"])
 
 
@@ -260,3 +261,19 @@ def test_shipping_shows_the_date_it_wrote(rep: TestClient) -> None:
         {"order_id": placed["order_id"], "shipped_date": NOW.isoformat()}
     ]
     assert change["order"]["shipped_date"] == NOW.isoformat()
+
+
+def test_the_panel_says_when_the_page_read_the_data(path: Path) -> None:
+    """The moment the clock's views were made for; the dashboard's is the start of its minute."""
+    from datetime import timedelta
+
+    later = NOW + timedelta(seconds=42)
+    with TestClient(create_app(path, now=lambda: later)) as c:
+        assert c.get("/api/products").json()["sql"]["at"] == later.isoformat()
+        assert c.get("/api/orders/10248").json()["sql"]["at"] == later.isoformat()
+        assert c.get("/api/dashboard").json()["sql"]["at"] == NOW.isoformat()
+
+
+def test_a_write_says_when_it_ran(rep: TestClient) -> None:
+    change = rep.post("/api/orders", json=BODY, headers=csrf(rep)).json()
+    assert change["at"] == NOW.isoformat() == change["order"]["order_date"]

@@ -6,15 +6,24 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from oim_shop.statements import wrote
 
 MIGRATIONS = Path(__file__).parent / "migrations"
 
 
-def connect(path: Path) -> sqlite3.Connection:
+class Connection(sqlite3.Connection):
+    """A connection that knows the moment its clock's views were made for (as_of), for the SQL panel."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.as_of: datetime | None = None
+
+
+def connect(path: Path) -> Connection:
     # These pragmas cannot run inside a transaction, so they run before autocommit is turned off.
-    conn = sqlite3.connect(path, autocommit=True, check_same_thread=False)
+    conn = sqlite3.connect(path, autocommit=True, check_same_thread=False, factory=Connection)
     conn.row_factory = sqlite3.Row
     add_functions(conn)
     conn.execute("PRAGMA foreign_keys = ON")
@@ -78,6 +87,8 @@ def as_of(conn: sqlite3.Connection, now: datetime, orders: str = "orders", order
         FROM {order_lines}
         """  # noqa: S608
     )
+    if isinstance(conn, Connection):
+        conn.as_of = now
     conn.commit()
 
 

@@ -65,7 +65,7 @@ def products(
             page=page,
             per_page=per_page,
         )
-    return ProductPage(items=[Product(**r) for r in items], pagination=pagination, sql=sql)
+    return ProductPage(items=[Product(**r) for r in items], pagination=pagination, sql=sql.sql())
 
 
 @router.get("/products/{product_id}", responses={404: {"description": "No such product"}})
@@ -74,4 +74,4 @@ def product(conn: Conn, product_id: PathId) -> ProductDetail:
         found = rows(conn, f"{PRODUCT} WHERE p.product_id = ?", [product_id])
     if not found:
         raise HTTPException(status_code=404, detail=f"No product {product_id}")
-    return ProductDetail(**found[0], sql=sql)
+    return ProductDetail(**found[0], sql=sql.sql())

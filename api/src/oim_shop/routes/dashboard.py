@@ -153,7 +153,7 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datet
     params.append(moment.isoformat(timespec="seconds"))
     clause = " AND ".join(where)
 
-    sql: dict[str, str] = {}
+    sql: dict[str, str] = {"at": moment.isoformat(timespec="seconds")}
     found, sql["totals"] = recorded(
         conn,
         f"""

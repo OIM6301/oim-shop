@@ -99,7 +99,9 @@ def test_at_most_four_database_connections_are_open_at_once(seeded_path: Path, m
     open_now = most = 0
     connect = sqlite3.connect
 
-    class Counted(sqlite3.Connection):
+    from oim_shop import db
+
+    class Counted(db.Connection):
         def close(self) -> None:
             nonlocal open_now
             open_now -= 1
@@ -109,7 +111,8 @@ def test_at_most_four_database_connections_are_open_at_once(seeded_path: Path, m
         nonlocal open_now, most
         open_now += 1
         most = max(most, open_now)
-        return connect(*args, **kwargs, factory=Counted)
+        kwargs["factory"] = Counted  # in place of db.Connection, which it extends
+        return connect(*args, **kwargs)
 
     app = create_app(seeded_path, now=lambda: NOW, requests_per_minute=1000)
 

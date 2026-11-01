@@ -564,6 +564,11 @@ export interface components {
          * @description A cancelled order's transaction, BEGIN to COMMIT, with what it deleted and the stock it gave back.
          */
         Cancellation: {
+            /**
+             * At
+             * @description The moment the write ran, on the shop's clock
+             */
+            at: string;
             /** Transaction */
             transaction: components["schemas"]["Ran"][];
         };
@@ -587,11 +592,7 @@ export interface components {
         ChosenNameList: {
             /** Items */
             items: components["schemas"]["ChosenName"][];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** CountryRevenue */
         CountryRevenue: {
@@ -651,22 +652,14 @@ export interface components {
             phone: string | null;
             /** Fax */
             fax: string | null;
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** CustomerPage */
         CustomerPage: {
             /** Items */
             items: components["schemas"]["Customer"][];
             pagination: components["schemas"]["Pagination"];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** Dashboard */
         Dashboard: {
@@ -702,6 +695,11 @@ export interface components {
          * @description The statement behind each part of the dashboard.
          */
         DashboardSql: {
+            /**
+             * At
+             * @description The start of the minute the dashboard counts orders to
+             */
+            at: string;
             /** Totals */
             totals: string;
             /** Revenue By Month */
@@ -774,21 +772,13 @@ export interface components {
             personal: components["schemas"]["EmployeePersonal"] | null;
             /** Revenue By Month */
             revenue_by_month: components["schemas"]["MonthRevenue"][];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** EmployeeList */
         EmployeeList: {
             /** Items */
             items: components["schemas"]["Employee"][];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /**
          * EmployeePersonal
@@ -943,11 +933,7 @@ export interface components {
             /** Items */
             items: components["schemas"]["MyOrder"][];
             pagination: components["schemas"]["Pagination"];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** NameChange */
         NameChange: {
@@ -1008,6 +994,11 @@ export interface components {
          */
         OrderChange: {
             order: components["schemas"]["OrderDetail"];
+            /**
+             * At
+             * @description The moment the write ran, on the shop's clock
+             */
+            at: string;
             /** Transaction */
             transaction: components["schemas"]["Ran"][];
         };
@@ -1067,11 +1058,7 @@ export interface components {
             shipper_phone: string | null;
             /** Lines */
             lines: components["schemas"]["OrderLine"][];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /**
          * OrderInput
@@ -1114,11 +1101,7 @@ export interface components {
             /** Items */
             items: components["schemas"]["Order"][];
             pagination: components["schemas"]["Pagination"];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** Pagination */
         Pagination: {
@@ -1204,22 +1187,14 @@ export interface components {
             below_reorder_level: boolean;
             /** Discontinued */
             discontinued: boolean;
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** ProductPage */
         ProductPage: {
             /** Items */
             items: components["schemas"]["Product"][];
             pagination: components["schemas"]["Pagination"];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** ProductRevenue */
         ProductRevenue: {
@@ -1258,6 +1233,22 @@ export interface components {
             company_name: string;
             /** Phone */
             phone: string | null;
+        };
+        /**
+         * Sql
+         * @description The statements a request ran, for the SQL panel on each page (statements.py).
+         */
+        Sql: {
+            /**
+             * At
+             * @description The moment the request read the data, on the shop's clock
+             */
+            at: string;
+            /**
+             * Statements
+             * @description In the order they ran, with their values written in
+             */
+            statements: string[];
         };
         /** SqlColumn */
         SqlColumn: {
@@ -1348,21 +1339,13 @@ export interface components {
             home_page: string | null;
             /** Products */
             products: components["schemas"]["Product"][];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** SupplierList */
         SupplierList: {
             /** Items */
             items: components["schemas"]["Supplier"][];
-            /**
-             * Sql
-             * @description The statements this request ran, in order, with their values written in
-             */
-            sql: string[];
+            sql: components["schemas"]["Sql"];
         };
         /** Territory */
         Territory: {

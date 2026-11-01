@@ -63,7 +63,7 @@ def test_products_page_through_all_77(client: TestClient) -> None:
 
 def test_product_detail(client: TestClient) -> None:
     chang = get(client, "/api/products/2")
-    assert chang.pop("sql")[0].startswith("SELECT p.product_id, p.name")
+    assert chang.pop("sql")["statements"][0].startswith("SELECT p.product_id, p.name")
     assert chang == {
         "product_id": 2,
         "name": "Chang",

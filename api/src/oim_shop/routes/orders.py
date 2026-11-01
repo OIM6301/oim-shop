@@ -77,14 +77,14 @@ def orders(
             page=page,
             per_page=per_page,
         )
-    return OrderPage(items=[Order(**r) for r in items], pagination=pagination, sql=sql)
+    return OrderPage(items=[Order(**r) for r in items], pagination=pagination, sql=sql.sql())
 
 
 @router.get("/orders/{order_id}", responses={404: {"description": "No such order"}})
 def order_detail(conn: Conn, order_id: PathId) -> OrderDetail:
     with recording(conn) as sql:
         found, lines = read_order(conn, order_id)
-    return OrderDetail(**found, lines=[OrderLine(**line) for line in lines], sql=sql)
+    return OrderDetail(**found, lines=[OrderLine(**line) for line in lines], sql=sql.sql())
 
 
 def read_order(conn: sqlite3.Connection, order_id: int) -> tuple[dict[str, Any], list[dict[str, Any]]]:
