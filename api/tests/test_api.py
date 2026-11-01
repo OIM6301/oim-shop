@@ -319,9 +319,9 @@ def test_the_dashboard_is_computed_once_a_minute_per_range(seeded_path: Path, mo
     calls: list[tuple[object, object]] = []
     compute = dashboard_route.compute
 
-    def counting(conn: sqlite3.Connection, first: object, last: object) -> object:
+    def counting(conn: sqlite3.Connection, first: object, last: object, moment: object) -> object:
         calls.append((first, last))
-        return compute(conn, first, last)  # type: ignore[arg-type]
+        return compute(conn, first, last, moment)  # type: ignore[arg-type]
 
     monkeypatch.setattr(dashboard_route, "compute", counting)
     moment = [NOW]
@@ -454,9 +454,9 @@ def test_waiting_dashboards_are_capped(seeded_path: Path, monkeypatch: pytest.Mo
 
     compute = dashboard_route.compute
 
-    def slow(conn: sqlite3.Connection, first: Any, last: Any) -> Any:
+    def slow(conn: sqlite3.Connection, first: Any, last: Any, moment: Any) -> Any:
         time.sleep(0.5)
-        return compute(conn, first, last)
+        return compute(conn, first, last, moment)
 
     monkeypatch.setattr(dashboard_route, "compute", slow)
     app = create_app(seeded_path, now=lambda: NOW, requests_per_minute=10_000, dashboards_waiting=1)

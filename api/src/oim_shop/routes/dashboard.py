@@ -16,16 +16,6 @@ from oim_shop.routes.orders import date_range
 router = APIRouter(tags=["dashboard"])
 
 
-def months_between(first: date, last: date) -> list[str]:
-    """Every month from first to last as YYYY-MM, so a month without orders still shows as zero."""
-    months: list[str] = []
-    year, month = first.year, first.month
-    while (year, month) <= (last.year, last.month):
-        months.append(f"{year:04d}-{month:02d}")
-        year, month = (year + 1, 1) if month == 12 else (year, month + 1)
-    return months
-
-
 # The minute a dashboard counts seeded orders to, and the database's generation (db.changed).
 Stamp = tuple[datetime, int]
 
@@ -130,7 +120,7 @@ def compute_as_of(path: Path, moment: datetime, first: date, last: date) -> Dash
     conn = db.connect(path)
     try:
         db.as_of(conn, moment)
-        return compute(conn, first, last)
+        return compute(conn, first, last, moment)
     finally:
         conn.close()
 
@@ -140,39 +130,47 @@ def compute_as_of(path: Path, moment: datetime, first: date, last: date) -> Dash
 SHOWN_EMPLOYEES = 10
 
 
-def top_and_rest(employees: list[EmployeeRevenue]) -> list[EmployeeRevenue]:
-    if len(employees) <= SHOWN_EMPLOYEES:
-        return employees
-    rest = employees[SHOWN_EMPLOYEES:]
-    others = EmployeeRevenue(
-        employee_id=None,
-        name=f"{len(rest)} others",
-        order_count=sum(e.order_count for e in rest),
-        revenue_cents=sum(e.revenue_cents for e in rest),
-    )
-    return [*employees[:SHOWN_EMPLOYEES], others]
+def compute(conn: sqlite3.Connection, from_date: date, last: date, moment: datetime) -> Dashboard:
+    """The dashboard for orders placed from from_date through last, read from the clock's `orders` view.
 
-
-def compute(conn: sqlite3.Connection, from_date: date, last: date) -> Dashboard:
-    """The dashboard for orders placed from from_date through last, read from the clock's `orders` view."""
+    Every number comes from SQL, so each chart's statement, run on the SQL page, returns what the
+    chart shows. Each statement also says which orders the dashboard counts: the seeded ones
+    placed by `moment`, the start of the minute, and every order entered here. On this
+    connection the view already holds just those; on the SQL page, which counts to the second,
+    the condition makes the statement return the same rows.
+    """
     where, params = date_range(from_date, last)
+    where.append("(o.order_date <= ? OR o.source = 'entered')")
+    params.append(moment.isoformat(timespec="seconds"))
     clause = " AND ".join(where)
 
-    by_month = {
-        r["month"]: r
-        for r in rows(
-            conn,
-            f"""
+    totals = rows(
+        conn,
+        f"""
+        SELECT COUNT(*) AS order_count, COALESCE(SUM(o.total_cents), 0) AS revenue_cents
+        FROM orders o WHERE {clause}
+        """,  # noqa: S608
+        params,
+    )[0]
+    # Every month in the range, with or without orders: a recursive CTE counts them out.
+    revenue_by_month = rows(
+        conn,
+        f"""
+        WITH RECURSIVE months(month) AS (
+            SELECT substr(?, 1, 7)
+            UNION ALL
+            SELECT strftime('%Y-%m', month || '-01', '+1 month') FROM months WHERE month < substr(?, 1, 7)
+        ),
+        placed AS (
             SELECT substr(o.order_date, 1, 7) AS month, COUNT(*) AS order_count, SUM(o.total_cents) AS revenue_cents
             FROM orders o WHERE {clause} GROUP BY 1
-            """,  # noqa: S608
-            params,
         )
-    }
-    revenue_by_month = [
-        MonthRevenue(**by_month.get(m, {"month": m, "order_count": 0, "revenue_cents": 0}))
-        for m in months_between(from_date, last)
-    ]
+        SELECT m.month, COALESCE(p.order_count, 0) AS order_count, COALESCE(p.revenue_cents, 0) AS revenue_cents
+        FROM months m LEFT JOIN placed p ON p.month = m.month
+        ORDER BY m.month
+        """,  # noqa: S608
+        [from_date.isoformat(), last.isoformat(), *params],
+    )
     top_products = rows(
         conn,
         f"""
@@ -185,16 +183,28 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date) -> Dashboard:
         """,  # noqa: S608
         params,
     )
+    # The first SHOWN_EMPLOYEES by revenue, then one row adding up the rest: a window function
+    # numbers the employees, and UNION ALL adds the row of others when there are any.
     by_employee = rows(
         conn,
         f"""
-        SELECT o.employee_id, e.first_name || ' ' || e.last_name AS name,
-               COUNT(*) AS order_count, SUM(o.total_cents) AS revenue_cents
-        FROM orders o JOIN employees e ON e.employee_id = o.employee_id
-        WHERE {clause}
-        GROUP BY o.employee_id ORDER BY revenue_cents DESC, o.employee_id
+        WITH sales AS (
+            SELECT o.employee_id, e.first_name || ' ' || e.last_name AS name,
+                   COUNT(*) AS order_count, SUM(o.total_cents) AS revenue_cents,
+                   ROW_NUMBER() OVER (ORDER BY SUM(o.total_cents) DESC, o.employee_id) AS place
+            FROM orders o JOIN employees e ON e.employee_id = o.employee_id
+            WHERE {clause}
+            GROUP BY o.employee_id
+        )
+        SELECT employee_id, name, order_count, revenue_cents FROM (
+            SELECT place, employee_id, name, order_count, revenue_cents FROM sales WHERE place <= ?
+            UNION ALL
+            SELECT ? + 1, NULL, COUNT(*) || ' others', SUM(order_count), SUM(revenue_cents)
+            FROM sales WHERE place > ? HAVING COUNT(*) > 0
+        )
+        ORDER BY place
         """,  # noqa: S608
-        params,
+        [*params, SHOWN_EMPLOYEES, SHOWN_EMPLOYEES, SHOWN_EMPLOYEES],
     )
     by_country = rows(
         conn,
@@ -210,11 +220,10 @@ def compute(conn: sqlite3.Connection, from_date: date, last: date) -> Dashboard:
         {
             "from": from_date.isoformat(),
             "to": last.isoformat(),
-            "order_count": sum(m.order_count for m in revenue_by_month),
-            "revenue_cents": sum(m.revenue_cents for m in revenue_by_month),
-            "revenue_by_month": revenue_by_month,
+            **totals,
+            "revenue_by_month": [MonthRevenue(**r) for r in revenue_by_month],
             "top_products": [ProductRevenue(**r) for r in top_products],
-            "by_employee": top_and_rest([EmployeeRevenue(**r) for r in by_employee]),
+            "by_employee": [EmployeeRevenue(**r) for r in by_employee],
             "by_country": [CountryRevenue(**r) for r in by_country],
         }
     )
