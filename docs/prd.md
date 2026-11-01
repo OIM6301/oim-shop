@@ -99,6 +99,21 @@ Added on `main` after the `v3` tag. Someone signed in opens **SQL**, runs one re
 
 Acceptance: each rule above has a test that tries to get around it in several ways; a rep finds an order they entered on the SQL page and finds it gone once cancelled.
 
+### After v3: the SQL behind each page
+
+Added on `main` after the `v3` tag. Each page that shows data can show the SQL that produced it, so you can change a filter, watch the `WHERE` clause change, and run the same statement on the SQL page.
+
+- Product, customer, supplier, order and employee lists and pages, each chart on the dashboard, and My orders have a panel named **SQL**. It is closed until you open it, and your browser remembers whether you keep it open from page to page.
+- The panel lists every statement the page ran, in the order they ran: for a list, the count and the page of rows; for a page that reads several things, each of them. The values from the filters, the sort and the page are written into each statement, so you can copy it and run it as it is.
+- Run on the SQL page by someone at the same level (§4) and at the same moment, each statement returns the rows the page shows. The statements use the SQL page's names (`orders`, `order_lines`, `line_totals`, `chosen_names`), and the panel shows the moment the page read the data. Seeded orders keep arriving, so a statement run later can also return the orders placed since. The dashboard counts orders to the start of the minute, and its statements carry that moment.
+- The page shows what the statements return and does no arithmetic of its own: months with no orders, and the bar that adds up the employees after the first 10, come from the dashboard's statements. Where a page shows a chosen name in place of "Sales rep 12", the panel also shows the statement on `chosen_names` that the name came from.
+- A statement that runs only for someone signed in, such as the one for an employee's personal details, appears only for them. No statement reads `accounts` or `sessions`.
+- Everyone can read the panel. **Open on the SQL page** puts a statement into the SQL page, which keeps its own rules: you sign in first, and its limits apply. A statement that reads every order line, such as top products over all dates, can take longer than the SQL page's 2 seconds.
+- After you enter, edit, cancel or ship an order, the page shows the statements its transaction ran, in order, from `BEGIN IMMEDIATE` to `COMMIT`, and the rows each one wrote or deleted.
+- More filters, each a condition you can watch appear in the statement: products by supplier, by whether they are discontinued, and below their reorder level; suppliers by country; orders by shipper, by whether they have shipped, by whether they were entered here, and shipped after their required date; customers by city and by the contact's title.
+
+Acceptance: each panel has a test that runs its statements on the SQL page, at the same level and the same moment, and compares their rows with the page's, using filter values that contain an apostrophe and a letter outside ASCII; a test checks that no panel's statement reads `accounts` or `sessions`; each write's test compares the statements and rows it shows with the database afterward.
+
 ## 6. Business rules (v3)
 
 Each comes from a field already in the Northwind data.
