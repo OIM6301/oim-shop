@@ -10,20 +10,20 @@ from oim_shop.statements import recording
 
 router = APIRouter(tags=["orders"])
 
-ORDER_COLUMNS = """
-    o.order_id, o.customer_id, c.company_name AS customer_name,
-    o.employee_id, e.first_name || ' ' || e.last_name AS employee_name,
-    o.order_date, o.required_date, o.shipped_date, o.shipper_id, s.company_name AS shipper,
-    o.ship_city, o.ship_country, o.freight_cents, o.line_count, o.total_cents, o.source,
-    o.ship_name, o.ship_address, o.ship_region, o.ship_postal_code, s.phone AS shipper_phone
-"""
-ORDER_FROM = """
-    FROM orders o
+# Laid out so the statement reads well on the SQL panel: the columns line up under SELECT's first.
+ORDER_COLUMNS = """o.order_id, o.customer_id, c.company_name AS customer_name,
+           o.employee_id, e.first_name || ' ' || e.last_name AS employee_name,
+           o.order_date, o.required_date, o.shipped_date, o.shipper_id, s.company_name AS shipper,
+           o.ship_city, o.ship_country, o.freight_cents, o.line_count, o.total_cents, o.source,
+           o.ship_name, o.ship_address, o.ship_region, o.ship_postal_code, s.phone AS shipper_phone"""
+ORDER_FROM = """FROM orders o
     JOIN customers c ON c.customer_id = o.customer_id
     JOIN employees e ON e.employee_id = o.employee_id
-    LEFT JOIN shippers s ON s.shipper_id = o.shipper_id
+    LEFT JOIN shippers s ON s.shipper_id = o.shipper_id"""
+ORDER = f"""
+    SELECT {ORDER_COLUMNS}
+    {ORDER_FROM}
 """
-ORDER = f"SELECT {ORDER_COLUMNS} {ORDER_FROM}"
 SORT = {"order_date": "o.order_date", "order_id": "o.order_id", "total": "o.total_cents"}
 
 

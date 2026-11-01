@@ -41,6 +41,13 @@ REFUSED: dict[int | str, dict[str, Any]] = {
     429: {"description": "Too many changes in a minute"},
 }
 LATEST_REQUIRED = timedelta(days=60)
+# An order as on its page, with the name its rep chose where this person may see it.
+MY_ORDER = f"""
+    SELECT {ORDER_COLUMNS},
+           COALESCE(n.display_name, e.first_name || ' ' || e.last_name) AS rep_name
+    {ORDER_FROM}
+    LEFT JOIN chosen_names n ON n.employee_id = o.employee_id
+"""
 
 
 class Refusal:
@@ -324,10 +331,7 @@ def my_orders(
     with recording(conn) as sql:
         items, pagination = page_of(
             conn,
-            select=f"""
-                SELECT {ORDER_COLUMNS}, COALESCE(n.display_name, e.first_name || ' ' || e.last_name) AS rep_name
-                {ORDER_FROM} LEFT JOIN chosen_names n ON n.employee_id = o.employee_id
-            """,
+            select=MY_ORDER,
             count="SELECT COUNT(*) FROM orders o",
             where=where,
             params=params,
