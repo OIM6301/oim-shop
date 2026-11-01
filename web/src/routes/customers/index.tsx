@@ -18,7 +18,7 @@ import { compact, isOneOf, order, page, sortOf, text } from '@/lib/search'
 const SORTS = ['company_name', 'country', 'order_count', 'revenue', 'last_order_date'] as const
 
 export const Route = createFileRoute('/customers/')({
-  validateSearch: z.object({ name: text, sort: sortOf(SORTS), order, page }),
+  validateSearch: z.object({ name: text, city: text, title: text, sort: sortOf(SORTS), order, page }),
   component: Customers,
 })
 
@@ -50,6 +50,8 @@ function Customers() {
   const navigate = Route.useNavigate()
   const query = {
     name: search.name,
+    city: search.city,
+    contact_title: search.title,
     sort: search.sort ?? 'company_name',
     order: search.order ?? 'asc',
     page: search.page ?? 1,
@@ -60,12 +62,22 @@ function Customers() {
     (name: string) => void navigate({ search: (prev) => compact({ ...prev, name, page: undefined }) }),
     [navigate],
   )
+  const setCity = useCallback(
+    (city: string) => void navigate({ search: (prev) => compact({ ...prev, city, page: undefined }) }),
+    [navigate],
+  )
+  const setTitle = useCallback(
+    (title: string) => void navigate({ search: (prev) => compact({ ...prev, title, page: undefined }) }),
+    [navigate],
+  )
 
   return (
     <>
       <PageHeader title="Customers" description="The companies Northwind sells to, with what each has ordered." />
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
         <SearchInput value={search.name ?? ''} onChange={setName} label="Search customers by name" placeholder="Search by company name" />
+        <SearchInput value={search.city ?? ''} onChange={setCity} label="Search customers by city" placeholder="City" />
+        <SearchInput value={search.title ?? ''} onChange={setTitle} label="Search customers by contact title" placeholder="Contact title" />
       </div>
       <DataTable
         caption="Customers"
@@ -86,9 +98,11 @@ function Customers() {
         empty={
           (customers.data?.pagination.total ?? 0) > 0
             ? 'No customers on this page.'
-            : search.name
-              ? `No customer matches “${search.name}”.`
-              : 'No customers.'
+            : search.city || search.title
+              ? 'No customer matches these searches.'
+              : search.name
+                ? `No customer matches “${search.name}”.`
+                : 'No customers.'
         }
       />
       <Pager

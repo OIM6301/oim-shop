@@ -558,3 +558,19 @@ test('after a write, the order shows what its transaction ran and wrote', async 
   await expect(page.getByText(`DELETE FROM main.orders WHERE order_id = ${orderId} RETURNING *`)).toBeVisible()
   await page.getByRole('button', { name: new RegExp(`^Cancelling order #${orderId}`) }).click()
 })
+
+test('a new filter is a condition you can watch appear in the statement', async ({ page }) => {
+  await page.goto('/orders')
+  await page.getByRole('combobox', { name: 'Statuses' }).click()
+  await page.getByRole('option', { name: 'Shipped late' }).click()
+  await expect(page).toHaveURL(/status=late/)
+  await page.getByRole('button', { name: /^SQL 2 statements/ }).click()
+  await expect(page.locator('pre').last()).toContainText('date(o.shipped_date) > date(o.required_date)')
+
+  await page.goto('/suppliers')
+  await page.getByRole('combobox', { name: 'Countries' }).click()
+  await page.getByRole('option', { name: 'Japan' }).click()
+  await expect(page.getByRole('row')).toHaveCount(3) // the header and two suppliers
+  await expect(page.locator('pre').last()).toContainText("casefold(s.country) = casefold('Japan')")
+  await page.getByRole('button', { name: /^SQL 1 statement/ }).click()
+})

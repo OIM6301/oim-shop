@@ -4,8 +4,9 @@ import { useCallback } from 'react'
 import { z } from 'zod'
 
 import { type Schemas } from '@/api/client'
-import { categoriesQuery, productsQuery } from '@/api/queries'
+import { categoriesQuery, productsQuery, suppliersQuery } from '@/api/queries'
 import { DataTable } from '@/components/data-table'
+import { FilterSelect } from '@/components/filter-select'
 import { type Column, columnHelper } from '@/lib/table'
 import { PageHeader } from '@/components/page-header'
 import { Pager } from '@/components/pager'
@@ -19,9 +20,23 @@ import { formatMoney, formatNumber } from '@/lib/format'
 import { compact, id, isOneOf, order, page, sortOf, text } from '@/lib/search'
 
 const SORTS = ['product_id', 'name', 'unit_price', 'stock'] as const
+const STATUS_KEYS = ['below_reorder_level', 'discontinued', 'sold'] as const
+const STATUSES = [
+  { value: 'below_reorder_level', label: 'Below reorder level' },
+  { value: 'discontinued', label: 'Discontinued' },
+  { value: 'sold', label: 'Still sold' },
+]
 
 export const Route = createFileRoute('/products/')({
-  validateSearch: z.object({ name: text, category: id, sort: sortOf(SORTS), order, page }),
+  validateSearch: z.object({
+    name: text,
+    category: id,
+    supplier: id,
+    status: z.enum(STATUS_KEYS).optional().catch(undefined),
+    sort: sortOf(SORTS),
+    order,
+    page,
+  }),
   component: Products,
 })
 
@@ -54,9 +69,12 @@ function Products() {
   const search = Route.useSearch()
   const navigate = Route.useNavigate()
   const categories = useQuery(categoriesQuery)
+  const suppliers = useQuery(suppliersQuery())
   const query = {
     name: search.name,
     category_id: search.category,
+    supplier_id: search.supplier,
+    status: search.status,
     sort: search.sort ?? 'product_id',
     order: search.order ?? 'asc',
     page: search.page ?? 1,
@@ -95,6 +113,25 @@ function Products() {
             </SelectContent>
           </Select>
         )}
+        <FilterSelect
+          label="Suppliers"
+          value={search.supplier ? String(search.supplier) : undefined}
+          width="sm:w-60"
+          options={suppliers.data?.items.map((s) => ({ value: String(s.supplier_id), label: s.company_name }))}
+          failed={suppliers.isError}
+          onRetry={() => void suppliers.refetch()}
+          onChange={(v) => void navigate({ search: (prev) => compact({ ...prev, supplier: v ? Number(v) : undefined, page: undefined }) })}
+        />
+        <FilterSelect
+          label="Products"
+          value={search.status}
+          options={STATUSES}
+          onChange={(v) =>
+            void navigate({
+              search: (prev) => compact({ ...prev, status: v !== undefined && isOneOf(STATUS_KEYS, v) ? v : undefined, page: undefined }),
+            })
+          }
+        />
       </div>
       <DataTable
         caption="Products"
@@ -117,7 +154,7 @@ function Products() {
             ? 'No products on this page.'
             : search.name
               ? `No product matches “${search.name}”.`
-              : 'No products in this category.'
+              : 'No products match these filters.'
         }
       />
       <Pager

@@ -14,6 +14,7 @@ export type CustomerQuery = Query<'/api/customers'>
 export type OrderQuery = Query<'/api/orders'>
 export type DashboardQuery = Query<'/api/dashboard'>
 export type MyOrdersQuery = Query<'/api/me/orders'>
+export type SupplierQuery = Query<'/api/suppliers'>
 
 export const categoriesQuery = queryOptions({
   queryKey: ['categories'],
@@ -34,10 +35,11 @@ export const productQuery = (productId: number) =>
     queryFn: () => unwrap(api.GET('/api/products/{product_id}', { params: { path: { product_id: productId } } })),
   })
 
-export const suppliersQuery = queryOptions({
-  queryKey: ['suppliers'],
-  queryFn: () => unwrap(api.GET('/api/suppliers')),
-})
+export const suppliersQuery = (query: SupplierQuery = {}) =>
+  queryOptions({
+    queryKey: ['suppliers', query],
+    queryFn: () => unwrap(api.GET('/api/suppliers', { params: { query } })),
+  })
 
 export const supplierQuery = (supplierId: number) =>
   queryOptions({

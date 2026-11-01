@@ -1,17 +1,21 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
+import { z } from 'zod'
 
 import type { Schemas } from '@/api/client'
 import { suppliersQuery } from '@/api/queries'
 import { DataTable } from '@/components/data-table'
+import { FilterSelect } from '@/components/filter-select'
 import { PageHeader } from '@/components/page-header'
 import { QueryError } from '@/components/states'
 import { SqlPanel } from '@/components/sql-panel'
 import { labeled } from '@/lib/statements'
 import { formatNumber } from '@/lib/format'
+import { compact, text } from '@/lib/search'
 import { type Column, columnHelper } from '@/lib/table'
 
 export const Route = createFileRoute('/suppliers/')({
+  validateSearch: z.object({ country: text }),
   component: Suppliers,
 })
 
@@ -39,10 +43,25 @@ const columns: Column<Supplier>[] = col.columns([
 ])
 
 function Suppliers() {
-  const suppliers = useQuery(suppliersQuery)
+  const search = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const suppliers = useQuery(suppliersQuery({ country: search.country }))
+  // The countries to choose from come from every supplier, whichever one is chosen.
+  const everyone = useQuery(suppliersQuery())
+  const countries = [...new Set(everyone.data?.items.flatMap((s) => (s.country ? [s.country] : [])))].sort()
   return (
     <>
       <PageHeader title="Suppliers" description="The companies Northwind buys its products from." />
+      <div className="mb-4 flex flex-wrap gap-2">
+        <FilterSelect
+          label="Countries"
+          value={search.country}
+          options={everyone.data && countries.map((c) => ({ value: c, label: c }))}
+          failed={everyone.isError}
+          onRetry={() => void everyone.refetch()}
+          onChange={(country) => void navigate({ search: compact({ country }) })}
+        />
+      </div>
       {suppliers.error && !suppliers.data ? (
         <QueryError error={suppliers.error} onRetry={() => void suppliers.refetch()} title="Could not load suppliers" />
       ) : (
@@ -56,7 +75,7 @@ function Suppliers() {
           numeric={['product_count']}
           wide={['contact']}
           skeletonRows={10}
-          empty="No suppliers."
+          empty={search.country ? `No supplier in ${search.country}.` : 'No suppliers.'}
         />
       )}
       <SqlPanel className="mt-6" statements={labeled(suppliers.data?.sql, ['Every supplier'])} />
