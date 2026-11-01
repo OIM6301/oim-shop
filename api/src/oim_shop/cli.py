@@ -50,7 +50,7 @@ def open_database(path: Path, seed_dir: Path) -> sqlite3.Connection:
     """Connect, apply migrations, and load the seed if the database has no orders yet."""
     conn = db.connect(path)
     db.migrate(conn)
-    if not conn.execute("SELECT EXISTS (SELECT 1 FROM orders)").fetchone()[0]:
+    if not conn.execute("SELECT EXISTS (SELECT 1 FROM main.orders)").fetchone()[0]:
         loaded = seed.load(conn, seed_dir)
         print(f"Loaded the seed into {path}: {loaded:,} orders.")
     elif seed.fill_details(conn, seed_dir):

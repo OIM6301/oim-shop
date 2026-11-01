@@ -28,22 +28,22 @@ def test_migrate_sets_the_schema_version_once(tmp_path: Path) -> None:
 
 
 def test_loads_every_order(conn: sqlite3.Connection) -> None:
-    assert one(conn, "SELECT COUNT(*) FROM orders") == (16_282,)
-    assert one(conn, "SELECT COUNT(*) FROM order_lines") == (609_283,)
+    assert one(conn, "SELECT COUNT(*) FROM main.orders") == (16_282,)
+    assert one(conn, "SELECT COUNT(*) FROM main.order_lines") == (609_283,)
     # The last order oim-api will list, on 2027-06-30.
-    assert one(conn, "SELECT order_id, order_date FROM orders ORDER BY order_date DESC LIMIT 1") == (
+    assert one(conn, "SELECT order_id, order_date FROM main.orders ORDER BY order_date DESC LIMIT 1") == (
         13724,
         "2027-06-30T00:09:48",
     )
 
 
 def test_every_order_comes_from_the_seed(conn: sqlite3.Connection) -> None:
-    assert one(conn, "SELECT COUNT(*) FROM orders WHERE source <> 'seed'") == (0,)
+    assert one(conn, "SELECT COUNT(*) FROM main.orders WHERE source <> 'seed'") == (0,)
 
 
 def test_shifts_dates_by_the_clock(conn: sqlite3.Connection) -> None:
     # Published: ordered 2016-07-04, required 2016-08-01, shipped 2016-07-16.
-    assert one(conn, "SELECT order_date, required_date, shipped_date FROM orders WHERE order_id = 10248") == (
+    assert one(conn, "SELECT order_date, required_date, shipped_date FROM main.orders WHERE order_id = 10248") == (
         "2020-03-06T00:00:00",
         "2020-04-03T00:00:00",
         "2020-03-18T00:00:00",
@@ -51,13 +51,13 @@ def test_shifts_dates_by_the_clock(conn: sqlite3.Connection) -> None:
     # Steven Buchanan, hired 2013-10-17; oim-api serves 2017-06-19.
     assert one(conn, "SELECT hire_date FROM employees WHERE employee_id = 5") == ("2017-06-19T00:00:00",)
     # Order 21646 shipped 2023-03-09 19:21:55 as published; it is stored on the shifted clock too.
-    assert one(conn, "SELECT shipped_date FROM orders WHERE order_id = 21646") == ("2026-11-09T19:21:55",)
+    assert one(conn, "SELECT shipped_date FROM main.orders WHERE order_id = 21646") == ("2026-11-09T19:21:55",)
 
 
-def test_visible_orders_are_those_placed_by_now(conn: sqlite3.Connection) -> None:
+def test_orders_are_those_placed_by_now(conn: sqlite3.Connection) -> None:
     db.as_of(conn, NOW)
-    assert one(conn, "SELECT COUNT(*) FROM visible_orders") == (15_315,)
-    assert one(conn, "SELECT order_id, order_date FROM visible_orders ORDER BY order_date DESC LIMIT 1") == (
+    assert one(conn, "SELECT COUNT(*) FROM orders") == (15_315,)
+    assert one(conn, "SELECT order_id, order_date FROM orders ORDER BY order_date DESC LIMIT 1") == (
         21646,
         "2026-10-22T14:59:35",
     )
@@ -65,39 +65,39 @@ def test_visible_orders_are_those_placed_by_now(conn: sqlite3.Connection) -> Non
 
 def test_a_shipped_date_after_now_is_not_visible(conn: sqlite3.Connection) -> None:
     db.as_of(conn, NOW)
-    assert one(conn, "SELECT shipped_date FROM visible_orders WHERE order_id = 21646") == (None,)
-    assert one(conn, "SELECT COUNT(*) FROM visible_orders WHERE shipped_date > ?", NOW.isoformat()) == (0,)
+    assert one(conn, "SELECT shipped_date FROM orders WHERE order_id = 21646") == (None,)
+    assert one(conn, "SELECT COUNT(*) FROM orders WHERE shipped_date > ?", NOW.isoformat()) == (0,)
 
 
 def test_a_later_moment_shows_more_orders_and_shipments(conn: sqlite3.Connection) -> None:
     db.as_of(conn, NOW + timedelta(days=30))
-    later = one(conn, "SELECT COUNT(*) FROM visible_orders")[0]
+    later = one(conn, "SELECT COUNT(*) FROM orders")[0]
     assert isinstance(later, int) and later > 15_315
-    assert one(conn, "SELECT shipped_date FROM visible_orders WHERE order_id = 21646") == ("2026-11-09T19:21:55",)
+    assert one(conn, "SELECT shipped_date FROM orders WHERE order_id = 21646") == ("2026-11-09T19:21:55",)
 
 
 def test_every_order_has_its_lines(conn: sqlite3.Connection) -> None:
-    lineless = one(conn, "SELECT COUNT(*) FROM orders WHERE line_count = 0")
+    lineless = one(conn, "SELECT COUNT(*) FROM main.orders WHERE line_count = 0")
     assert lineless == (0,)
-    assert one(conn, "SELECT line_count FROM orders WHERE order_id = 21646") == (6,)
-    assert one(conn, "SELECT COUNT(*) FROM order_lines WHERE order_id = 21646") == (6,)
+    assert one(conn, "SELECT line_count FROM main.orders WHERE order_id = 21646") == (6,)
+    assert one(conn, "SELECT COUNT(*) FROM main.order_lines WHERE order_id = 21646") == (6,)
 
 
 def test_order_totals_are_exact_cents(conn: sqlite3.Connection) -> None:
     # 10250: 10 x $7.70, 35 x $42.40 less 15%, 15 x $16.80 less 15% = $1,552.60.
-    assert one(conn, "SELECT total_cents FROM orders WHERE order_id = 10250") == (155_260,)
+    assert one(conn, "SELECT total_cents FROM main.orders WHERE order_id = 10250") == (155_260,)
     # 25 x $7.70 less 15% is $163.625, which rounds half up to $163.63.
     assert one(conn, "SELECT line_total_cents FROM line_totals WHERE order_id = 10264 AND product_id = 41") == (16_363,)
     # oim-api served 2,743.65 for order 21646.
-    assert one(conn, "SELECT total_cents FROM orders WHERE order_id = 21646") == (274_365,)
+    assert one(conn, "SELECT total_cents FROM main.orders WHERE order_id = 21646") == (274_365,)
 
 
 def test_order_totals_match_their_lines(conn: sqlite3.Connection) -> None:
     mismatched = one(
         conn,
         """
-        SELECT COUNT(*) FROM orders o
-        WHERE o.total_cents <> (SELECT SUM(line_total_cents) FROM line_totals t WHERE t.order_id = o.order_id)
+        SELECT COUNT(*) FROM main.orders o
+        WHERE o.total_cents <> (SELECT SUM(line_total_cents) FROM main.line_totals t WHERE t.order_id = o.order_id)
         """,
     )
     assert mismatched == (0,)
@@ -154,7 +154,7 @@ def test_loads_every_column(conn: sqlite3.Connection) -> None:
     assert one(conn, employee) == (
         "Ms.", shift("1968-12-08T00:00:00"), "5467", "(206) 555-9857"
     )  # fmt: skip
-    ship_to = "SELECT ship_name, ship_address, ship_region, ship_postal_code FROM orders WHERE order_id = 10248"
+    ship_to = "SELECT ship_name, ship_address, ship_region, ship_postal_code FROM main.orders WHERE order_id = 10248"
     assert one(conn, ship_to) == (
         "Vins et alcools Chevalier", "59 rue de l-Abbaye", "Western Europe", "51100"
     )  # fmt: skip

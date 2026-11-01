@@ -16,7 +16,7 @@ ORDER_COLUMNS = """
     o.ship_name, o.ship_address, o.ship_region, o.ship_postal_code, s.phone AS shipper_phone
 """
 ORDER_FROM = """
-    FROM visible_orders o
+    FROM orders o
     JOIN customers c ON c.customer_id = o.customer_id
     JOIN employees e ON e.employee_id = o.employee_id
     LEFT JOIN shippers s ON s.shipper_id = o.shipper_id
@@ -67,7 +67,7 @@ def orders(
     items, pagination = page_of(
         conn,
         select=ORDER,
-        count="SELECT COUNT(*) FROM visible_orders o",
+        count="SELECT COUNT(*) FROM orders o",
         where=where,
         params=params,
         order_by=f"{SORT[sort]} {order}, o.order_id {order}",

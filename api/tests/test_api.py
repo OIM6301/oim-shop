@@ -141,7 +141,7 @@ def test_customers_search_and_country(client: TestClient) -> None:
 def test_customer_detail_matches_its_orders(client: TestClient, conn: sqlite3.Connection) -> None:
     detail = get(client, "/api/customers/vinet")
     count, revenue = conn.execute(
-        "SELECT COUNT(*), SUM(total_cents) FROM visible_orders WHERE customer_id = 'VINET'"
+        "SELECT COUNT(*), SUM(total_cents) FROM orders WHERE customer_id = 'VINET'"
     ).fetchone()
     assert (detail["order_count"], detail["revenue_cents"]) == (count, revenue)
     get(client, "/api/customers/NOPE", 404)
@@ -188,7 +188,7 @@ def test_orders_filter(client: TestClient, conn: sqlite3.Connection) -> None:
     page = get(client, "/api/orders?employee_id=5&country=france&from=2025-01-01&to=2025-12-31&per_page=100")
     expected = conn.execute(
         """
-        SELECT COUNT(*) FROM visible_orders WHERE employee_id = 5 AND ship_country = 'France'
+        SELECT COUNT(*) FROM orders WHERE employee_id = 5 AND ship_country = 'France'
         AND order_date >= '2025-01-01' AND order_date < '2026-01-01'
         """
     ).fetchone()[0]
@@ -211,8 +211,7 @@ def test_employees(client: TestClient, conn: sqlite3.Connection) -> None:
     fuller = next(e for e in employees if e["employee_id"] == 2)
     assert (fuller["first_name"], fuller["last_name"], fuller["reports_to"]) == ("Andrew", "Fuller", None)
     assert (
-        sum(e["revenue_cents"] for e in employees)
-        == conn.execute("SELECT SUM(total_cents) FROM visible_orders").fetchone()[0]
+        sum(e["revenue_cents"] for e in employees) == conn.execute("SELECT SUM(total_cents) FROM orders").fetchone()[0]
     )
     assert set(employees[0]) == {
         "employee_id", "first_name", "last_name", "title", "title_of_courtesy", "reports_to", "hire_date", "city",
@@ -241,7 +240,7 @@ def test_dashboard_matches_an_independent_query(client: TestClient, conn: sqlite
             """
             SELECT substr(o.order_date, 1, 7),
                    SUM((l.unit_price_cents * l.quantity * (100 - l.discount_pct) + 50) / 100)
-            FROM visible_orders o JOIN order_lines l ON l.order_id = o.order_id
+            FROM orders o JOIN order_lines l ON l.order_id = o.order_id
             WHERE o.order_date >= '2025-01-01' AND o.order_date < '2025-07-01'
             GROUP BY 1 ORDER BY 1
             """
@@ -252,7 +251,7 @@ def test_dashboard_matches_an_independent_query(client: TestClient, conn: sqlite
 
     # Each chart row by its key, so a figure under the wrong product, employee or country fails.
     revenue = "SUM((l.unit_price_cents * l.quantity * (100 - l.discount_pct) + 50) / 100)"
-    lines = "visible_orders o JOIN order_lines l ON l.order_id = o.order_id"
+    lines = "orders o JOIN order_lines l ON l.order_id = o.order_id"
     period = "o.order_date >= '2025-01-01' AND o.order_date < '2025-07-01'"
     products = conn.execute(
         f"""
@@ -292,7 +291,7 @@ def test_dashboard_month_total_in_decimal(client: TestClient, conn: sqlite3.Conn
     total = Decimal(0)
     for price, quantity, discount in conn.execute(
         """
-        SELECT l.unit_price_cents, l.quantity, l.discount_pct FROM visible_orders o JOIN order_lines l USING (order_id)
+        SELECT l.unit_price_cents, l.quantity, l.discount_pct FROM orders o JOIN order_lines l USING (order_id)
         WHERE o.order_date >= '2025-03-01' AND o.order_date < '2025-04-01'
         """
     ):
@@ -382,7 +381,7 @@ def test_a_customer_id_with_mixed_case_and_a_trailing_space(client: TestClient, 
 
 
 def test_orders_filter_by_that_customer(client: TestClient, conn: sqlite3.Connection) -> None:
-    expected = conn.execute("SELECT COUNT(*) FROM visible_orders WHERE customer_id = 'Val2 '").fetchone()[0]
+    expected = conn.execute("SELECT COUNT(*) FROM orders WHERE customer_id = 'Val2 '").fetchone()[0]
     assert expected > 0
     for customer_id in ["Val2%20", "val2"]:
         page = get(client, f"/api/orders?customer_id={customer_id}&per_page=100")

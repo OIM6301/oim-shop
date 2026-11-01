@@ -53,7 +53,7 @@ CREATE TABLE shippers (
 -- total_cents and line_count are stored so that reports over 16,000 orders
 -- never have to read 609,000 lines. They are set from line_totals below.
 -- Every order through 2027-06-30 is here, on the shifted clock; routes read them
--- through visible_orders (db.as_of), which hides the ones not yet placed.
+-- through the temporary view orders (db.as_of), which hides the ones not yet placed.
 -- source: 'seed' (loaded from data/seed) or 'entered' (taken in this app, from v3).
 CREATE TABLE orders (
     order_id      INTEGER PRIMARY KEY,

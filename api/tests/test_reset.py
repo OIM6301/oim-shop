@@ -97,11 +97,11 @@ def test_a_change_from_another_connection_reaches_the_cached_dashboard(path: Pat
 def test_an_entered_order_that_shipped_shows_as_shipped(path: Path) -> None:
     conn = connect(path)
     order_id = enter_order(conn, NOW - timedelta(minutes=1))
-    conn.execute("UPDATE orders SET shipped_date = ? WHERE order_id = ?", (NOW.isoformat(), order_id))
+    conn.execute("UPDATE main.orders SET shipped_date = ? WHERE order_id = ?", (NOW.isoformat(), order_id))
     conn.commit()
     # A minute earlier than the shipment, as the dashboard reads it.
     db.as_of(conn, NOW - timedelta(seconds=30))
-    shipped = conn.execute("SELECT shipped_date FROM visible_orders WHERE order_id = ?", (order_id,)).fetchone()[0]
+    shipped = conn.execute("SELECT shipped_date FROM orders WHERE order_id = ?", (order_id,)).fetchone()[0]
     assert shipped == NOW.isoformat()
 
 
@@ -115,9 +115,9 @@ def test_reset_removes_entered_orders_and_restores_stock(path: Path) -> None:
     generation = db.generation(conn)
 
     assert seed.reset(conn) == 1
-    assert conn.execute("SELECT COUNT(*) FROM orders WHERE order_id = ?", (order_id,)).fetchone()[0] == 0
-    assert conn.execute("SELECT COUNT(*) FROM order_lines WHERE order_id = ?", (order_id,)).fetchone()[0] == 0
-    assert conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 16_282
+    assert conn.execute("SELECT COUNT(*) FROM main.orders WHERE order_id = ?", (order_id,)).fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM main.order_lines WHERE order_id = ?", (order_id,)).fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM main.orders").fetchone()[0] == 16_282
     assert stock(conn, 1) == (39, 39)
     assert db.generation(conn) == generation + 1
     conn.close()
@@ -146,7 +146,7 @@ def test_a_failed_reset_changes_nothing(path: Path, monkeypatch: pytest.MonkeyPa
     monkeypatch.setattr(db, "changed", fail)
     with pytest.raises(RuntimeError):
         seed.reset(conn)
-    assert conn.execute("SELECT COUNT(*) FROM orders WHERE source = 'entered'").fetchone()[0] == 1
+    assert conn.execute("SELECT COUNT(*) FROM main.orders WHERE source = 'entered'").fetchone()[0] == 1
     assert stock(conn, 1) == (34, 39)
     conn.close()
 
@@ -159,7 +159,7 @@ def test_the_reset_command(path: Path, monkeypatch: pytest.MonkeyPatch, capsys: 
     assert main(["reset"]) == 0
     assert "Removed 1 order entered here" in capsys.readouterr().out
     conn = connect(path)
-    assert conn.execute("SELECT COUNT(*) FROM orders WHERE source = 'entered'").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM main.orders WHERE source = 'entered'").fetchone()[0] == 0
     conn.close()
 
 
@@ -199,7 +199,7 @@ def add_reps(conn: sqlite3.Connection, count: int) -> list[int]:
 
 def enter_as(conn: sqlite3.Connection, employee_id: int, quantity: int) -> None:
     order_id = enter_order(conn, NOW - timedelta(minutes=1), quantity=quantity)
-    conn.execute("UPDATE orders SET employee_id = ? WHERE order_id = ?", (employee_id, order_id))
+    conn.execute("UPDATE main.orders SET employee_id = ? WHERE order_id = ?", (employee_id, order_id))
     conn.commit()
 
 
@@ -255,9 +255,9 @@ def test_forget_removes_every_account_and_what_it_entered(path: Path) -> None:
     for table in ("accounts", "sessions"):
         assert conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0] == 0  # noqa: S608
     assert conn.execute("SELECT COUNT(*) FROM employees").fetchone()[0] == 9
-    assert conn.execute("SELECT COUNT(*) FROM orders WHERE source = 'entered'").fetchone()[0] == 0
+    assert conn.execute("SELECT COUNT(*) FROM main.orders WHERE source = 'entered'").fetchone()[0] == 0
     assert stock(conn, 1) == (39, 39)
-    assert conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0] == 16_282
+    assert conn.execute("SELECT COUNT(*) FROM main.orders").fetchone()[0] == 16_282
     conn.close()
 
 
@@ -296,7 +296,7 @@ def test_the_forget_command(path: Path, monkeypatch: pytest.MonkeyPatch, capsys:
 def test_reset_waits_for_another_writer_instead_of_failing(path: Path) -> None:
     """A connection that has read something holds an old snapshot; a write on it must start afresh."""
     conn = connect(path)
-    conn.execute("SELECT COUNT(*) FROM orders").fetchone()  # a read, as open_database does
+    conn.execute("SELECT COUNT(*) FROM main.orders").fetchone()  # a read, as open_database does
     other = connect(path)
     enter_order(other, NOW - timedelta(minutes=1))  # another connection commits meanwhile
     other.close()

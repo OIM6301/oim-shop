@@ -55,7 +55,7 @@ def ship_to(conn: sqlite3.Connection, order_id: int, customer: sqlite3.Row) -> N
     """An order entered here ships to its customer's own name and address."""
     conn.execute(
         """
-        UPDATE orders SET ship_name = ?, ship_address = ?, ship_city = ?, ship_region = ?, ship_postal_code = ?,
+        UPDATE main.orders SET ship_name = ?, ship_address = ?, ship_city = ?, ship_region = ?, ship_postal_code = ?,
                           ship_country = ?
         WHERE order_id = ?
         """,
@@ -128,7 +128,7 @@ def write_lines(
     for line in lines:
         conn.execute(
             """
-            INSERT INTO order_lines (order_id, product_id, unit_price_cents, quantity, discount_pct)
+            INSERT INTO main.order_lines (order_id, product_id, unit_price_cents, quantity, discount_pct)
             VALUES (?, ?, ?, ?, ?)
             """,
             (
@@ -154,7 +154,7 @@ def return_stock(conn: sqlite3.Connection, order_id: int) -> None:
     conn.execute(
         """
         UPDATE products SET units_in_stock = units_in_stock + l.quantity
-        FROM order_lines l WHERE l.order_id = ? AND products.product_id = l.product_id
+        FROM main.order_lines l WHERE l.order_id = ? AND products.product_id = l.product_id
         """,
         (order_id,),
     )
@@ -163,10 +163,10 @@ def return_stock(conn: sqlite3.Connection, order_id: int) -> None:
 def changeable(conn: sqlite3.Connection, order_id: int, writer: Session) -> None:
     """Stop unless this person may change this order now.
 
-    Orders are read through visible_orders, so an order the clock has not reached is not found.
+    Orders are read through the clock's `orders` view, so an order the clock has not reached is not found.
     """
     order = conn.execute(
-        "SELECT employee_id, shipped_date, source FROM visible_orders WHERE order_id = ?", (order_id,)
+        "SELECT employee_id, shipped_date, source FROM orders WHERE order_id = ?", (order_id,)
     ).fetchone()
     if order is None:
         raise HTTPException(status_code=404, detail=f"No order {order_id}")
@@ -185,12 +185,12 @@ def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> Order
         customer, products = check(conn, body, now)
         # The next number after the largest ever given, so a deleted order's number is never reused (migration 004).
         order_id: int = conn.execute(
-            "UPDATE meta SET last_order_id = MAX(last_order_id, (SELECT MAX(order_id) FROM orders)) + 1 "
+            "UPDATE meta SET last_order_id = MAX(last_order_id, (SELECT MAX(order_id) FROM main.orders)) + 1 "
             "RETURNING last_order_id"
         ).fetchone()[0]
         conn.execute(
             """
-            INSERT INTO orders (order_id, customer_id, employee_id, order_date, required_date, shipper_id,
+            INSERT INTO main.orders (order_id, customer_id, employee_id, order_date, required_date, shipper_id,
                                 freight_cents, source)
             VALUES (?, ?, ?, ?, ?, ?, 0, 'entered')
             """,
@@ -217,11 +217,11 @@ def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer:
     with db.transaction(conn):
         changeable(conn, order_id, writer)
         return_stock(conn, order_id)
-        conn.execute("DELETE FROM order_lines WHERE order_id = ?", (order_id,))
+        conn.execute("DELETE FROM main.order_lines WHERE order_id = ?", (order_id,))
         customer, products = check(conn, body, now)
         conn.execute(
             """
-            UPDATE orders SET customer_id = ?, required_date = ?, shipper_id = ?
+            UPDATE main.orders SET customer_id = ?, required_date = ?, shipper_id = ?
             WHERE order_id = ?
             """,
             (customer["customer_id"], f"{body.required_date.isoformat()}T00:00:00", body.shipper_id, order_id),
@@ -238,7 +238,7 @@ def cancel_order(order_id: PathId, conn: Conn, writer: Writer) -> Response:
     with db.transaction(conn):
         changeable(conn, order_id, writer)
         return_stock(conn, order_id)
-        conn.execute("DELETE FROM orders WHERE order_id = ?", (order_id,))
+        conn.execute("DELETE FROM main.orders WHERE order_id = ?", (order_id,))
         db.changed(conn)
     return Response(status_code=204)
 
@@ -249,7 +249,7 @@ def ship_order(order_id: PathId, conn: Conn, now: Now, writer: Writer) -> OrderD
     with db.transaction(conn):
         changeable(conn, order_id, writer)
         conn.execute(
-            "UPDATE orders SET shipped_date = ? WHERE order_id = ?", (now.isoformat(timespec="seconds"), order_id)
+            "UPDATE main.orders SET shipped_date = ? WHERE order_id = ?", (now.isoformat(timespec="seconds"), order_id)
         )
         db.changed(conn)
         return order_detail(conn, order_id)
@@ -282,7 +282,7 @@ def my_orders(
             SELECT {ORDER_COLUMNS}, COALESCE(a.display_name, e.first_name || ' ' || e.last_name) AS rep_name
             {ORDER_FROM} LEFT JOIN accounts a ON a.employee_id = o.employee_id
         """,
-        count="SELECT COUNT(*) FROM visible_orders o",
+        count="SELECT COUNT(*) FROM orders o",
         where=where,
         params=params,
         order_by=f"{SORT[sort]} {order}, o.order_id {order}",

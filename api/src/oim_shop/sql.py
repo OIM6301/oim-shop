@@ -5,7 +5,8 @@ every change. Before the query runs, the connection gets temporary views that gi
 shop's clock and the person's permissions:
 
 - `orders`, `order_lines` and `line_totals` hold only the orders placed by now, as every page
-  shows them. They have the tables' own names, so `SELECT * FROM orders` reads the view.
+  shows them. They have the tables' own names, so `SELECT * FROM orders` reads the view, and a
+  statement the pages ran runs here as it is.
 - `chosen_names` holds the names people chose that this person may see: a manager every one,
   a rep the managers' and their own.
 
@@ -105,28 +106,16 @@ def connect(path: Path, now: datetime, session: Session) -> sqlite3.Connection:
     # The only views that may read orders, order lines and accounts, under names no query can know.
     secret = secrets.token_hex(16)
     placed, lines, names = f"placed_{secret}", f"lines_{secret}", f"names_{secret}"
-    db.as_of(conn, now, name=placed)
-    conn.execute(
-        f"CREATE TEMP VIEW {lines} AS SELECT * FROM main.order_lines WHERE order_id IN (SELECT order_id FROM {placed})"  # noqa: S608
-    )
+    # The clock's views under those names, and line_totals over them (db.as_of).
+    db.as_of(conn, now, orders=placed, order_lines=lines)
     # A rep sees the managers' names and their own. The id is an integer from the database.
     only = "" if session.role == "manager" else f"AND (role = 'manager' OR employee_id = {int(session.employee_id)})"
     chosen = f"SELECT employee_id, display_name FROM main.accounts WHERE display_name IS NOT NULL {only}"  # noqa: S608
     conn.execute(f"CREATE TEMP VIEW {names} AS {chosen}")
-    # The names a query uses.
+    # The names a query uses, the same as the pages' (db.as_of).
     conn.execute(f"CREATE TEMP VIEW orders AS SELECT * FROM {placed}")  # noqa: S608
     conn.execute(f"CREATE TEMP VIEW order_lines AS SELECT * FROM {lines}")  # noqa: S608
     conn.execute(f"CREATE TEMP VIEW chosen_names AS SELECT * FROM {names}")  # noqa: S608
-    # main.line_totals reads every line, placed or not, so this view computes the same total over
-    # the visible lines. A test checks that the two agree.
-    conn.execute(
-        """
-        CREATE TEMP VIEW line_totals AS
-        SELECT order_id, product_id, unit_price_cents, quantity, discount_pct,
-               (unit_price_cents * quantity * (100 - discount_pct) + 50) / 100 AS line_total_cents
-        FROM order_lines
-        """
-    )
     conn.execute(f"PRAGMA cache_size = -{CACHE_KIB}")
     conn.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, MAX_VALUE_BYTES)
     conn.setlimit(sqlite3.SQLITE_LIMIT_COLUMN, MAX_COLUMNS)

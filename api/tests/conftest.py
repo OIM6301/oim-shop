@@ -33,7 +33,7 @@ def seeded_path(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
 @pytest.fixture
 def conn(seeded_path: Path, tmp_path: Path) -> Iterator[sqlite3.Connection]:
-    """A fresh copy of the seeded database, so a test may write to it. visible_orders is as of NOW."""
+    """A fresh copy of the seeded database, so a test may write to it. Its clock's views are as of NOW."""
     path = tmp_path / "shop.db"
     shutil.copy(seeded_path, path)
     connection = db.connect(path)
@@ -46,14 +46,14 @@ def enter_order(conn: sqlite3.Connection, order_date: datetime, product_id: int 
     """Write an order as if a rep had entered it, taking its stock, and return its id."""
     order_id = conn.execute(
         """
-        INSERT INTO orders (customer_id, employee_id, order_date, freight_cents, ship_city, ship_country, source)
+        INSERT INTO main.orders (customer_id, employee_id, order_date, freight_cents, ship_city, ship_country, source)
         VALUES ('ALFKI', 1, ?, 0, 'Berlin', 'Germany', 'entered') RETURNING order_id
         """,
         (order_date.isoformat(timespec="seconds"),),
     ).fetchone()[0]
     conn.execute(
         """
-        INSERT INTO order_lines (order_id, product_id, unit_price_cents, quantity, discount_pct)
+        INSERT INTO main.order_lines (order_id, product_id, unit_price_cents, quantity, discount_pct)
         SELECT ?, product_id, unit_price_cents, ?, 0 FROM products WHERE product_id = ?
         """,
         (order_id, quantity, product_id),

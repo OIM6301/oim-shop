@@ -16,11 +16,11 @@ The choices behind v2 that the requirements in [prd.md](prd.md) leave open, and 
 
 ## The clock
 
-**Every order is loaded once, and time decides which ones show.** The database holds all 16,282 orders, through 2027-06-30, and never changes after the first start. Each request gets a temporary view, `visible_orders` ([db.py](../api/src/oim_shop/db.py)), that hides the orders not yet placed and reads a shipped date still ahead as empty. oim-api applies the same shift to the same data, so the two always list the same orders.
+**Every order is loaded once, and time decides which ones show.** The database holds all 16,282 orders, through 2027-06-30, and never changes after the first start. Each request gets a temporary view named `orders` ([db.py](../api/src/oim_shop/db.py)) that hides the orders not yet placed and reads a shipped date still ahead as empty, and views of their lines, `order_lines` and `line_totals`. oim-api applies the same shift to the same data, so the two always list the same orders.
 
 **No sync.** An earlier version of v2 started from the orders placed so far and pulled new ones from oim-api every hour. That needed a timer on the server, a window that went back 45 days to catch orders shipped since, and a check that both used the same clock. Loading everything and filtering by time gives the same pages with none of that, and the site no longer depends on oim-api while it runs.
 
-**The view is the only way to orders.** Every route reads `visible_orders`, never the `orders` table, so no query can forget the time. "Now" is written into the view as a constant, which lets SQLite still use the index on the order date.
+**The views have the tables' names.** A temporary view named `orders` hides the table `orders` from every statement that does not write `main.orders`, so no route can forget the time, and a statement copied from a page runs on the SQL page as it is. Writes name the table itself, `main.orders`; one that forgets fails at once, because SQLite cannot write to a view. "Now" is written into the view as a constant, which lets SQLite still use the index on the order date. The lines' view joins the visible orders; written as `order_id IN (SELECT ...)`, it made the top products for a year three times as slow (124 ms instead of 40).
 
 ## The API
 

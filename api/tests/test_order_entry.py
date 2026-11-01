@@ -427,6 +427,14 @@ def test_an_order_number_is_never_used_twice(rep: TestClient, path: Path) -> Non
     assert rep.delete(f"/api/orders/{first}", headers=csrf(rep)).status_code == 404
 
 
+def test_a_new_order_number_is_above_every_seeded_order(rep: TestClient, path: Path) -> None:
+    """Including the seeded orders the clock still hides: they are in the table, and their numbers are taken."""
+    conn = db.connect(path)
+    largest = conn.execute("SELECT MAX(order_id) FROM main.orders").fetchone()[0]
+    conn.close()
+    assert post(rep, order())["order_id"] == largest + 1
+
+
 def test_my_orders_sort(rep: TestClient) -> None:
     # The larger order comes first, so sorting by total and by number give different answers.
     large = post(rep, order(lines=[line(CHAI, 9)]))["order_id"]

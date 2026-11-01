@@ -90,7 +90,7 @@ def load_images(conn: sqlite3.Connection, seed_dir: Path) -> None:
 
 def load(conn: sqlite3.Connection, seed_dir: Path) -> int:
     """Load the seed in one transaction and return the number of orders loaded."""
-    if conn.execute("SELECT EXISTS (SELECT 1 FROM orders)").fetchone()[0]:
+    if conn.execute("SELECT EXISTS (SELECT 1 FROM main.orders)").fetchone()[0]:
         raise AlreadyLoadedError
     loaded = 0
 
@@ -150,7 +150,7 @@ def reset(conn: sqlite3.Connection) -> int:
     """
     with db.transaction(conn):
         # Their lines go with them (ON DELETE CASCADE).
-        removed = conn.execute("DELETE FROM orders WHERE source = 'entered'").rowcount
+        removed = conn.execute("DELETE FROM main.orders WHERE source = 'entered'").rowcount
         conn.execute("UPDATE products SET units_in_stock = seed_units_in_stock")
         db.changed(conn)
     return removed
@@ -164,7 +164,7 @@ def forget_accounts(conn: sqlite3.Connection) -> int:
     sessions. Returns the number of accounts removed.
     """
     with db.transaction(conn):
-        conn.execute("DELETE FROM orders WHERE source = 'entered'")
+        conn.execute("DELETE FROM main.orders WHERE source = 'entered'")
         conn.execute("UPDATE products SET units_in_stock = seed_units_in_stock")
         employees = [(row[0],) for row in conn.execute("SELECT employee_id FROM accounts WHERE role = 'rep'")]
         conn.execute("DELETE FROM sessions WHERE github_id IN (SELECT github_id FROM accounts WHERE role = 'rep')")
@@ -183,9 +183,9 @@ def update_totals(conn: sqlite3.Connection, order_ids: list[int] | None = None) 
         params = order_ids
     conn.execute(
         f"""
-        UPDATE orders SET total_cents = t.total, line_count = t.lines
+        UPDATE main.orders SET total_cents = t.total, line_count = t.lines
         FROM (SELECT order_id, SUM(line_total_cents) AS total, COUNT(*) AS lines
-              FROM line_totals {where} GROUP BY order_id) AS t
+              FROM main.line_totals {where} GROUP BY order_id) AS t
         WHERE orders.order_id = t.order_id
         """,  # noqa: S608
         params,
