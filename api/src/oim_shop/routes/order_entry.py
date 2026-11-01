@@ -14,7 +14,7 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, HTTPException, Query, Response
 
 from oim_shop import db
-from oim_shop.accounts import Session, SignedIn, Writer
+from oim_shop.accounts import Session, SignedIn, Writer, add_chosen_names
 from oim_shop.deps import Conn, Now, PageNumber, PathId, PerPage, SortOrder, page_of, rows
 from oim_shop.models import LineInput, MyOrder, MyOrderPage, OrderDetail, OrderInput, Shipper
 from oim_shop.routes.orders import ORDER_COLUMNS, ORDER_FROM, SORT, order_detail
@@ -271,6 +271,7 @@ def my_orders(
     """
     if scope == "all" and viewer.role != "manager":
         raise HTTPException(status_code=403, detail="Only a manager sees every rep's orders")
+    add_chosen_names(conn, viewer)
     where: list[str] = ["o.source = 'entered'"]
     params: list[object] = []
     if scope == "mine":
@@ -279,8 +280,8 @@ def my_orders(
     items, pagination = page_of(
         conn,
         select=f"""
-            SELECT {ORDER_COLUMNS}, COALESCE(a.display_name, e.first_name || ' ' || e.last_name) AS rep_name
-            {ORDER_FROM} LEFT JOIN accounts a ON a.employee_id = o.employee_id
+            SELECT {ORDER_COLUMNS}, COALESCE(n.display_name, e.first_name || ' ' || e.last_name) AS rep_name
+            {ORDER_FROM} LEFT JOIN chosen_names n ON n.employee_id = o.employee_id
         """,
         count="SELECT COUNT(*) FROM orders o",
         where=where,

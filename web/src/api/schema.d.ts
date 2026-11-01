@@ -302,6 +302,10 @@ export interface paths {
          *     Every student who signs in becomes a rep, and accounts outlast the nightly reset, so
          *     listing them all would bury the others under rows of reps with nothing to show. A rep's
          *     own page is there either way. The list is short enough not to be paged.
+         *
+         *     Northwind's own employees are numbers 1 to 9, and everyone who signs in here is a Sales
+         *     Representative or a Sales Manager, so the list is decided from public columns alone, and
+         *     its statement runs on the SQL page.
          */
         get: operations["employees_api_employees_get"];
         put?: never;
@@ -468,8 +472,9 @@ export interface paths {
          * Chosen Names
          * @description The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.
          *
-         *     A manager sees everyone's; a rep sees the managers'. One row for each person who has chosen
-         *     a name; there are as many as the allowlist has people.
+         *     A manager sees everyone's; a rep sees the managers' and their own, as in the SQL page's
+         *     chosen_names. One row for each person who has chosen a name; there are as many as the
+         *     allowlist has people.
          */
         get: operations["chosen_names_api_me_names_get"];
         put?: never;

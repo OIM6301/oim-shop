@@ -1138,7 +1138,7 @@
           "employees"
         ],
         "summary": "Employees",
-        "description": "Northwind's nine employees, the managers who signed in here, and the reps while they have orders.\n\nEvery student who signs in becomes a rep, and accounts outlast the nightly reset, so\nlisting them all would bury the others under rows of reps with nothing to show. A rep's\nown page is there either way. The list is short enough not to be paged.",
+        "description": "Northwind's nine employees, the managers who signed in here, and the reps while they have orders.\n\nEvery student who signs in becomes a rep, and accounts outlast the nightly reset, so\nlisting them all would bury the others under rows of reps with nothing to show. A rep's\nown page is there either way. The list is short enough not to be paged.\n\nNorthwind's own employees are numbers 1 to 9, and everyone who signs in here is a Sales\nRepresentative or a Sales Manager, so the list is decided from public columns alone, and\nits statement runs on the SQL page.",
         "operationId": "employees_api_employees_get",
         "responses": {
           "200": {
@@ -1541,7 +1541,7 @@
           "account"
         ],
         "summary": "Chosen Names",
-        "description": "The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.\n\nA manager sees everyone's; a rep sees the managers'. One row for each person who has chosen\na name; there are as many as the allowlist has people.",
+        "description": "The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.\n\nA manager sees everyone's; a rep sees the managers' and their own, as in the SQL page's\nchosen_names. One row for each person who has chosen a name; there are as many as the\nallowlist has people.",
         "operationId": "chosen_names_api_me_names_get",
         "responses": {
           "200": {

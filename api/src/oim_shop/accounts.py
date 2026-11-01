@@ -184,6 +184,23 @@ def current_session(request: Request, conn: Conn, now: Now) -> Session | None:
     return Session(**dict(row)) if row else None
 
 
+def chosen_names_sql(session: Session) -> str:
+    """The names people chose that this person may see: a manager every one, a rep the managers' and their own."""
+    # The id is an integer from the database, never from a request.
+    only = "" if session.role == "manager" else f"AND (role = 'manager' OR employee_id = {int(session.employee_id)})"
+    return f"SELECT employee_id, display_name FROM main.accounts WHERE display_name IS NOT NULL {only}"  # noqa: S608
+
+
+def add_chosen_names(conn: sqlite3.Connection, session: Session) -> None:
+    """Give this connection the view chosen_names, the same as the SQL page's for this person.
+
+    A route reads names through it, never from accounts, so its statements run on the SQL page.
+    """
+    conn.execute("DROP VIEW IF EXISTS temp.chosen_names")
+    conn.execute(f"CREATE TEMP VIEW chosen_names AS {chosen_names_sql(session)}")
+    conn.commit()
+
+
 def from_the_app(request: Request, session: Session) -> None:
     """Refuse a request that does not carry the session's CSRF token, or that another site sent."""
     sign_in: SignIn = request.app.state.sign_in  # current_session finds no session without it

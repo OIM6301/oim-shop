@@ -24,15 +24,19 @@ def employees(conn: Conn) -> list[Employee]:
     Every student who signs in becomes a rep, and accounts outlast the nightly reset, so
     listing them all would bury the others under rows of reps with nothing to show. A rep's
     own page is there either way. The list is short enough not to be paged.
+
+    Northwind's own employees are numbers 1 to 9, and everyone who signs in here is a Sales
+    Representative or a Sales Manager, so the list is decided from public columns alone, and
+    its statement runs on the SQL page.
     """
     found = rows(
         conn,
         f"""
         {EMPLOYEE}
         GROUP BY e.employee_id
-        HAVING e.employee_id NOT IN (SELECT employee_id FROM accounts WHERE role = 'rep') OR COUNT(o.order_id) > 0
+        HAVING e.employee_id <= 9 OR e.title = 'Sales Manager' OR COUNT(o.order_id) > 0
         ORDER BY e.employee_id
-        """,  # noqa: S608 (fragments written here)
+        """,
     )
     return [Employee(**r) for r in found]
 

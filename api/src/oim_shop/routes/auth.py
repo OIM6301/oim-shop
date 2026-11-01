@@ -24,12 +24,13 @@ from oim_shop.accounts import (
     SignIn,
     Viewer,
     Writer,
+    add_chosen_names,
     end_session,
     public_name,
     read_allowlist,
     start_session,
 )
-from oim_shop.deps import Conn, Now
+from oim_shop.deps import Conn, Now, rows
 from oim_shop.github import GitHubError
 from oim_shop.models import Account, ChosenName, Me, NameChange
 
@@ -179,14 +180,10 @@ def choose_name(change: NameChange, conn: Conn, writer: Writer, now: Now) -> Me:
 def chosen_names(conn: Conn, viewer: SignedIn) -> list[ChosenName]:
     """The chosen names you may see, so each page can show them in place of 'Sales rep 12' or 'Sales manager 10'.
 
-    A manager sees everyone's; a rep sees the managers'. One row for each person who has chosen
-    a name; there are as many as the allowlist has people.
+    A manager sees everyone's; a rep sees the managers' and their own, as in the SQL page's
+    chosen_names. One row for each person who has chosen a name; there are as many as the
+    allowlist has people.
     """
-    only_managers = "" if viewer.role == "manager" else "AND role = 'manager'"
-    return [
-        ChosenName(**r)
-        for r in conn.execute(
-            f"SELECT employee_id, display_name FROM accounts WHERE display_name IS NOT NULL {only_managers} "  # noqa: S608
-            "ORDER BY employee_id"
-        )
-    ]
+    add_chosen_names(conn, viewer)
+    found = rows(conn, "SELECT employee_id, display_name FROM chosen_names ORDER BY employee_id")
+    return [ChosenName(**r) for r in found]

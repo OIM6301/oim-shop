@@ -450,7 +450,10 @@ def test_my_orders_sort(rep: TestClient) -> None:
 def test_who_sees_which_chosen_names(
     client: TestClient, rep: TestClient, other: TestClient, manager: TestClient
 ) -> None:
-    """A manager sees every chosen name, so their pages agree with My orders; a rep sees the managers'."""
+    """A manager sees every chosen name, so their pages agree with My orders; a rep sees the managers' and their own.
+
+    These are the names in the SQL page's chosen_names, for the same person.
+    """
     rep.put("/api/me", json={"display_name": "Ana"}, headers=csrf(rep))
     manager.put("/api/me", json={"display_name": "Octo Teacher"}, headers=csrf(manager))
     other.get("/api/me")  # signed in, no name chosen yet
@@ -458,6 +461,10 @@ def test_who_sees_which_chosen_names(
     boss = manager.get("/api/me").json()["account"]["employee_id"]
     names = {n["employee_id"]: n["display_name"] for n in manager.get("/api/me/names").json()}
     assert names == {ana: "Ana", boss: "Octo Teacher"}
-    assert rep.get("/api/me/names").json() == [{"employee_id": boss, "display_name": "Octo Teacher"}]
+    assert {n["employee_id"]: n["display_name"] for n in rep.get("/api/me/names").json()} == {
+        ana: "Ana",
+        boss: "Octo Teacher",
+    }
+    assert {n["employee_id"] for n in other.get("/api/me/names").json()} == {boss}
     rep.post("/api/auth/logout", headers=csrf(rep))
     assert client.get("/api/me/names").status_code == 401

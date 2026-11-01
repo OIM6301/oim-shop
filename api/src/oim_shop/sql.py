@@ -33,7 +33,7 @@ from datetime import datetime
 from pathlib import Path
 
 from oim_shop import db
-from oim_shop.accounts import Session
+from oim_shop.accounts import Session, chosen_names_sql
 
 # Tables that hold nothing private: read them directly.
 READABLE = {
@@ -108,10 +108,8 @@ def connect(path: Path, now: datetime, session: Session) -> sqlite3.Connection:
     placed, lines, names = f"placed_{secret}", f"lines_{secret}", f"names_{secret}"
     # The clock's views under those names, and line_totals over them (db.as_of).
     db.as_of(conn, now, orders=placed, order_lines=lines)
-    # A rep sees the managers' names and their own. The id is an integer from the database.
-    only = "" if session.role == "manager" else f"AND (role = 'manager' OR employee_id = {int(session.employee_id)})"
-    chosen = f"SELECT employee_id, display_name FROM main.accounts WHERE display_name IS NOT NULL {only}"  # noqa: S608
-    conn.execute(f"CREATE TEMP VIEW {names} AS {chosen}")
+    # A rep sees the managers' names and their own, as on the pages.
+    conn.execute(f"CREATE TEMP VIEW {names} AS {chosen_names_sql(session)}")
     # The names a query uses, the same as the pages' (db.as_of).
     conn.execute(f"CREATE TEMP VIEW orders AS SELECT * FROM {placed}")  # noqa: S608
     conn.execute(f"CREATE TEMP VIEW order_lines AS SELECT * FROM {lines}")  # noqa: S608
