@@ -86,7 +86,8 @@ def manager(path: Path, github: FakeGitHub, allowlist: Path) -> Iterator[TestCli
 def post(client: TestClient, body: dict[str, Any], status: int = 201) -> Any:
     response = client.post("/api/orders", json=body, headers=csrf(client))
     assert response.status_code == status, response.text
-    return response.json()
+    answer = response.json()
+    return answer["order"] if status == 201 else answer
 
 
 def errors(response_json: Any) -> dict[tuple[str | int, ...], str]:
@@ -286,7 +287,7 @@ def test_editing_an_order_replaces_its_lines_and_moves_stock(rep: TestClient, pa
         headers=csrf(rep),
     )
     assert response.status_code == 200, response.text
-    edited = response.json()
+    edited = response.json()["order"]
     assert (edited["customer_id"], edited["shipper"], edited["order_date"]) == (
         "BLAUS",
         "United Package",
@@ -310,7 +311,7 @@ def test_an_edit_beyond_the_stock_changes_nothing(rep: TestClient, path: Path) -
 
 def test_cancelling_an_order_returns_its_stock(rep: TestClient, path: Path) -> None:
     placed = post(rep, order(lines=[line(CHAI, 5)]))
-    assert rep.delete(f"/api/orders/{placed['order_id']}", headers=csrf(rep)).status_code == 204
+    assert rep.delete(f"/api/orders/{placed['order_id']}", headers=csrf(rep)).status_code == 200
     assert rep.get(f"/api/orders/{placed['order_id']}").status_code == 404
     assert (count_entered(path), stock(path, CHAI)) == (0, 39)
 
@@ -319,7 +320,7 @@ def test_marking_an_order_shipped(rep: TestClient) -> None:
     placed = post(rep, order())
     response = rep.post(f"/api/orders/{placed['order_id']}/ship", headers=csrf(rep))
     assert response.status_code == 200, response.text
-    assert response.json()["shipped_date"] == NOW.isoformat()
+    assert response.json()["order"]["shipped_date"] == NOW.isoformat()
 
 
 def test_a_shipped_order_cannot_be_edited_cancelled_or_shipped_again(rep: TestClient, path: Path) -> None:
@@ -348,7 +349,7 @@ def test_a_manager_can_change_any_reps_order(rep: TestClient, manager: TestClien
     edited = manager.put(url, json=order(lines=[line(CHAI, 1)]), headers=csrf(manager))
     assert edited.status_code == 200, edited.text
     # The order stays the rep's.
-    assert edited.json()["employee_id"] == placed["employee_id"]
+    assert edited.json()["order"]["employee_id"] == placed["employee_id"]
     assert manager.post(f"{url}/ship", headers=csrf(manager)).status_code == 200
 
 

@@ -24,7 +24,7 @@ function NewOrder() {
             today={today}
             submitLabel="Enter the order"
             submit={async (values) => {
-              const order = await enter.mutateAsync(values)
+              const { order } = await enter.mutateAsync(values)
               toast.success(`Order #${order.order_id} entered`)
               return order.order_id
             }}

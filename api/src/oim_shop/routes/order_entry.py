@@ -11,15 +11,26 @@ import sqlite3
 from datetime import datetime, timedelta
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, HTTPException, Query, Response
+from fastapi import APIRouter, HTTPException, Query
 
 from oim_shop import db
 from oim_shop.accounts import Session, SignedIn, Writer, add_chosen_names
 from oim_shop.deps import Conn, Now, PageNumber, PathId, PerPage, SortOrder, page_of, rows
-from oim_shop.models import LineInput, MyOrder, MyOrderPage, OrderDetail, OrderInput, OrderLine, Shipper
+from oim_shop.models import (
+    Cancellation,
+    LineInput,
+    MyOrder,
+    MyOrderPage,
+    OrderChange,
+    OrderDetail,
+    OrderInput,
+    OrderLine,
+    Ran,
+    Shipper,
+)
 from oim_shop.routes.orders import ORDER_COLUMNS, ORDER_FROM, SORT, read_order
 from oim_shop.seed import update_totals
-from oim_shop.statements import recording
+from oim_shop.statements import Recording, recording, wrote
 
 router = APIRouter(tags=["order entry"])
 
@@ -54,17 +65,18 @@ def shippers(conn: Conn) -> list[Shipper]:
 
 def ship_to(conn: sqlite3.Connection, order_id: int, customer: sqlite3.Row) -> None:
     """An order entered here ships to its customer's own name and address."""
-    conn.execute(
+    wrote(conn.execute(
         """
         UPDATE main.orders SET ship_name = ?, ship_address = ?, ship_city = ?, ship_region = ?, ship_postal_code = ?,
                           ship_country = ?
         WHERE order_id = ?
+        RETURNING order_id, ship_name, ship_address, ship_city, ship_region, ship_postal_code, ship_country
         """,
         (
             customer["company_name"], customer["address"], customer["city"], customer["region"],
             customer["postal_code"], customer["country"], order_id,
         ),
-    )  # fmt: skip
+    ))  # fmt: skip
 
 
 def check(conn: sqlite3.Connection, body: OrderInput, now: datetime) -> tuple[sqlite3.Row, dict[int, sqlite3.Row]]:
@@ -127,10 +139,11 @@ def write_lines(
 ) -> None:
     """Insert the lines at the products' current prices, and take their stock."""
     for line in lines:
-        conn.execute(
+        wrote(conn.execute(
             """
             INSERT INTO main.order_lines (order_id, product_id, unit_price_cents, quantity, discount_pct)
             VALUES (?, ?, ?, ?, ?)
+            RETURNING *
             """,
             (
                 order_id,
@@ -139,26 +152,30 @@ def write_lines(
                 line.quantity,
                 line.discount_pct,
             ),
-        )
+        ))  # fmt: skip
         # The condition repeats the stock check in the database itself: if it ever fails, nothing is taken.
-        taken = conn.execute(
-            "UPDATE products SET units_in_stock = units_in_stock - ? WHERE product_id = ? AND units_in_stock >= ?",
+        taken = wrote(conn.execute(
+            """
+            UPDATE products SET units_in_stock = units_in_stock - ? WHERE product_id = ? AND units_in_stock >= ?
+            RETURNING product_id, name, units_in_stock
+            """,
             (line.quantity, line.product_id, line.quantity),
-        )
-        if taken.rowcount != 1:
+        ))  # fmt: skip
+        if len(taken) != 1:
             raise HTTPException(status_code=409, detail="The stock changed; try again")
     update_totals(conn, [order_id])
 
 
 def return_stock(conn: sqlite3.Connection, order_id: int) -> None:
     """Put back the stock an order's lines took, before its lines are replaced or the order is cancelled."""
-    conn.execute(
+    wrote(conn.execute(
         """
         UPDATE products SET units_in_stock = units_in_stock + l.quantity
         FROM main.order_lines l WHERE l.order_id = ? AND products.product_id = l.product_id
+        RETURNING product_id, name, units_in_stock
         """,
         (order_id,),
-    )
+    ))  # fmt: skip
 
 
 def changeable(conn: sqlite3.Connection, order_id: int, writer: Session) -> None:
@@ -179,43 +196,54 @@ def changeable(conn: sqlite3.Connection, order_id: int, writer: Session) -> None
         raise HTTPException(status_code=409, detail="This order has shipped")
 
 
-def written(found: dict[str, Any], lines: list[dict[str, Any]], sql: list[str]) -> OrderDetail:
-    """The order as a write left it, with every statement its transaction ran, BEGIN to COMMIT."""
+def transaction(sql: Recording) -> list[Ran]:
+    """Every statement the write's transaction ran, BEGIN to COMMIT, each write with the rows it returned."""
+    return [
+        Ran(sql=statement, columns=sql.written.get(i, (None, None))[0], rows=sql.written.get(i, (None, None))[1])
+        for i, statement in enumerate(sql)
+    ]
+
+
+def read_back(conn: sqlite3.Connection, order_id: int) -> OrderDetail:
+    """The order as the write left it, read inside its transaction, with the statements behind it."""
+    with recording(conn) as sql:
+        found, lines = read_order(conn, order_id)
     return OrderDetail(**found, lines=[OrderLine(**line) for line in lines], sql=sql)
 
 
 @router.post("/orders", status_code=201, responses=REFUSED)
-def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> OrderDetail:
+def enter_order(body: OrderInput, conn: Conn, now: Now, writer: Writer) -> OrderChange:
     """Enter an order as the signed-in rep. The prices are the products' current ones."""
     with recording(conn) as sql, db.transaction(conn):
         customer, products = check(conn, body, now)
         # The next number after the largest ever given, so a deleted order's number is never reused (migration 004).
-        order_id: int = conn.execute(
+        order_id: int = wrote(conn.execute(
             "UPDATE meta SET last_order_id = MAX(last_order_id, (SELECT MAX(order_id) FROM main.orders)) + 1 "
             "RETURNING last_order_id"
-        ).fetchone()[0]
-        conn.execute(
+        ))[0][0]  # fmt: skip
+        wrote(conn.execute(
             """
             INSERT INTO main.orders (order_id, customer_id, employee_id, order_date, required_date, shipper_id,
-                                freight_cents, source)
+                                     freight_cents, source)
             VALUES (?, ?, ?, ?, ?, ?, 0, 'entered')
+            RETURNING *
             """,
             (
                 order_id,
                 customer["customer_id"], writer.employee_id, now.isoformat(timespec="seconds"),
                 f"{body.required_date.isoformat()}T00:00:00", body.shipper_id,
             ),
-        )  # fmt: skip
+        ))  # fmt: skip
         ship_to(conn, order_id, customer)
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
         # Read back inside the transaction, so a reset that commits next cannot change the answer.
-        found, lines = read_order(conn, order_id)
-    return written(found, lines, sql)
+        order = read_back(conn, order_id)
+    return OrderChange(order=order, transaction=transaction(sql))
 
 
 @router.put("/orders/{order_id}", responses={404: {"description": "No such order"}, **REFUSED})
-def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer: Writer) -> OrderDetail:
+def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer: Writer) -> OrderChange:
     """Replace an order that has not shipped: its customer, shipper, required date and lines.
 
     The stock its old lines took counts as available to the new ones. It stays the order of
@@ -224,44 +252,51 @@ def edit_order(order_id: PathId, body: OrderInput, conn: Conn, now: Now, writer:
     with recording(conn) as sql, db.transaction(conn):
         changeable(conn, order_id, writer)
         return_stock(conn, order_id)
-        conn.execute("DELETE FROM main.order_lines WHERE order_id = ?", (order_id,))
+        wrote(conn.execute("DELETE FROM main.order_lines WHERE order_id = ? RETURNING *", (order_id,)))
         customer, products = check(conn, body, now)
-        conn.execute(
+        wrote(conn.execute(
             """
             UPDATE main.orders SET customer_id = ?, required_date = ?, shipper_id = ?
             WHERE order_id = ?
+            RETURNING order_id, customer_id, required_date, shipper_id
             """,
             (customer["customer_id"], f"{body.required_date.isoformat()}T00:00:00", body.shipper_id, order_id),
-        )  # fmt: skip
+        ))  # fmt: skip
         ship_to(conn, order_id, customer)
         write_lines(conn, order_id, body.lines, products)
         db.changed(conn)
-        found, lines = read_order(conn, order_id)
-    return written(found, lines, sql)
+        order = read_back(conn, order_id)
+    return OrderChange(order=order, transaction=transaction(sql))
 
 
-@router.delete("/orders/{order_id}", status_code=204, responses={404: {"description": "No such order"}, **REFUSED})
-def cancel_order(order_id: PathId, conn: Conn, writer: Writer) -> Response:
-    """Cancel an order that has not shipped: it is deleted, and its stock goes back."""
-    with db.transaction(conn):
+@router.delete("/orders/{order_id}", responses={404: {"description": "No such order"}, **REFUSED})
+def cancel_order(order_id: PathId, conn: Conn, writer: Writer) -> Cancellation:
+    """Cancel an order that has not shipped: it is deleted, and its stock goes back.
+
+    Its lines are deleted first, by a statement of their own: the foreign key would delete
+    them with the order anyway (ON DELETE CASCADE), but then RETURNING could not show them.
+    """
+    with recording(conn) as sql, db.transaction(conn):
         changeable(conn, order_id, writer)
         return_stock(conn, order_id)
-        conn.execute("DELETE FROM main.orders WHERE order_id = ?", (order_id,))
+        wrote(conn.execute("DELETE FROM main.order_lines WHERE order_id = ? RETURNING *", (order_id,)))
+        wrote(conn.execute("DELETE FROM main.orders WHERE order_id = ? RETURNING *", (order_id,)))
         db.changed(conn)
-    return Response(status_code=204)
+    return Cancellation(transaction=transaction(sql))
 
 
 @router.post("/orders/{order_id}/ship", responses={404: {"description": "No such order"}, **REFUSED})
-def ship_order(order_id: PathId, conn: Conn, now: Now, writer: Writer) -> OrderDetail:
+def ship_order(order_id: PathId, conn: Conn, now: Now, writer: Writer) -> OrderChange:
     """Mark an order shipped, now. It cannot be undone."""
     with recording(conn) as sql, db.transaction(conn):
         changeable(conn, order_id, writer)
-        conn.execute(
-            "UPDATE main.orders SET shipped_date = ? WHERE order_id = ?", (now.isoformat(timespec="seconds"), order_id)
-        )
+        wrote(conn.execute(
+            "UPDATE main.orders SET shipped_date = ? WHERE order_id = ? RETURNING order_id, shipped_date",
+            (now.isoformat(timespec="seconds"), order_id),
+        ))  # fmt: skip
         db.changed(conn)
-        found, lines = read_order(conn, order_id)
-    return written(found, lines, sql)
+        order = read_back(conn, order_id)
+    return OrderChange(order=order, transaction=transaction(sql))
 
 
 @router.get("/me/orders", responses={401: {"description": "Not signed in"}, 403: {"description": "Not a manager"}})

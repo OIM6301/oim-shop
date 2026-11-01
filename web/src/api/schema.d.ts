@@ -222,6 +222,9 @@ export interface paths {
         /**
          * Cancel Order
          * @description Cancel an order that has not shipped: it is deleted, and its stock goes back.
+         *
+         *     Its lines are deleted first, by a statement of their own: the foreign key would delete
+         *     them with the order anyway (ON DELETE CASCADE), but then RETURNING could not show them.
          */
         delete: operations["cancel_order_api_orders__order_id__delete"];
         options?: never;
@@ -555,6 +558,14 @@ export interface components {
              * @description Send it back as the X-CSRF-Token header with every write
              */
             csrf_token: string;
+        };
+        /**
+         * Cancellation
+         * @description A cancelled order's transaction, BEGIN to COMMIT, with what it deleted and the stock it gave back.
+         */
+        Cancellation: {
+            /** Transaction */
+            transaction: components["schemas"]["Ran"][];
         };
         /** Category */
         Category: {
@@ -991,6 +1002,15 @@ export interface components {
              */
             source: "seed" | "entered";
         };
+        /**
+         * OrderChange
+         * @description What a write left: the order as it is now, and its transaction, BEGIN to COMMIT.
+         */
+        OrderChange: {
+            order: components["schemas"]["OrderDetail"];
+            /** Transaction */
+            transaction: components["schemas"]["Ran"][];
+        };
         /** OrderDetail */
         OrderDetail: {
             /** Order Id */
@@ -1211,6 +1231,24 @@ export interface components {
             quantity: number;
             /** Revenue Cents */
             revenue_cents: number;
+        };
+        /**
+         * Ran
+         * @description One statement a write's transaction ran, with the rows it wrote or deleted.
+         */
+        Ran: {
+            /** Sql */
+            sql: string;
+            /**
+             * Columns
+             * @description Null for a statement that writes nothing, such as a SELECT
+             */
+            columns: string[] | null;
+            /**
+             * Rows
+             * @description What RETURNING handed back
+             */
+            rows: (number | string | null)[][] | null;
         };
         /** Shipper */
         Shipper: {
@@ -1726,7 +1764,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrderDetail"];
+                    "application/json": components["schemas"]["OrderChange"];
                 };
             };
             /** @description Not signed in */
@@ -1827,7 +1865,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrderDetail"];
+                    "application/json": components["schemas"]["OrderChange"];
                 };
             };
             /** @description Not signed in */
@@ -1888,11 +1926,13 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["Cancellation"];
+                };
             };
             /** @description Not signed in */
             401: {
@@ -1977,7 +2017,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["OrderDetail"];
+                    "application/json": components["schemas"]["OrderChange"];
                 };
             };
             /** @description Not signed in */

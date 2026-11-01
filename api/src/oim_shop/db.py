@@ -7,6 +7,8 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 
+from oim_shop.statements import wrote
+
 MIGRATIONS = Path(__file__).parent / "migrations"
 
 
@@ -108,7 +110,7 @@ def generation(conn: sqlite3.Connection) -> int:
 
 def changed(conn: sqlite3.Connection) -> None:
     """Record a change to orders or stock. Call it inside the transaction that makes the change."""
-    conn.execute("UPDATE meta SET generation = generation + 1")
+    wrote(conn.execute("UPDATE meta SET generation = generation + 1 RETURNING generation"))
 
 
 def add_functions(conn: sqlite3.Connection) -> None:

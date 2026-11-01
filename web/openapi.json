@@ -736,7 +736,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrderDetail"
+                  "$ref": "#/components/schemas/OrderChange"
                 }
               }
             }
@@ -848,7 +848,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrderDetail"
+                  "$ref": "#/components/schemas/OrderChange"
                 }
               }
             }
@@ -885,7 +885,7 @@
           "order entry"
         ],
         "summary": "Cancel Order",
-        "description": "Cancel an order that has not shipped: it is deleted, and its stock goes back.",
+        "description": "Cancel an order that has not shipped: it is deleted, and its stock goes back.\n\nIts lines are deleted first, by a statement of their own: the foreign key would delete\nthem with the order anyway (ON DELETE CASCADE), but then RETURNING could not show them.",
         "operationId": "cancel_order_api_orders__order_id__delete",
         "parameters": [
           {
@@ -901,8 +901,15 @@
           }
         ],
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Cancellation"
+                }
+              }
+            }
           },
           "404": {
             "description": "No such order"
@@ -984,7 +991,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/OrderDetail"
+                  "$ref": "#/components/schemas/OrderChange"
                 }
               }
             }
@@ -1684,6 +1691,23 @@
           "csrf_token"
         ],
         "title": "Account"
+      },
+      "Cancellation": {
+        "properties": {
+          "transaction": {
+            "items": {
+              "$ref": "#/components/schemas/Ran"
+            },
+            "type": "array",
+            "title": "Transaction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "transaction"
+        ],
+        "title": "Cancellation",
+        "description": "A cancelled order's transaction, BEGIN to COMMIT, with what it deleted and the stock it gave back."
       },
       "Category": {
         "properties": {
@@ -2960,6 +2984,27 @@
         ],
         "title": "Order"
       },
+      "OrderChange": {
+        "properties": {
+          "order": {
+            "$ref": "#/components/schemas/OrderDetail"
+          },
+          "transaction": {
+            "items": {
+              "$ref": "#/components/schemas/Ran"
+            },
+            "type": "array",
+            "title": "Transaction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "order",
+          "transaction"
+        ],
+        "title": "OrderChange",
+        "description": "What a write left: the order as it is now, and its transaction, BEGIN to COMMIT."
+      },
       "OrderDetail": {
         "properties": {
           "order_id": {
@@ -3535,6 +3580,68 @@
           "revenue_cents"
         ],
         "title": "ProductRevenue"
+      },
+      "Ran": {
+        "properties": {
+          "sql": {
+            "type": "string",
+            "title": "Sql"
+          },
+          "columns": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Columns",
+            "description": "Null for a statement that writes nothing, such as a SELECT"
+          },
+          "rows": {
+            "anyOf": [
+              {
+                "items": {
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "type": "array"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rows",
+            "description": "What RETURNING handed back"
+          }
+        },
+        "type": "object",
+        "required": [
+          "sql",
+          "columns",
+          "rows"
+        ],
+        "title": "Ran",
+        "description": "One statement a write's transaction ran, with the rows it wrote or deleted."
       },
       "Shipper": {
         "properties": {

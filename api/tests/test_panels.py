@@ -178,3 +178,85 @@ def test_my_orders_and_the_names_at_each_level(rep: TestClient, manager: TestCli
         names = client.get("/api/me/names").json()
         (statement,) = names["sql"]
         same(as_dicts(run_both(path, session_of(client), statement)), names["items"])
+
+
+# --- writes ------------------------------------------------------------------------------------
+
+BODY = {
+    "customer_id": "ALFKI",
+    "shipper_id": 1,
+    "required_date": "2026-10-30",
+    "lines": [
+        {"product_id": 1, "quantity": 3, "discount_pct": 0},
+        {"product_id": 2, "quantity": 2, "discount_pct": 10},
+    ],
+}
+
+
+def rows_of(transaction: list[dict[str, Any]], start: str) -> list[dict[str, Any]]:
+    """The rows written by the statements that start with `start`, as dicts."""
+    found = [s for s in transaction if s["sql"].startswith(start)]
+    assert found, start
+    return [dict(zip(s["columns"], row, strict=True)) for s in found for row in s["rows"]]
+
+
+def in_the_database(path: Path, sql: str, params: tuple[object, ...] = ()) -> list[dict[str, Any]]:
+    conn = db.connect(path)
+    try:
+        return [dict(r) for r in conn.execute(sql, params)]
+    finally:
+        conn.close()
+
+
+def test_entering_an_order_shows_its_transaction_and_what_it_wrote(rep: TestClient, path: Path) -> None:
+    change = rep.post("/api/orders", json=BODY, headers=csrf(rep)).json()
+    order_id = change["order"]["order_id"]
+    transaction = change["transaction"]
+    assert [s["sql"].split()[0] for s in (transaction[0], transaction[-1])] == ["BEGIN", "COMMIT"]
+    assert transaction[0]["sql"] == "BEGIN IMMEDIATE"
+    # A statement that only reads shows no rows; one that writes shows what it wrote.
+    assert all(s["rows"] is None for s in transaction if s["sql"].startswith("SELECT"))
+    assert rows_of(transaction, "INSERT INTO main.orders")[0]["order_id"] == order_id
+    assert rows_of(transaction, "INSERT INTO main.order_lines") == in_the_database(
+        path, "SELECT * FROM main.order_lines WHERE order_id = ? ORDER BY product_id", (order_id,)
+    )
+    assert rows_of(transaction, "UPDATE products") == in_the_database(
+        path, "SELECT product_id, name, units_in_stock FROM products WHERE product_id IN (1, 2) ORDER BY product_id"
+    )
+    totals = rows_of(transaction, "UPDATE main.orders SET total_cents")
+    query = "SELECT order_id, total_cents, line_count FROM main.orders WHERE order_id = ?"
+    assert totals == in_the_database(path, query, (order_id,))
+    assert not any(PRIVATE.search(s["sql"]) for s in transaction)
+
+
+def test_editing_shows_the_lines_it_replaced(rep: TestClient, path: Path) -> None:
+    order_id = rep.post("/api/orders", json=BODY, headers=csrf(rep)).json()["order"]["order_id"]
+    old = in_the_database(path, "SELECT * FROM main.order_lines WHERE order_id = ? ORDER BY product_id", (order_id,))
+    edited = {**BODY, "lines": [{"product_id": 3, "quantity": 1, "discount_pct": 0}]}
+    transaction = rep.put(f"/api/orders/{order_id}", json=edited, headers=csrf(rep)).json()["transaction"]
+    assert rows_of(transaction, "DELETE FROM main.order_lines") == old
+    assert rows_of(transaction, "INSERT INTO main.order_lines") == in_the_database(
+        path, "SELECT * FROM main.order_lines WHERE order_id = ?", (order_id,)
+    )
+    # The stock the old lines took went back, before the new line took its own.
+    returned = rows_of(transaction, "UPDATE products SET units_in_stock = units_in_stock + l.quantity")
+    assert {r["product_id"] for r in returned} == {1, 2}
+
+
+def test_cancelling_shows_what_it_deleted(rep: TestClient, path: Path) -> None:
+    placed = rep.post("/api/orders", json=BODY, headers=csrf(rep)).json()["order"]
+    response = rep.delete(f"/api/orders/{placed['order_id']}", headers=csrf(rep))
+    assert response.status_code == 200
+    transaction = response.json()["transaction"]
+    assert [r["product_id"] for r in rows_of(transaction, "DELETE FROM main.order_lines")] == [1, 2]
+    assert rows_of(transaction, "DELETE FROM main.orders")[0]["order_id"] == placed["order_id"]
+    assert in_the_database(path, "SELECT * FROM main.orders WHERE order_id = ?", (placed["order_id"],)) == []
+
+
+def test_shipping_shows_the_date_it_wrote(rep: TestClient) -> None:
+    placed = rep.post("/api/orders", json=BODY, headers=csrf(rep)).json()["order"]
+    change = rep.post(f"/api/orders/{placed['order_id']}/ship", headers=csrf(rep)).json()
+    assert rows_of(change["transaction"], "UPDATE main.orders SET shipped_date") == [
+        {"order_id": placed["order_id"], "shipped_date": NOW.isoformat()}
+    ]
+    assert change["order"]["shipped_date"] == NOW.isoformat()

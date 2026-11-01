@@ -128,10 +128,10 @@ def test_an_entered_order_ships_to_the_customers_address(client: TestClient, git
     }  # fmt: skip
     created = client.post("/api/orders", json=body, headers=csrf(client))
     assert created.status_code == 201, created.text
-    order = created.json()
+    order = created.json()["order"]
     assert (order["ship_name"], order["ship_address"], order["ship_region"], order["ship_postal_code"]) == (
         "Alfreds Futterkiste", "Obere Str. 57", "Western Europe", "12209"
     )  # fmt: skip
     edited = client.put(f"/api/orders/{order['order_id']}", json={**body, "customer_id": "ANATR"}, headers=csrf(client))
     assert edited.status_code == 200, edited.text
-    assert edited.json()["ship_name"] == "Ana Trujillo Emparedados y helados"
+    assert edited.json()["order"]["ship_name"] == "Ana Trujillo Emparedados y helados"

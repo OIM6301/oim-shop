@@ -164,6 +164,27 @@ class OrderDetail(Order):
     sql: Statements
 
 
+class Ran(BaseModel):
+    """One statement a write's transaction ran, with the rows it wrote or deleted."""
+
+    sql: str
+    columns: list[str] | None = Field(description="Null for a statement that writes nothing, such as a SELECT")
+    rows: list[list[int | float | str | None]] | None = Field(description="What RETURNING handed back")
+
+
+class OrderChange(BaseModel):
+    """What a write left: the order as it is now, and its transaction, BEGIN to COMMIT."""
+
+    order: OrderDetail
+    transaction: list[Ran]
+
+
+class Cancellation(BaseModel):
+    """A cancelled order's transaction, BEGIN to COMMIT, with what it deleted and the stock it gave back."""
+
+    transaction: list[Ran]
+
+
 class Employee(BaseModel):
     employee_id: int
     first_name: str

@@ -13,6 +13,7 @@ from pathlib import Path
 
 from oim_shop import db
 from oim_shop.clock import shift
+from oim_shop.statements import wrote
 
 # Columns that hold integers; everything else stays text. An empty field is null.
 INTEGER_COLUMNS = {
@@ -181,12 +182,13 @@ def update_totals(conn: sqlite3.Connection, order_ids: list[int] | None = None) 
     if order_ids is not None:
         where = f"WHERE order_id IN ({', '.join('?' * len(order_ids))})"
         params = order_ids
-    conn.execute(
+    wrote(conn.execute(
         f"""
         UPDATE main.orders SET total_cents = t.total, line_count = t.lines
         FROM (SELECT order_id, SUM(line_total_cents) AS total, COUNT(*) AS lines
               FROM main.line_totals {where} GROUP BY order_id) AS t
         WHERE orders.order_id = t.order_id
+        RETURNING order_id, total_cents, line_count
         """,  # noqa: S608
         params,
-    )
+    ))  # fmt: skip

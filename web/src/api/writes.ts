@@ -76,7 +76,7 @@ export function useEditOrder() {
 
 export function useCancelOrder() {
   return useWrite((csrf, orderId: number) =>
-    succeed(api.DELETE('/api/orders/{order_id}', { params: { path: { order_id: orderId } }, headers: headers(csrf) })),
+    unwrap(api.DELETE('/api/orders/{order_id}', { params: { path: { order_id: orderId } }, headers: headers(csrf) })),
   )
 }
 

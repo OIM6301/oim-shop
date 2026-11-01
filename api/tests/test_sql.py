@@ -116,7 +116,7 @@ def test_an_entered_order_is_there_at_once_and_gone_when_cancelled(rep: TestClie
         "customer_id": "ALFKI", "shipper_id": 1, "required_date": "2026-11-01",
         "lines": [{"product_id": 1, "quantity": 5, "discount_pct": 0}],
     }  # fmt: skip
-    order = rep.post("/api/orders", json=body, headers=csrf(rep)).json()
+    order = rep.post("/api/orders", json=body, headers=csrf(rep)).json()["order"]
     order_id = order["order_id"]
     # order_id is an integer the API gave back.
     the_order = f"SELECT source, employee_id FROM orders WHERE order_id = {order_id}"  # noqa: S608
@@ -125,7 +125,7 @@ def test_an_entered_order_is_there_at_once_and_gone_when_cancelled(rep: TestClie
     assert sql(rep, its_lines)["rows"] == [[1, 5, 1800]]
     assert value(rep, "SELECT units_in_stock FROM products WHERE product_id = 1") == 34
 
-    assert rep.delete(f"/api/orders/{order_id}", headers=csrf(rep)).status_code == 204
+    assert rep.delete(f"/api/orders/{order_id}", headers=csrf(rep)).status_code == 200
     assert sql(rep, the_order)["rows"] == []
     assert sql(rep, its_lines)["rows"] == []
     assert value(rep, "SELECT units_in_stock FROM products WHERE product_id = 1") == 39

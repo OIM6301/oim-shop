@@ -359,7 +359,7 @@ def test_a_rep_who_appears_publicly_appears_by_number(client: TestClient, github
         "customer_id": "ALFKI", "shipper_id": 1, "required_date": "2026-11-01",
         "lines": [{"product_id": 1, "quantity": 1, "discount_pct": 0}],
     }  # fmt: skip
-    order_id = client.post("/api/orders", json=body, headers=csrf(client)).json()["order_id"]
+    order_id = client.post("/api/orders", json=body, headers=csrf(client)).json()["order"]["order_id"]
     client.cookies.clear()
     pages = [
         "/api/employees", f"/api/employees/{account['employee_id']}", "/api/orders", f"/api/orders/{order_id}",
