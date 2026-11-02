@@ -6,7 +6,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
       test.setTimeout(90_000)
       await page.setViewportSize({ width, height: 900 })
       await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
-      for (const path of ['/', '/products', '/customers', '/orders', '/suppliers', '/customers/ALFKI', '/employees/1', '/suppliers/1', '/orders/10248']) {
+      for (const path of ['/', '/products', '/customers', '/orders', '/suppliers', '/customers/ALFKI', '/employees/1', '/suppliers/1', '/orders/10248', '/about']) {
         await test.step(path, async () => {
           await page.goto(path)
           await expect(page.locator('h1')).not.toHaveText('')

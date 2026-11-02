@@ -574,3 +574,28 @@ test('a new filter is a condition you can watch appear in the statement', async 
   await expect(page.locator('pre').last()).toContainText("casefold(s.country) = casefold('Japan')")
   await page.getByRole('button', { name: /^SQL 1 statement/ }).click()
 })
+
+test('About says what the site is and links to its code', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'About', exact: true }).click()
+  await expect(page).toHaveURL(/\/about$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('About')
+  await expect(page.getByText('fictional specialty food wholesaler')).toBeVisible()
+
+  const repo = 'https://github.com/OIM7510/oim-shop'
+  const links: [string, string][] = [
+    ['Open v1', 'https://oim7510.github.io/oim-shop/v1/'],
+    ['the v1 code', `${repo}/tree/v1`],
+    ['the v2 code', `${repo}/tree/v2`],
+    ['what changed since v1', `${repo}/compare/v1...v2`],
+    ['the v3 code', `${repo}/tree/v3`],
+    ['what changed since v2', `${repo}/compare/v2...v3`],
+    ['OIM7510/oim-shop', repo],
+    ['Product Requirements', `${repo}/blob/main/docs/prd.md`],
+    ['API docs', '/api/docs'],
+  ]
+  const main = page.getByRole('main')
+  for (const [name, href] of links) {
+    await expect(main.getByRole('link', { name, exact: true })).toHaveAttribute('href', href)
+  }
+})
