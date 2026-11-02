@@ -114,6 +114,20 @@ Added on `main` after the `v3` tag. Each page that shows data can show the SQL t
 
 Acceptance: each panel has a test that runs its statements on the SQL page, at the same level and the same moment, and compares their rows with the page's, using filter values that contain an apostrophe and a letter outside ASCII; a test checks that no panel's statement reads `accounts` or `sessions`; each write's test compares the statements and rows it shows with the database afterward.
 
+### After v3: the About page
+
+Added on `main` after the `v3` tag. **About**, linked in the sidebar beside API docs and Privacy, explains the site to someone who arrives without having read the README:
+
+- Northwind Traders is a fictional specialty food wholesaler from Microsoft's sample database, and the site is its internal sales system, built in the open as a reference for how such a product is made.
+- Northwind's own orders are moved forward in time, so new ones keep arriving. Orders entered on the site are deleted every night.
+- What you can do without signing in, and what signing in adds: entering orders and the SQL page. Only people on the site's list can sign in.
+- The versions, each with a link to its code and to what changed since the version before; v1 runs on its own page.
+- Links to the source code on GitHub, whose front page is the README, to this PRD, and to the API docs.
+
+The page describes the product and has no steps to follow. How a course uses the site is in that course's own materials (§1).
+
+Acceptance: an end-to-end test opens About from the sidebar and checks the address of each link; the page is in the tests that check every public page at each width, in light and dark mode.
+
 ## 6. Business rules (v3)
 
 Each comes from a field already in the Northwind data.
