@@ -107,6 +107,31 @@ test('an order beyond the stock is refused beside the quantity', async ({ page }
   await expect(page).toHaveURL(/\/orders\/new$/)
 })
 
+test('a list opened just as another finishes closing stays open', async ({ page }) => {
+  await signIn(page, 'e2e-rep')
+  await page.goto('/orders/new')
+  // Choosing puts focus back on the list's button, where a keyboard user left it.
+  await choose(page, 'Customer', /^Around the Horn/)
+  await expect(page.getByRole('combobox', { name: 'Customer' })).toBeFocused()
+
+  await page.getByRole('combobox', { name: 'Customer' }).click()
+  // Open Products in the moment after the Customer list leaves the page and before
+  // focus goes back to its button, as a quick second click can.
+  await page.evaluate(() => {
+    const list = document.querySelector('[data-slot="popover-content"]')
+    new MutationObserver((_, observer) => {
+      if (list?.isConnected) return
+      observer.disconnect()
+      document.querySelector<HTMLButtonElement>('#line-0-product')?.click()
+    }).observe(document.body, { childList: true, subtree: true })
+  })
+  await page.getByRole('option', { name: /^Alfreds Futterkiste/ }).click()
+  await expect(page.getByRole('combobox', { name: 'Product' })).toHaveAttribute('aria-expanded', 'true')
+  await page.waitForTimeout(500)
+  await page.getByRole('option', { name: /^Grandma's Boysenberry Spread/ }).click({ timeout: 2000 })
+  await expect(page.getByRole('combobox', { name: 'Product' })).toHaveText("Grandma's Boysenberry Spread")
+})
+
 test('leaving an order not yet sent asks first', async ({ page }) => {
   await signIn(page, 'e2e-rep', '/orders/new')
   await nameAs(page, 'Ana')

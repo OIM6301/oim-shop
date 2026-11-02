@@ -58,7 +58,15 @@ export function Combobox({
           <ChevronsUpDown className="opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-(--radix-popover-trigger-width) min-w-64 p-0" align="start">
+      <PopoverContent
+        className="w-(--radix-popover-trigger-width) min-w-64 p-0"
+        align="start"
+        // Once the list has gone, Radix moves focus back to this button a moment later. If another
+        // list has opened in that moment, focus is already in it, and taking it would close that list.
+        onCloseAutoFocus={(event) => {
+          if (document.activeElement && document.activeElement !== document.body) event.preventDefault()
+        }}
+      >
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
           <CommandList>
