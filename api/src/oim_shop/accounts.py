@@ -1,13 +1,16 @@
 """Who may sign in, the session that remembers them, and the checks every write must pass.
 
 Signing in is for the people on an allowlist: a file of GitHub usernames, one per line, that
-the server is given in OIM_SHOP_ALLOWED_USERS. The file never goes into git.
+the server is given in OIM_SHOP_ALLOWED_USERS. A line can also give the person's employee number,
+so the numbers do not depend on who signs in first. The file never goes into git.
 """
 
 import hashlib
+import logging
 import re
 import secrets
 import sqlite3
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -30,6 +33,11 @@ SESSION_COOKIE = "oim_shop_session"
 SESSION_LENGTH = timedelta(days=7)
 # GitHub's own rule: letters, digits and single hyphens, not at either end, at most 39 characters.
 USERNAME = re.compile(r"[a-z\d](?:[a-z\d]|-(?=[a-z\d])){0,38}", re.IGNORECASE)
+NUMBER = re.compile(r"0|[1-9]\d{0,5}")
+# Northwind's own employees are 1 to 9, so a number on the allowlist starts after them.
+FIRST_NUMBER = 10
+
+log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -56,22 +64,55 @@ class SignIn:
 
 
 class AllowlistError(Exception):
-    """The allowlist has a line that is not a username, optionally followed by a role."""
+    """The allowlist has a line it cannot read, or gives an employee number it may not."""
 
 
-def read_allowlist(path: Path) -> dict[str, Role]:
-    """Read the allowlist: `username` or `username manager` per line; blank lines and # comments are skipped.
+class NumberTaken(Exception):
+    """The allowlist gives a new account an employee number that already belongs to another."""
 
-    Usernames are compared without regard to case, as GitHub does.
+
+@dataclass(frozen=True)
+class Listed:
+    """One person on the allowlist: their role, and their employee number if the line gives one."""
+
+    role: Role
+    employee_id: int | None = None
+
+
+def read_allowlist(path: Path) -> dict[str, Listed]:
+    """Read the allowlist: per line a username, then optionally `manager`, then optionally the employee number.
+
+    Blank lines and # comments are skipped. Usernames are compared without regard to case, as GitHub does.
     """
-    allowed: dict[str, Role] = {}
-    for number, line in enumerate(path.read_text().splitlines(), start=1):
+    allowed: dict[str, Listed] = {}
+    given: dict[int, int] = {}  # each employee number, and the line that gives it
+    for line_number, line in enumerate(path.read_text().splitlines(), start=1):
         words = line.split("#", 1)[0].split()
         if not words:
             continue
-        if len(words) > 2 or not USERNAME.fullmatch(words[0]) or words[1:] not in ([], ["rep"], ["manager"]):
-            raise AllowlistError(f"{path}, line {number}: expected a GitHub username, then optionally 'manager'")
-        allowed[words[0].lower()] = "manager" if words[1:] == ["manager"] else "rep"
+        username, rest = words[0], words[1:]
+        role: Role = "rep"
+        if rest and rest[0] in ("rep", "manager"):
+            role = "manager" if rest[0] == "manager" else "rep"
+            rest = rest[1:]
+        if not USERNAME.fullmatch(username) or len(rest) > 1 or (rest and not NUMBER.fullmatch(rest[0])):
+            raise AllowlistError(
+                f"{path}, line {line_number}: expected a GitHub username, then optionally 'manager', "
+                "then optionally an employee number"
+            )
+        employee_id = int(rest[0]) if rest else None
+        if employee_id is not None:
+            if employee_id < FIRST_NUMBER:
+                raise AllowlistError(
+                    f"{path}, line {line_number}: an employee number must be {FIRST_NUMBER} or more, "
+                    "since 1 to 9 are Northwind's own"
+                )
+            if employee_id in given:
+                raise AllowlistError(
+                    f"{path}, line {line_number}: employee number {employee_id} is already on line {given[employee_id]}"
+                )
+            given[employee_id] = line_number
+        allowed[username.lower()] = Listed(role, employee_id)
     return allowed
 
 
@@ -79,11 +120,16 @@ def hash_token(token: str) -> str:
     return hashlib.sha256(token.encode()).hexdigest()
 
 
-def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tuple[str, bool]:
+def start_session(
+    path: Path, github_id: int, listed: Listed, now: datetime, listed_numbers: Iterable[int] = ()
+) -> tuple[str, bool]:
     """Find or create the account and its employee, and open a session.
 
+    A new account takes the number its allowlist line gives, or else one above every number in use
+    and every number on the list (`listed_numbers`), so it never takes a number kept for someone else.
     Returns the session token for the cookie, and whether the person has chosen a name yet.
     """
+    role = listed.role
     stamp = now.isoformat(timespec="seconds")
     conn = db.connect(path)
     try:
@@ -93,13 +139,22 @@ def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tupl
                 "SELECT employee_id, display_name FROM accounts WHERE github_id = ?", (github_id,)
             ).fetchone()
             if row is None:
-                employee_id: int = conn.execute(
+                employee_id = listed.employee_id
+                if employee_id is None:
+                    in_use: int = conn.execute("SELECT MAX(employee_id) FROM employees").fetchone()[0]
+                    employee_id = max([in_use, *listed_numbers]) + 1
+                elif conn.execute("SELECT 1 FROM employees WHERE employee_id = ?", (employee_id,)).fetchone():
+                    raise NumberTaken(
+                        f"the allowlist gives a new account employee number {employee_id}, "
+                        f"but employee number {employee_id} already belongs to another account"
+                    )
+                conn.execute(
                     """
-                    INSERT INTO employees (first_name, last_name, title, reports_to, hire_date)
-                    VALUES ('Sales rep', '', ?, ?, ?) RETURNING employee_id
+                    INSERT INTO employees (employee_id, first_name, last_name, title, reports_to, hire_date)
+                    VALUES (?, 'Sales rep', '', ?, ?, ?)
                     """,
-                    (TITLES[role], SALES_MANAGER, stamp),
-                ).fetchone()[0]
+                    (employee_id, TITLES[role], SALES_MANAGER, stamp),
+                )
                 conn.execute(
                     "INSERT INTO accounts (github_id, employee_id, role, created_at) VALUES (?, ?, ?, ?)",
                     (github_id, employee_id, role, stamp),
@@ -107,6 +162,12 @@ def start_session(path: Path, github_id: int, role: Role, now: datetime) -> tupl
                 named = False
             else:
                 employee_id, named = row["employee_id"], row["display_name"] is not None
+                if listed.employee_id not in (None, employee_id):
+                    # The number is used once, when the account is made; the log names no one.
+                    log.warning(
+                        "A person signing in keeps employee number %s, not the allowlist's %s",
+                        employee_id, listed.employee_id,
+                    )  # fmt: skip
                 # The allowlist decides the role, so a change there takes effect at the next sign-in.
                 conn.execute("UPDATE accounts SET role = ? WHERE github_id = ?", (role, github_id))
                 conn.execute("UPDATE employees SET title = ? WHERE employee_id = ?", (TITLES[role], employee_id))

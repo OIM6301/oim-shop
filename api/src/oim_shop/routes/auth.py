@@ -18,6 +18,7 @@ from oim_shop.accounts import (
     SESSION_COOKIE,
     SESSION_LENGTH,
     AllowlistError,
+    NumberTaken,
     OnTheApp,
     Session,
     SignedIn,
@@ -120,16 +121,22 @@ async def callback(
     finally:
         app.sign_ins_waiting -= 1
     try:
-        role = read_allowlist(sign_in.allowlist).get(user.login.lower())
+        allowlist = read_allowlist(sign_in.allowlist)
     except (OSError, AllowlistError) as failure:
         log.error("The allowlist cannot be read: %s", failure)
         return go("/sign-in?error=unavailable")
-    if role is None:
+    listed = allowlist.get(user.login.lower())
+    if listed is None:
         return go("/sign-in?error=not_allowed")
 
-    token, named = await anyio.to_thread.run_sync(
-        start_session, request.app.state.db_path, user.id, role, request.app.state.now()
-    )
+    numbers = [n.employee_id for n in allowlist.values() if n.employee_id is not None]
+    try:
+        token, named = await anyio.to_thread.run_sync(
+            start_session, request.app.state.db_path, user.id, listed, request.app.state.now(), numbers
+        )
+    except NumberTaken as failure:
+        log.error("Signing in failed: %s", failure)
+        return go("/sign-in?error=unavailable")
     if not named:
         next_path = "/welcome" if next_path == "/" else f"/welcome?next={quote(next_path, safe='')}"
     response = go(next_path)

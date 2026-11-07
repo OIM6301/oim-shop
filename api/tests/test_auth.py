@@ -1,19 +1,22 @@
 """Signing in with GitHub, against a fake GitHub that runs inside the test."""
 
 import json
+import logging
+import shutil
 from pathlib import Path
+from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
 
 from oim_shop import db
-from oim_shop.accounts import AllowlistError, read_allowlist
+from oim_shop.accounts import AllowlistError, Listed, read_allowlist
 from oim_shop.app import create_app
 from oim_shop.cli import REPO_SEED, open_database
 
 from .conftest import NOW
-from .fake_github import PUBLIC_URL, STRANGER, STUDENT, TEACHER, FakeGitHub, csrf, me, sign_in, sign_in_settings
+from .fake_github import OTHER, PUBLIC_URL, STRANGER, STUDENT, TEACHER, FakeGitHub, csrf, me, sign_in, sign_in_settings
 
 # --- the allowlist ------------------------------------------------------------
 
@@ -21,14 +24,46 @@ from .fake_github import PUBLIC_URL, STRANGER, STUDENT, TEACHER, FakeGitHub, csr
 def test_the_allowlist_is_usernames_one_per_line(tmp_path: Path) -> None:
     path = tmp_path / "list"
     path.write_text("# comment\n\n  Alice  \nbob manager\ncarol-2 rep\n")
-    assert read_allowlist(path) == {"alice": "rep", "bob": "manager", "carol-2": "rep"}
+    assert read_allowlist(path) == {
+        "alice": Listed("rep", None), "bob": Listed("manager", None), "carol-2": Listed("rep", None),
+    }  # fmt: skip
 
 
-@pytest.mark.parametrize("line", ["alice admin", "not a username", "-alice", "a" * 40, "alice manager extra"])
+def test_a_line_can_give_the_employee_number(tmp_path: Path) -> None:
+    path = tmp_path / "list"
+    path.write_text("ada 12\ngrace manager 10\nlinus rep 11\nbob\n")
+    assert read_allowlist(path) == {
+        "ada": Listed("rep", 12), "grace": Listed("manager", 10),
+        "linus": Listed("rep", 11), "bob": Listed("rep", None),
+    }  # fmt: skip
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        "alice admin", "not a username", "-alice", "a" * 40, "alice manager extra",
+        "alice 12 manager", "alice manager 12 13", "alice 1.5", "alice twelve", "alice -12", "alice 012",
+    ],
+)  # fmt: skip
 def test_a_line_the_allowlist_cannot_read_is_an_error(tmp_path: Path, line: str) -> None:
     path = tmp_path / "list"
     path.write_text(f"bob\n{line}\n")
     with pytest.raises(AllowlistError, match="line 2"):
+        read_allowlist(path)
+
+
+@pytest.mark.parametrize("number", ["0", "5", "9"])
+def test_a_number_of_a_northwind_employee_is_an_error(tmp_path: Path, number: str) -> None:
+    path = tmp_path / "list"
+    path.write_text(f"bob 10\nalice {number}\n")
+    with pytest.raises(AllowlistError, match=r"line 2.*10 or more"):
+        read_allowlist(path)
+
+
+def test_two_lines_with_one_number_are_an_error(tmp_path: Path) -> None:
+    path = tmp_path / "list"
+    path.write_text("bob 12\n\nalice manager 12\n")
+    with pytest.raises(AllowlistError, match=r"line 3.*12.*line 1"):
         read_allowlist(path)
 
 
@@ -451,4 +486,73 @@ def test_opening_the_database_moves_reps_to_the_manager(path: Path) -> None:
     assert found[rep] == ("Sales rep", str(rep), manager)
     assert found[manager] == ("Sales manager", str(manager), 2)
     assert db.generation(conn) > generation  # the dashboard's employee names change with it
+    conn.close()
+
+
+# --- employee numbers from the allowlist -------------------------------------------
+
+
+def number_of(client: TestClient, github: FakeGitHub, user: dict[str, Any]) -> int:
+    client.cookies.clear()
+    sign_in(client, github, user)
+    return me(client)["account"]["employee_id"]
+
+
+def test_the_allowlist_gives_the_employee_number(client: TestClient, github: FakeGitHub, allowlist: Path) -> None:
+    allowlist.write_text("octo-student 12\nocto-teacher manager 10\n")
+    assert number_of(client, github, STUDENT) == 12
+    assert number_of(client, github, TEACHER) == 10
+    assert me(client)["account"]["public_name"] == "Sales manager 10"
+    assert employee_of(client, 12)["reports_to"] == 10
+
+
+def test_without_a_number_a_person_gets_one_no_line_has_taken(
+    client: TestClient, github: FakeGitHub, allowlist: Path
+) -> None:
+    allowlist.write_text("octo-student\nocto-other 40\n")
+    assert number_of(client, github, STUDENT) == 41
+    assert number_of(client, github, OTHER) == 40
+
+
+def test_a_rebuilt_database_gives_everyone_the_same_number(
+    path: Path, seeded_path: Path, github: FakeGitHub, allowlist: Path
+) -> None:
+    allowlist.write_text("octo-student 12\nocto-other 11\nocto-teacher manager 10\n")
+
+    def numbers(order: list[dict[str, Any]]) -> dict[str, int]:
+        app = create_app(path, now=lambda: NOW, sign_in=sign_in_settings(github, allowlist))
+        with TestClient(app, base_url=PUBLIC_URL, follow_redirects=False) as c:
+            return {user["login"]: number_of(c, github, user) for user in order}
+
+    before = numbers([OTHER, STUDENT, TEACHER])
+    # The database, lost and loaded again from the seed.
+    for leftover in (Path(f"{path}-wal"), Path(f"{path}-shm")):
+        leftover.unlink(missing_ok=True)
+    shutil.copy(seeded_path, path)
+    assert numbers([TEACHER, STUDENT, OTHER]) == before == {"octo-other": 11, "Octo-Student": 12, "octo-teacher": 10}
+
+
+def test_an_account_keeps_its_number_when_the_list_changes(
+    client: TestClient, github: FakeGitHub, allowlist: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    allowlist.write_text("octo-student 12\n")
+    assert number_of(client, github, STUDENT) == 12
+    allowlist.write_text("octo-student 20\n")
+    with caplog.at_level(logging.WARNING):
+        assert number_of(client, github, STUDENT) == 12
+    assert "keeps employee number 12, not the allowlist's 20" in caplog.text
+
+
+def test_a_number_that_belongs_to_another_account_lets_no_one_in_with_it(
+    client: TestClient, github: FakeGitHub, allowlist: Path, path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    allowlist.write_text("octo-student\n")
+    taken = number_of(client, github, STUDENT)
+    allowlist.write_text(f"octo-student\nocto-other {taken}\n")
+    client.cookies.clear()
+    with caplog.at_level(logging.ERROR):
+        assert sign_in(client, github, OTHER) == "/sign-in?error=unavailable"
+    assert f"employee number {taken} already belongs to another account" in caplog.text
+    conn = db.connect(path)
+    assert conn.execute("SELECT COUNT(*) FROM accounts").fetchone()[0] == 1
     conn.close()
