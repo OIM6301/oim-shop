@@ -128,6 +128,17 @@ The page describes the product and has no steps to follow. How a course uses the
 
 Acceptance: an end-to-end test opens About from the sidebar and checks the address of each link; the page is in the tests that check every public page at each width, in light and dark mode.
 
+### After v3: employee numbers from the allowlist
+
+Added on `main` after the `v3` tag. The allowlist can give each person their employee number, so a number does not depend on who signs in first, and a database rebuilt from nothing gives everyone the same number again.
+
+- A line is a GitHub username, then optionally `manager`, then optionally the employee number: `ada 12`, `grace manager 10`. A person without a number gets the next free one at their first sign-in, as before.
+- Numbers start at 10, because Northwind's own employees are 1 to 9, and no two lines share a number. While the list breaks either rule, no one can sign in, and the server's log names the line, as it already does for a line it cannot read.
+- The number is used once, when the person's account is made. If the list later gives someone who already has an account a different number, the account keeps its own, and the log says so. Someone whose number already belongs to another account cannot sign in until the list is fixed.
+- Chosen names stay only in the database. If it is lost, people sign in again and choose their names again.
+
+Acceptance: a test for each rule above, and a test where a person signs in, the database is deleted, and they sign in again with the same number.
+
 ## 6. Business rules (v3)
 
 Each comes from a field already in the Northwind data.
