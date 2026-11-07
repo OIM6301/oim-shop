@@ -11,7 +11,7 @@ The live site runs on one small Linux server, shared with other services. GitHub
 Signing in needs two files on the server, neither of them in git:
 
 - `~/.config/oim-shop.env` (600): `OIM_SHOP_GITHUB_CLIENT_ID=` and `OIM_SHOP_GITHUB_CLIENT_SECRET=`, from the project's GitHub OAuth App, whose callback is `https://oim-shop.zhili.dev/api/auth/callback`.
-- `~/.config/oim-shop/allowed-users` (644, in a 700 directory): the GitHub usernames who may sign in, one per line, with `manager` after a manager's.
+- `~/.config/oim-shop/allowed-users` (644, in a 700 directory): the GitHub usernames who may sign in, one per line, with `manager` after a manager's, then each person's employee number (`ada 12`, `grace manager 10`). Numbers start at 10 and never repeat. Give a new person the next unused number at the end of the list, and never change or reuse a number: an account keeps the number it was made with, and the numbers are how a lost database gives everyone their number back.
 
 The unit reads both ([oim-shop.container](oim-shop.container)). Signing in needs every setting or none: with only some of them, the app stops at start and says which is missing.
 
