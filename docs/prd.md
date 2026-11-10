@@ -146,9 +146,10 @@ Added on `main` after the `v3` tag. **Database**, linked in the sidebar beside A
 - The ERD is generated from the database's own schema, so it shows exactly what the tables declare. A script writes it as a mermaid `erDiagram` and renders it to an SVG, and both files are kept in the repository. The site loads the SVG and no mermaid code. The diagram follows light and dark mode.
 - It shows Northwind's 11 tables. `meta`, `accounts` and `sessions` hold the site's own records and are left out.
 - The site renames Northwind's tables and columns in snake_case, such as `order_lines` for `Order Details` and `category_id` for `CategoryID`. One sentence on the page says so, since other diagrams of Northwind use the original names.
+- The diagram is wider than the page, so it opens fitted to the page's width. Buttons zoom out and in, fit it to the width again, and show it at its actual size, where it scrolls inside a box at most a screen tall.
 - The page has no row counts. Orders entered during the day change them, and the nightly reset changes them back.
 
-Acceptance: a test fails when the mermaid file no longer matches the schema, and another when the SVG was not rendered from the current mermaid file; an end-to-end test opens Database from the sidebar and finds every table in the diagram; the page is in the tests that check every public page at each width, in light and dark mode.
+Acceptance: a test fails when the mermaid file no longer matches the schema, and another when the SVG was not rendered from the current mermaid file; an end-to-end test opens Database from the sidebar, finds every table in the diagram, and zooms it; the page is in the tests that check every public page at each width, in light and dark mode.
 
 ## 6. Business rules (v3)
 

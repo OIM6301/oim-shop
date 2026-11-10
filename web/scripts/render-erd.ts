@@ -27,7 +27,7 @@ const COLORS: Record<string, string> = {
   'hsl(40.5882352941, 100%, 100%)': 'var(--card)', // odd column rows
   'hsl(40.5882352941, 100%, 98.3333333333%)': 'var(--card)', // even column rows
   'hsl(40.5882352941, 60%, 83.3333333333%)': 'var(--border)', // box outlines
-  white: 'var(--card)', // inside the circle of a zero end
+  white: 'var(--background)', // inside the circle of a zero end
 }
 
 // Replaces mermaid's own stylesheet.
@@ -36,7 +36,7 @@ const STYLE = `
 #erd text { fill: var(--foreground); }
 #erd .relationshipLine { stroke: var(--muted-foreground); stroke-width: 1px; fill: none; }
 #erd .marker { stroke: var(--muted-foreground); fill: none; }
-#erd .edgeLabel rect, #erd .labelBkg { fill: var(--card); }
+#erd .edgeLabel rect, #erd .labelBkg { fill: var(--background); }
 #erd .edgeLabel text { fill: var(--muted-foreground); }
 `
 

@@ -615,6 +615,20 @@ test('Database shows every Northwind table in light and dark mode, and the SQL p
   }
   await expect(erd.locator('.label.name', { hasText: /^(accounts|sessions|meta)$/ })).toHaveCount(0)
 
+  // It opens fitted to the page's width, and zooms from there.
+  const overflows = () => erd.evaluate((box) => box.scrollWidth > box.clientWidth)
+  await expect.poll(overflows).toBe(false)
+  await page.getByRole('button', { name: '100%' }).click()
+  await expect(page.getByRole('status').filter({ hasText: '%' })).toHaveText('100%')
+  expect(await erd.locator('svg').evaluate((svg) => Math.round(svg.getBoundingClientRect().width))).toBe(
+    Number(await erd.locator('svg').getAttribute('width')),
+  )
+  await expect.poll(overflows).toBe(true)
+  await page.getByRole('button', { name: 'Zoom in' }).click()
+  await expect(page.getByRole('status').filter({ hasText: '%' })).toHaveText('125%')
+  await page.getByRole('button', { name: 'Fit width' }).click()
+  await expect.poll(overflows).toBe(false)
+
   // The diagram takes its colors from the site's, so the text stays readable in either mode.
   const name = erd.locator('.label.name text').first()
   const color = () => name.evaluate((text) => getComputedStyle(text).fill)
