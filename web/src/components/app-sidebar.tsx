@@ -102,6 +102,9 @@ export function AppSidebar() {
             <Link className="underline underline-offset-2" to="/about" onClick={closeOnPhone}>
               About
             </Link>
+            <Link className="underline underline-offset-2" to="/database" onClick={closeOnPhone}>
+              Database
+            </Link>
             <a className="underline underline-offset-2" href="/api/docs">
               API docs
             </a>

@@ -600,6 +600,36 @@ test('a new filter is a condition you can watch appear in the statement', async 
   await page.getByRole('button', { name: /^SQL 1 statement/ }).click()
 })
 
+test('Database shows every Northwind table in light and dark mode, and the SQL page links to it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Database', exact: true }).click()
+  await expect(page).toHaveURL(/\/database$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Database')
+  const erd = page.getByRole('region', { name: 'ERD' })
+  const tables = [
+    'categories', 'suppliers', 'products', 'customers', 'employees', 'shippers', 'orders', 'order_lines',
+    'regions', 'territories', 'employee_territories',
+  ]
+  for (const table of tables) {
+    await expect(erd.locator('.label.name', { hasText: new RegExp(`^${table}$`) })).toHaveCount(1)
+  }
+  await expect(erd.locator('.label.name', { hasText: /^(accounts|sessions|meta)$/ })).toHaveCount(0)
+
+  // The diagram takes its colors from the site's, so the text stays readable in either mode.
+  const name = erd.locator('.label.name text').first()
+  const color = () => name.evaluate((text) => getComputedStyle(text).fill)
+  await page.emulateMedia({ colorScheme: 'light' })
+  const light = await color()
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await expect.poll(color).not.toBe(light)
+
+  await signIn(page, 'e2e-rep', '/sql')
+  if (page.url().includes('/welcome')) await chooseName(page, 'Ana')
+  await expect(page).toHaveURL(/\/sql$/)
+  await page.getByRole('link', { name: 'ERD of Northwind’s tables' }).click()
+  await expect(page).toHaveURL(/\/database$/)
+})
+
 test('About says what the site is and links to its code', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('link', { name: 'About', exact: true }).click()

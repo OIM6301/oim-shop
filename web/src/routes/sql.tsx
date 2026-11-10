@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { AlertCircle, ChevronRight, Play, Plus } from 'lucide-react'
 import { type FormEvent, type KeyboardEvent, useRef, useState } from 'react'
 
@@ -142,6 +142,11 @@ function Schema({ account, onInsert, className }: { account: Schemas['Account'];
           ) : (
             <Skeleton className="h-64 w-full" />
           )}
+          <p className="mt-3">
+            <Link className="underline underline-offset-2" to="/database">
+              ERD of Northwind’s tables
+            </Link>
+          </p>
         </CardContent>
       )}
     </Card>
