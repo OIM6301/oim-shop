@@ -139,6 +139,17 @@ Added on `main` after the `v3` tag. The allowlist can give each person their emp
 
 Acceptance: a test for each rule above, and a test where a person signs in, the database is deleted, and they sign in again with the same number.
 
+### After v3: the Database page
+
+Added on `main` after the `v3` tag. **Database**, linked in the sidebar beside About and from the SQL page's list of tables, shows the ERD of Northwind's tables: each table with its columns, its primary key and its foreign keys, and each relationship with both of its ends marked.
+
+- The ERD is generated from the database's own schema, so it shows exactly what the tables declare. A script writes it as a mermaid `erDiagram` and renders it to an SVG, and both files are kept in the repository. The site loads the SVG and no mermaid code. The diagram follows light and dark mode.
+- It shows Northwind's 11 tables. `meta`, `accounts` and `sessions` hold the site's own records and are left out.
+- The site renames Northwind's tables and columns in snake_case, such as `order_lines` for `Order Details` and `category_id` for `CategoryID`. One sentence on the page says so, since other diagrams of Northwind use the original names.
+- The page has no row counts. Orders entered during the day change them, and the nightly reset changes them back.
+
+Acceptance: a test fails when the mermaid file no longer matches the schema, and another when the SVG was not rendered from the current mermaid file; an end-to-end test opens Database from the sidebar and finds every table in the diagram; the page is in the tests that check every public page at each width, in light and dark mode.
+
 ## 6. Business rules (v3)
 
 Each comes from a field already in the Northwind data.
