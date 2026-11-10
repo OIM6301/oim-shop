@@ -36,6 +36,7 @@ cd web
 npm run lint && npm run typecheck && npm test
 npm run build && npm run e2e        # Playwright: builds first, runs against a seeded database
 npm run api:types                   # after changing the API: regenerate openapi.json and src/api/schema.d.ts
+npm run erd                         # after a migration: regenerate erd.mmd and src/assets/erd.svg, the Database page's ERD
 
 # Seed data (rarely): rebuild data/seed from the pinned upstream file
 uv run --script scripts/build-seed.py

@@ -1,0 +1,121 @@
+erDiagram
+  categories {
+    INTEGER category_id PK
+    TEXT name
+    TEXT description
+    BLOB picture
+  }
+  suppliers {
+    INTEGER supplier_id PK
+    TEXT company_name
+    TEXT city
+    TEXT country
+    TEXT contact_name
+    TEXT contact_title
+    TEXT address
+    TEXT region
+    TEXT postal_code
+    TEXT phone
+    TEXT fax
+    TEXT home_page
+  }
+  products {
+    INTEGER product_id PK
+    TEXT name
+    INTEGER supplier_id FK
+    INTEGER category_id FK
+    TEXT quantity_per_unit
+    INTEGER unit_price_cents
+    INTEGER units_in_stock
+    INTEGER reorder_level
+    INTEGER discontinued
+    INTEGER seed_units_in_stock
+    INTEGER units_on_order
+  }
+  customers {
+    TEXT customer_id PK
+    TEXT company_name
+    TEXT contact_name
+    TEXT city
+    TEXT country
+    TEXT contact_title
+    TEXT address
+    TEXT region
+    TEXT postal_code
+    TEXT phone
+    TEXT fax
+  }
+  employees {
+    INTEGER employee_id PK
+    TEXT first_name
+    TEXT last_name
+    TEXT title
+    INTEGER reports_to FK
+    TEXT hire_date
+    TEXT city
+    TEXT country
+    TEXT title_of_courtesy
+    TEXT birth_date
+    TEXT address
+    TEXT region
+    TEXT postal_code
+    TEXT home_phone
+    TEXT extension
+    TEXT notes
+    BLOB photo
+  }
+  shippers {
+    INTEGER shipper_id PK
+    TEXT company_name
+    TEXT phone
+  }
+  orders {
+    INTEGER order_id PK
+    TEXT customer_id FK
+    INTEGER employee_id FK
+    TEXT order_date
+    TEXT required_date
+    TEXT shipped_date
+    INTEGER shipper_id FK
+    INTEGER freight_cents
+    TEXT ship_city
+    TEXT ship_country
+    INTEGER total_cents
+    INTEGER line_count
+    TEXT source
+    TEXT ship_name
+    TEXT ship_address
+    TEXT ship_region
+    TEXT ship_postal_code
+  }
+  order_lines {
+    INTEGER order_id PK, FK
+    INTEGER product_id PK, FK
+    INTEGER unit_price_cents
+    INTEGER quantity
+    INTEGER discount_pct
+  }
+  regions {
+    INTEGER region_id PK
+    TEXT name
+  }
+  territories {
+    TEXT territory_id PK
+    TEXT name
+    INTEGER region_id FK
+  }
+  employee_territories {
+    INTEGER employee_id PK, FK
+    TEXT territory_id PK, FK
+  }
+  suppliers ||--o{ products : "supplier_id"
+  categories ||--o{ products : "category_id"
+  employees |o--o{ employees : "reports_to"
+  customers ||--o{ orders : "customer_id"
+  employees ||--o{ orders : "employee_id"
+  shippers |o--o{ orders : "shipper_id"
+  orders ||--o{ order_lines : "order_id"
+  products ||--o{ order_lines : "product_id"
+  regions ||--o{ territories : "region_id"
+  employees ||--o{ employee_territories : "employee_id"
+  territories ||--o{ employee_territories : "territory_id"

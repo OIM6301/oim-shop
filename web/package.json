@@ -9,6 +9,7 @@
     "lint": "oxlint --deny-warnings src",
     "preview": "vite preview",
     "api:types": "uv run --project ../api oim-shop openapi > openapi.json && openapi-typescript openapi.json -o src/api/schema.d.ts",
+    "erd": "uv run --project ../api oim-shop erd > erd.mmd && node scripts/render-erd.ts",
     "typecheck": "tsc -b",
     "test": "vitest run",
     "e2e": "playwright test"

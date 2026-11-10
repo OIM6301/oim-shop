@@ -4,6 +4,7 @@
     oim-shop reset    take out every order entered here and restore the seed's stock (run nightly)
     oim-shop forget-accounts  remove every rep who has signed in, and the orders entered here (end of term)
     oim-shop openapi  print the API's OpenAPI schema, which web/ generates its types from
+    oim-shop erd      print the ERD of Northwind's tables in mermaid, which web/ draws on the Database page
 
 Settings come from the environment:
     OIM_SHOP_DB     the SQLite file (default: oim-shop.db in the current directory)
@@ -34,7 +35,7 @@ from typing import Any
 import uvicorn
 import uvicorn.config
 
-from oim_shop import accounts, clock, db, seed
+from oim_shop import accounts, clock, db, erd, seed
 from oim_shop.accounts import SignIn
 from oim_shop.app import create_app
 from oim_shop.deps import FIRST_DAY, LAST_DAY
@@ -121,11 +122,19 @@ def main(argv: list[str] | None = None) -> int:
     commands.add_parser("reset", help="take out the orders entered here and restore the stock")
     commands.add_parser("forget-accounts", help="remove every rep who has signed in, and the orders entered here")
     commands.add_parser("openapi", help="print the OpenAPI schema")
+    commands.add_parser("erd", help="print the ERD of Northwind's tables, in mermaid")
     args = parser.parse_args(argv)
 
     if args.command == "openapi":
         # The schema describes the routes only, so no database is opened.
         print(json.dumps(create_app(Path("unused.db")).openapi(), indent=2, ensure_ascii=False))
+        return 0
+    if args.command == "erd":
+        # The migrations alone make the tables, so an empty database in memory is enough.
+        conn = db.connect(Path(":memory:"))
+        db.migrate(conn)
+        print(erd.mermaid(conn), end="")
+        conn.close()
         return 0
 
     db_path = Path(os.environ.get("OIM_SHOP_DB", "oim-shop.db"))
